@@ -1,21 +1,21 @@
 #!/bin/bash
 set -e
 
+REPO_ROOT=$(pwd)
+echo "Repo root: $REPO_ROOT"
+echo "Files here: $(ls)"
+
 # Clone Flutter
 git clone https://github.com/flutter/flutter.git -b stable --depth 1
 
-# Add to PATH
-export PATH="$PATH:$(pwd)/flutter/bin"
+# Add flutter to PATH
+export PATH="$PATH:$REPO_ROOT/flutter/bin"
 
-# Verify we're in repo root
-echo "Current dir: $(pwd)"
-echo "pubspec.yaml exists: $(ls pubspec.yaml)"
+# Go back to repo root just to be safe
+cd $REPO_ROOT
 
-# Setup Flutter
 flutter config --enable-web
 flutter pub get
-
-# Build
 flutter build web --release \
   --dart-define=SUPABASE_URL=$SUPABASE_URL \
   --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \

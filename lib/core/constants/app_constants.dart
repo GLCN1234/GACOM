@@ -1,26 +1,39 @@
 class AppConstants {
+  // App Info
   static const appName = 'GACOM';
   static const appTagline = 'Game. Connect. Dominate.';
   static const appVersion = '1.0.0';
 
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
-  static const paystackPublicKey = String.fromEnvironment('PAYSTACK_PUBLIC_KEY', defaultValue: '');
+  // Supabase - replace with your actual values
+  static const supabaseUrl = 'https://rxccipqvyrcfpsadgpzp.supabase.co';
+  static const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y2NpcHF2eXJjZnBzYWRncHpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgzMDYsImV4cCI6MjA5MTA4NDMwNn0.XYFX3fyA8F57dTmfApRD0-Ub3cziKFz8o5IyAoGt5dw';
+
+  // Paystack
+  static const paystackPublicKey = 'pk_live_6e268b9f79535f285acad8a437b946a9f6f6f441';
   static const paystackBaseUrl = 'https://api.paystack.co';
 
+  // Storage Buckets
   static const avatarBucket = 'avatars';
   static const postMediaBucket = 'post-media';
   static const productImageBucket = 'product-images';
   static const blogImageBucket = 'blog-images';
   static const communityBannerBucket = 'community-banners';
 
+  // Pagination
   static const pageSize = 20;
   static const feedPageSize = 15;
-  static const minDeposit = 500;
-  static const minWithdrawal = 1000;
-  static const verificationFee = 2000;
-  static const platformFeePercent = 10;
 
+  // Wallet
+  static const minDeposit = 500; // NGN
+  static const minWithdrawal = 1000; // NGN
+
+  // Verification
+  static const verificationFee = 2000; // NGN
+
+  // Competition
+  static const platformFeePercent = 10; // 10% platform fee on competitions
+
+  // Routes
   static const splashRoute = '/';
   static const onboardingRoute = '/onboarding';
   static const loginRoute = '/login';
@@ -87,7 +100,7 @@ class PostType {
   static const text = 'text';
   static const image = 'image';
   static const video = 'video';
-  static const clip = 'clip';
+  static const clip = 'clip'; // Short TikTok-style video
 }
 
 class VerificationStatus {
