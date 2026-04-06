@@ -145,7 +145,7 @@ class GacomTheme {
           letterSpacing: 1,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: GacomColors.cardDark,
         elevation: 0,
         shape: RoundedRectangleBorder(

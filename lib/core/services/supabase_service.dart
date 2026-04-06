@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
@@ -9,7 +10,6 @@ class SupabaseService {
   static User? get currentUser => auth.currentUser;
   static bool get isLoggedIn => auth.currentSession != null;
 
-  // Storage helpers
   static String getPublicUrl(String bucket, String path) {
     return client.storage.from(bucket).getPublicUrl(path);
   }
@@ -31,6 +31,3 @@ class SupabaseService {
     return getPublicUrl(bucket, path);
   }
 }
-
-// Re-export for convenience
-export 'package:supabase_flutter/supabase_flutter.dart' show Uint8List;
