@@ -2,17 +2,11 @@
 set -e
 
 REPO_ROOT=$(pwd)
-echo "Repo root: $REPO_ROOT"
-echo "Files here: $(ls)"
+echo "Working from: $REPO_ROOT"
 
-# Clone Flutter
 git clone https://github.com/flutter/flutter.git -b stable --depth 1
 
-# Add flutter to PATH
 export PATH="$PATH:$REPO_ROOT/flutter/bin"
-
-# Go back to repo root just to be safe
-cd $REPO_ROOT
 
 flutter config --enable-web
 flutter pub get
