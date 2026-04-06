@@ -9,6 +9,7 @@ git clone https://github.com/flutter/flutter.git -b stable --depth 1
 export PATH="$PATH:$REPO_ROOT/flutter/bin"
 
 flutter config --enable-web
+flutter create . --platforms web
 flutter pub get
 flutter build web --release \
   --dart-define=SUPABASE_URL=$SUPABASE_URL \
