@@ -493,14 +493,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               label: 'New Password',
               hint: 'Min 8 characters',
               prefixIcon: Icons.lock_outline_rounded,
-              isPassword: true),
+              obscureText: true),
           const SizedBox(height: 12),
           GacomTextField(
               controller: confirmCtrl,
               label: 'Confirm Password',
               hint: '',
               prefixIcon: Icons.lock_outline_rounded,
-              isPassword: true),
+              obscureText: true),
           const SizedBox(height: 24),
           GacomButton(
             label: 'UPDATE PASSWORD',
