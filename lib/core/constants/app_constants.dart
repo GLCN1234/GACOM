@@ -4,12 +4,28 @@ class AppConstants {
   static const appTagline = 'Game. Connect. Dominate.';
   static const appVersion = '1.0.0';
 
-  // Supabase - replace with your actual values
-  static const supabaseUrl = 'https://rxccipqvyrcfpsadgpzp.supabase.co';
-  static const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y2NpcHF2eXJjZnBzYWRncHpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgzMDYsImV4cCI6MjA5MTA4NDMwNn0.XYFX3fyA8F57dTmfApRD0-Ub3cziKFz8o5IyAoGt5dw';
+  // Supabase — URL points to Netlify proxy to avoid ERR_QUIC_PROTOCOL_ERROR.
+  // The proxy rule in netlify.toml forwards /supabase-proxy/* → Supabase server-side.
+  // In local dev (flutter run) use the real URL via --dart-define or just swap back.
+  static const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://rxccipqvyrcfpsadgpzp.supabase.co',
+  );
+  static const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y2NpcHF2eXJjZnBzYWRncHpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgzMDYsImV4cCI6MjA5MTA4NDMwNn0.XYFX3fyA8F57dTmfApRD0-Ub3cziKFz8o5IyAoGt5dw',
+  );
+
+  // The proxy base — used ONLY on web builds deployed to Netlify.
+  // supabase_flutter will use supabaseUrl above; this proxy works because
+  // Netlify rewrites /supabase-proxy/* to the real Supabase host.
+  static const supabaseProxyUrl = '/supabase-proxy';
 
   // Paystack
-  static const paystackPublicKey = 'pk_live_6e268b9f79535f285acad8a437b946a9f6f6f441';
+  static const paystackPublicKey = String.fromEnvironment(
+    'PAYSTACK_PUBLIC_KEY',
+    defaultValue: 'pk_live_6e268b9f79535f285acad8a437b946a9f6f6f441',
+  );
   static const paystackBaseUrl = 'https://api.paystack.co';
 
   // Storage Buckets
@@ -31,7 +47,7 @@ class AppConstants {
   static const verificationFee = 2000; // NGN
 
   // Competition
-  static const platformFeePercent = 10; // 10% platform fee on competitions
+  static const platformFeePercent = 10;
 
   // Routes
   static const splashRoute = '/';
@@ -100,7 +116,7 @@ class PostType {
   static const text = 'text';
   static const image = 'image';
   static const video = 'video';
-  static const clip = 'clip'; // Short TikTok-style video
+  static const clip = 'clip';
 }
 
 class VerificationStatus {

@@ -4,6 +4,16 @@
 
 [build.environment]
   FLUTTER_VERSION = "stable"
+  PYTHON_VERSION = "3.8"
+
+# Proxy all Supabase calls through Netlify — fixes ERR_QUIC_PROTOCOL_ERROR
+# Flutter calls /supabase-proxy/*, Netlify forwards to Supabase server-side
+[[redirects]]
+  from = "/supabase-proxy/*"
+  to = "https://rxccipqvyrcfpsadgpzp.supabase.co/:splat"
+  status = 200
+  force = true
+  headers = {X-Forwarded-Host = "rxccipqvyrcfpsadgpzp.supabase.co"}
 
 [[redirects]]
   from = "/*"
