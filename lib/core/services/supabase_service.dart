@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../constants/app_constants.dart';
 
@@ -13,11 +12,8 @@ class SupabaseService {
   static bool get isLoggedIn => auth.currentSession != null;
 
   static Future<void> initialize() async {
-    final url = kIsWeb
-        ? '${Uri.base.origin}/supabase-proxy'
-        : AppConstants.supabaseUrl;
     await Supabase.initialize(
-      url: url,
+      url: AppConstants.supabaseUrl,
       anonKey: AppConstants.supabaseAnonKey,
     );
   }
