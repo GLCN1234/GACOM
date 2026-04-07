@@ -4,7 +4,11 @@ set -e
 REPO_ROOT=$(pwd)
 echo "Working from: $REPO_ROOT"
 
-git clone https://github.com/flutter/flutter.git -b stable --depth 1
+if [ ! -d "$REPO_ROOT/flutter" ]; then
+  git clone https://github.com/flutter/flutter.git -b stable --depth 1
+else
+  echo "Flutter already exists, skipping clone."
+fi
 
 export PATH="$PATH:$REPO_ROOT/flutter/bin"
 
