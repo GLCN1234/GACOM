@@ -27,6 +27,9 @@ import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
 
+// ✅ ADDED IMPORT
+import '../../features/ads/screens/ads_screen.dart';
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppConstants.splashRoute,
@@ -157,6 +160,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppConstants.createPostRoute,
             builder: (context, state) => const CreatePostScreen(),
+          ),
+
+          // ✅ ADDED ROUTE (exactly as requested)
+          GoRoute(
+            path: '/ads',
+            builder: (context, state) => const AdsScreen(),
           ),
         ],
       ),
