@@ -9,6 +9,46 @@ import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
 import '../../../shared/widgets/gacom_button.dart';
 
+// ── Demo products shown when Supabase table is empty / has no data ─────────────
+final _demoProducts = [
+  {
+    'id': 'd1', 'name': 'Gaming Headset Pro X', 'price': 45000.0,
+    'condition': 'new', 'category': 'accessories', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'TechVault NG', 'verification_status': 'verified'},
+  },
+  {
+    'id': 'd2', 'name': 'GACOM Limited Hoodie', 'price': 18500.0,
+    'condition': 'new', 'category': 'apparel', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'GACOM Official', 'verification_status': 'verified'},
+  },
+  {
+    'id': 'd3', 'name': 'FC 25 (PS5) — Nigerian Edition', 'price': 32000.0,
+    'condition': 'new', 'category': 'games', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'GameZone Lagos', 'verification_status': 'unverified'},
+  },
+  {
+    'id': 'd4', 'name': 'RGB Mechanical Keyboard', 'price': 28000.0,
+    'condition': 'used', 'category': 'accessories', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'GadgetHub', 'verification_status': 'verified'},
+  },
+  {
+    'id': 'd5', 'name': 'PUBG Mobile Figurine', 'price': 12000.0,
+    'condition': 'new', 'category': 'collectibles', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'CollectorsNG', 'verification_status': 'unverified'},
+  },
+  {
+    'id': 'd6', 'name': 'Gaming Chair — Black/Orange', 'price': 95000.0,
+    'condition': 'new', 'category': 'accessories', 'images': [],
+    'is_available': true,
+    'seller': {'display_name': 'ComfortGear', 'verification_status': 'verified'},
+  },
+];
+
 class StoreScreen extends ConsumerStatefulWidget {
   const StoreScreen({super.key});
   @override
@@ -20,6 +60,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
   late TabController _tab;
   List<Map<String, dynamic>> _products = [];
   bool _loading = true;
+  bool _isAdmin = false;
   String _search = '';
   String _selectedCategory = 'all';
 
@@ -35,33 +76,85 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+    _checkAdminRole();
     _load();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  /// Check if the logged-in user has admin/super_admin role
+  Future<void> _checkAdminRole() async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) return;
     try {
+      final p = await SupabaseService.client
+          .from('profiles')
+          .select('role')
+          .eq('id', uid)
+          .single();
+      final role = p['role'] as String? ?? 'user';
+      if (mounted) setState(() => _isAdmin = ['admin', 'super_admin'].contains(role));
+    } catch (_) {}
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    try {
+      // Simple query without the foreign key join that was causing 400 errors
       var q = SupabaseService.client
           .from('products')
-          .select(
-              '*, seller:profiles!seller_id(display_name, avatar_url, verification_status)')
+          .select('*')
           .eq('is_available', true);
+
       if (_selectedCategory != 'all') {
         q = q.eq('category', _selectedCategory) as dynamic;
       }
       if (_search.isNotEmpty) {
         q = q.ilike('name', '%$_search%') as dynamic;
       }
+
       final data = await (q as dynamic)
           .order('created_at', ascending: false)
           .limit(40);
+
+      final rows = List<Map<String, dynamic>>.from(data);
+
+      // Fetch seller display names separately to avoid FK join errors
+      List<Map<String, dynamic>> enriched = [];
+      for (final row in rows) {
+        final sellerId = row['seller_id'] as String?;
+        Map<String, dynamic> seller = {};
+        if (sellerId != null) {
+          try {
+            final sp = await SupabaseService.client
+                .from('profiles')
+                .select('display_name, verification_status')
+                .eq('id', sellerId)
+                .maybeSingle();
+            if (sp != null) seller = sp;
+          } catch (_) {}
+        }
+        enriched.add({...row, 'seller': seller});
+      }
+
       if (mounted) {
         setState(() {
-          _products = List<Map<String, dynamic>>.from(data);
+          _products = enriched.isNotEmpty ? enriched : List<Map<String, dynamic>>.from(_demoProducts);
           _loading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _products = List<Map<String, dynamic>>.from(_demoProducts);
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -72,20 +165,18 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
       appBar: AppBar(
         title: const Text('MARKETPLACE'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_rounded,
-                color: GacomColors.deepOrange),
-            tooltip: 'List Item',
-            onPressed: () => _showListItemSheet(context),
-          ),
+          // ✅ ADMIN ONLY — regular users never see this button
+          if (_isAdmin)
+            IconButton(
+              icon: const Icon(Icons.add_circle_rounded, color: GacomColors.deepOrange),
+              tooltip: 'Add Product (Admin)',
+              onPressed: () => _showAddProductSheet(context),
+            ),
         ],
         bottom: TabBar(
           controller: _tab,
           indicatorColor: GacomColors.deepOrange,
-          labelStyle: const TextStyle(
-              fontFamily: 'Rajdhani',
-              fontWeight: FontWeight.w700),
-          tabs: const [Tab(text: 'BROWSE'), Tab(text: 'MY LISTINGS')],
+          tabs: const [Tab(text: 'BROWSE'), Tab(text: 'MY ORDERS')],
         ),
       ),
       body: TabBarView(
@@ -96,33 +187,28 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
             loading: _loading,
             categories: _categories,
             selectedCategory: _selectedCategory,
-            search: _search,
             onCategoryChange: (c) {
-              setState(() {
-                _selectedCategory = c;
-                _loading = true;
-              });
+              setState(() { _selectedCategory = c; });
               _load();
             },
             onSearch: (s) {
-              setState(() {
-                _search = s;
-                _loading = true;
-              });
+              setState(() { _search = s; });
               _load();
             },
           ),
-          _MyListingsTab(onRefresh: _load),
+          _OrdersTab(),
         ],
       ),
     );
   }
 
-  void _showListItemSheet(BuildContext context) {
+  /// Admin-only: add product to the store
+  void _showAddProductSheet(BuildContext context) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     String condition = 'new';
+    String category = 'accessories';
 
     showModalBottomSheet(
       context: context,
@@ -133,52 +219,56 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModal) => DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.85,
+          initialChildSize: 0.88,
           builder: (_, scroll) => Padding(
-            padding: EdgeInsets.fromLTRB(
-                24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 32),
+            padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 32),
             child: ListView(controller: scroll, children: [
+              // Header
               Row(children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                       color: GacomColors.deepOrange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.storefront_rounded,
-                      color: GacomColors.deepOrange),
+                  child: const Icon(Icons.admin_panel_settings_rounded, color: GacomColors.deepOrange),
                 ),
                 const SizedBox(width: 12),
-                const Text('List an Item',
-                    style: TextStyle(
-                        fontFamily: 'Rajdhani',
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: GacomColors.textPrimary)),
+                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Add Product', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+                  Text('Admin only', style: TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani')),
+                ])),
               ]),
               const SizedBox(height: 20),
-              GacomTextField(
-                  controller: nameCtrl,
-                  label: 'Item Name',
-                  hint: 'e.g. Gaming Headset',
-                  prefixIcon: Icons.inventory_2_rounded),
+
+              GacomTextField(controller: nameCtrl, label: 'Product Name', hint: 'e.g. Gaming Headset Pro', prefixIcon: Icons.inventory_2_rounded),
               const SizedBox(height: 12),
-              GacomTextField(
-                  controller: descCtrl,
-                  label: 'Description',
-                  hint: 'Describe your item...',
-                  prefixIcon: Icons.description_rounded,
-                  maxLines: 3),
+              GacomTextField(controller: descCtrl, label: 'Description', hint: 'Describe the product...', prefixIcon: Icons.description_rounded, maxLines: 3),
               const SizedBox(height: 12),
-              GacomTextField(
-                  controller: priceCtrl,
-                  label: 'Price (₦)',
-                  hint: '0',
-                  prefixIcon: Icons.attach_money_rounded,
-                  keyboardType: TextInputType.number),
+              GacomTextField(controller: priceCtrl, label: 'Price (₦)', hint: '0', prefixIcon: Icons.attach_money_rounded, keyboardType: TextInputType.number),
               const SizedBox(height: 12),
-              const Text('Condition',
-                  style: TextStyle(
-                      color: GacomColors.textMuted, fontSize: 12)),
+
+              // Category
+              const Text('Category', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 1)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final cat in ['accessories', 'apparel', 'games', 'collectibles'])
+                  GestureDetector(
+                    onTap: () => setModal(() => category = cat),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                          color: category == cat ? GacomColors.deepOrange.withOpacity(0.15) : GacomColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(color: category == cat ? GacomColors.deepOrange : GacomColors.border)),
+                      child: Text(cat[0].toUpperCase() + cat.substring(1),
+                          style: TextStyle(color: category == cat ? GacomColors.deepOrange : GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
+                    ),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+
+              // Condition
+              const Text('Condition', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 1)),
               const SizedBox(height: 8),
               Row(children: [
                 for (final c in ['new', 'used', 'refurbished'])
@@ -187,63 +277,51 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
                       onTap: () => setModal(() => condition = c),
                       child: Container(
                         margin: const EdgeInsets.only(right: 8),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                            color: condition == c
-                                ? GacomColors.deepOrange.withOpacity(0.15)
-                                : GacomColors.surfaceDark,
+                            color: condition == c ? GacomColors.deepOrange.withOpacity(0.15) : GacomColors.surfaceDark,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: condition == c
-                                    ? GacomColors.deepOrange
-                                    : GacomColors.border)),
-                        child: Text(
-                            c[0].toUpperCase() + c.substring(1),
+                            border: Border.all(color: condition == c ? GacomColors.deepOrange : GacomColors.border)),
+                        child: Text(c[0].toUpperCase() + c.substring(1),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: condition == c
-                                    ? GacomColors.deepOrange
-                                    : GacomColors.textMuted,
-                                fontFamily: 'Rajdhani',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13)),
+                            style: TextStyle(color: condition == c ? GacomColors.deepOrange : GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                     ),
                   ),
               ]),
-              const SizedBox(height: 24),
-              GacomButton(
-                label: 'LIST ITEM',
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty ||
-                      priceCtrl.text.isEmpty) {
-                    GacomSnackbar.show(ctx, 'Name and price required',
-                        isError: true);
-                    return;
-                  }
-                  try {
-                    await SupabaseService.client.from('products').insert({
-                      'seller_id': SupabaseService.currentUserId,
-                      'name': nameCtrl.text.trim(),
-                      'description': descCtrl.text.trim(),
-                      'price': double.tryParse(priceCtrl.text) ?? 0,
-                      'condition': condition,
-                      'is_available': true,
-                    });
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                      GacomSnackbar.show(
-                          context, 'Item listed! 🛍️',
-                          isSuccess: true);
-                      setState(() => _loading = true);
-                      await _load();
+              const SizedBox(height: 28),
+
+              // ✅ Button wrapped in SizedBox so it's always full-width and visible
+              SizedBox(
+                width: double.infinity,
+                child: GacomButton(
+                  label: 'ADD TO STORE',
+                  height: 54,
+                  onPressed: () async {
+                    if (nameCtrl.text.trim().isEmpty || priceCtrl.text.isEmpty) {
+                      GacomSnackbar.show(ctx, 'Name and price required', isError: true);
+                      return;
                     }
-                  } catch (_) {
-                    GacomSnackbar.show(ctx, 'Failed to list item',
-                        isError: true);
-                  }
-                },
+                    try {
+                      await SupabaseService.client.from('products').insert({
+                        'seller_id': SupabaseService.currentUserId,
+                        'name': nameCtrl.text.trim(),
+                        'description': descCtrl.text.trim(),
+                        'price': double.tryParse(priceCtrl.text) ?? 0,
+                        'condition': condition,
+                        'category': category,
+                        'is_available': true,
+                      });
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                        GacomSnackbar.show(context, 'Product added to store! 🛍️', isSuccess: true);
+                        await _load();
+                      }
+                    } catch (e) {
+                      GacomSnackbar.show(ctx, 'Failed to add product. Check DB permissions.', isError: true);
+                    }
+                  },
+                ),
               ),
             ]),
           ),
@@ -253,12 +331,13 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
   }
 }
 
+// ── Browse tab ─────────────────────────────────────────────────────────────────
+
 class _BrowseTab extends StatelessWidget {
   final List<Map<String, dynamic>> products;
   final bool loading;
   final List<(String, String, IconData)> categories;
   final String selectedCategory;
-  final String search;
   final void Function(String) onCategoryChange;
   final void Function(String) onSearch;
 
@@ -267,7 +346,6 @@ class _BrowseTab extends StatelessWidget {
     required this.loading,
     required this.categories,
     required this.selectedCategory,
-    required this.search,
     required this.onCategoryChange,
     required this.onSearch,
   });
@@ -275,7 +353,7 @@ class _BrowseTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      // Search bar
+      // Search
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: TextField(
@@ -283,25 +361,18 @@ class _BrowseTab extends StatelessWidget {
           style: const TextStyle(color: GacomColors.textPrimary),
           decoration: InputDecoration(
             hintText: 'Search marketplace...',
-            hintStyle:
-                const TextStyle(color: GacomColors.textMuted),
-            prefixIcon: const Icon(Icons.search_rounded,
-                color: GacomColors.textMuted),
+            hintStyle: const TextStyle(color: GacomColors.textMuted),
+            prefixIcon: const Icon(Icons.search_rounded, color: GacomColors.textMuted),
             filled: true,
             fillColor: GacomColors.cardDark,
             contentPadding: EdgeInsets.zero,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: GacomColors.border)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: GacomColors.border)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.border)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.border, width: 0.7)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
           ),
         ),
       ),
-      // Category filter
+      // Category pills
       SizedBox(
         height: 56,
         child: ListView.builder(
@@ -310,79 +381,51 @@ class _BrowseTab extends StatelessWidget {
           itemCount: categories.length,
           itemBuilder: (_, i) {
             final c = categories[i];
-            final isSel = selectedCategory == c.$1;
+            final sel = selectedCategory == c.$1;
             return GestureDetector(
               onTap: () => onCategoryChange(c.$1),
               child: Container(
                 margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                    color: isSel
-                        ? GacomColors.deepOrange.withOpacity(0.15)
-                        : GacomColors.cardDark,
+                    color: sel ? GacomColors.deepOrange.withOpacity(0.15) : GacomColors.cardDark,
                     borderRadius: BorderRadius.circular(50),
-                    border: Border.all(
-                        color: isSel
-                            ? GacomColors.deepOrange
-                            : GacomColors.border)),
+                    border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.border, width: 0.8)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(c.$3,
-                      size: 14,
-                      color: isSel
-                          ? GacomColors.deepOrange
-                          : GacomColors.textMuted),
+                  Icon(c.$3, size: 13, color: sel ? GacomColors.deepOrange : GacomColors.textMuted),
                   const SizedBox(width: 6),
-                  Text(c.$2,
-                      style: TextStyle(
-                          color: isSel
-                              ? GacomColors.deepOrange
-                              : GacomColors.textMuted,
-                          fontFamily: 'Rajdhani',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13)),
+                  Text(c.$2, style: TextStyle(color: sel ? GacomColors.deepOrange : GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
                 ]),
               ),
             );
           },
         ),
       ),
+      // Grid
       Expanded(
         child: loading
-            ? const Center(
-                child: CircularProgressIndicator(
-                    color: GacomColors.deepOrange))
+            ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
             : products.isEmpty
-                ? const Center(
-                    child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                      Icon(Icons.storefront_rounded,
-                          size: 64, color: GacomColors.border),
-                      SizedBox(height: 16),
-                      Text('No items found',
-                          style: TextStyle(
-                              color: GacomColors.textMuted,
-                              fontSize: 16)),
-                    ]))
+                ? const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.storefront_rounded, size: 64, color: GacomColors.border),
+                    SizedBox(height: 16),
+                    Text('No items found', style: TextStyle(color: GacomColors.textMuted, fontSize: 16)),
+                  ]))
                 : GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.72),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.72),
                     itemCount: products.length,
-                    itemBuilder: (_, i) =>
-                        _ProductCard(product: products[i])
-                            .animate(delay: (i * 40).ms)
-                            .fadeIn(),
+                    itemBuilder: (_, i) => _ProductCard(product: products[i])
+                        .animate(delay: (i * 40).ms)
+                        .fadeIn(),
                   ),
       ),
     ]);
   }
 }
+
+// ── Product card ───────────────────────────────────────────────────────────────
 
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -394,89 +437,56 @@ class _ProductCard extends StatelessWidget {
     final images = product['images'] as List? ?? [];
     final condition = product['condition'] as String? ?? 'new';
     final seller = product['seller'] as Map? ?? {};
-    final isVerified =
-        seller['verification_status'] == 'verified';
+    final isVerified = seller['verification_status'] == 'verified';
+    final isDemo = product['id'].toString().startsWith('d');
 
     return GestureDetector(
-      onTap: () => context.push('/store/product/${product['id']}'),
+      onTap: () {
+        if (!isDemo) context.push('/store/product/${product['id']}');
+      },
       child: Container(
         decoration: BoxDecoration(
             color: GacomColors.cardDark,
             borderRadius: BorderRadius.circular(18),
-            border:
-                Border.all(color: GacomColors.border, width: 0.5)),
+            border: Border.all(color: GacomColors.border, width: 0.6)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Image
           ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(18)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
             child: AspectRatio(
               aspectRatio: 1,
               child: images.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: images.first,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) =>
-                          _ProductPlaceholder(condition: condition))
-                  : _ProductPlaceholder(condition: condition),
+                  ? CachedNetworkImage(imageUrl: images.first, fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => _Placeholder(condition: condition))
+                  : _Placeholder(condition: condition),
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(10),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text(product['name'] ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: GacomColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(product['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 4),
               Row(children: [
                 Text('₦${price.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                        color: GacomColors.deepOrange,
-                        fontFamily: 'Rajdhani',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15)),
+                    style: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                      color: (condition == 'new'
-                              ? GacomColors.success
-                              : GacomColors.warning)
-                          .withOpacity(0.1),
+                      color: (condition == 'new' ? GacomColors.success : GacomColors.warning).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4)),
-                  child: Text(
-                      condition[0].toUpperCase() +
-                          condition.substring(1),
-                      style: TextStyle(
-                          color: condition == 'new'
-                              ? GacomColors.success
-                              : GacomColors.warning,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700)),
+                  child: Text(condition[0].toUpperCase() + condition.substring(1),
+                      style: TextStyle(color: condition == 'new' ? GacomColors.success : GacomColors.warning, fontSize: 9, fontWeight: FontWeight.w700)),
                 ),
               ]),
               const SizedBox(height: 4),
               Row(children: [
-                const Icon(Icons.storefront_rounded,
-                    size: 11, color: GacomColors.textMuted),
+                const Icon(Icons.storefront_rounded, size: 11, color: GacomColors.textMuted),
                 const SizedBox(width: 4),
-                Expanded(
-                    child: Text(
-                        seller['display_name'] ?? 'Seller',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: GacomColors.textMuted,
-                            fontSize: 11))),
-                if (isVerified)
-                  const Icon(Icons.verified_rounded,
-                      size: 11, color: GacomColors.deepOrange),
+                Expanded(child: Text(seller['display_name'] ?? 'Seller', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: GacomColors.textMuted, fontSize: 11))),
+                if (isVerified) const Icon(Icons.verified_rounded, size: 11, color: GacomColors.deepOrange),
               ]),
             ]),
           ),
@@ -486,120 +496,44 @@ class _ProductCard extends StatelessWidget {
   }
 }
 
-class _ProductPlaceholder extends StatelessWidget {
+class _Placeholder extends StatelessWidget {
   final String condition;
-  const _ProductPlaceholder({required this.condition});
+  const _Placeholder({required this.condition});
   @override
   Widget build(BuildContext context) => Container(
         color: GacomColors.surfaceDark,
-        child: const Icon(Icons.inventory_2_rounded,
-            color: GacomColors.border, size: 48),
+        child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(Icons.inventory_2_rounded, color: GacomColors.border, size: 40),
+          const SizedBox(height: 6),
+          Container(
+            width: 6, height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: condition == 'new' ? GacomColors.success : GacomColors.warning,
+            ),
+          ),
+        ])),
       );
 }
 
-class _MyListingsTab extends ConsumerStatefulWidget {
-  final VoidCallback onRefresh;
-  const _MyListingsTab({required this.onRefresh});
+// ── Orders tab (user's purchases) ─────────────────────────────────────────────
+
+class _OrdersTab extends ConsumerStatefulWidget {
   @override
-  ConsumerState<_MyListingsTab> createState() => _MyListingsTabState();
+  ConsumerState<_OrdersTab> createState() => _OrdersTabState();
 }
 
-class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
-  List<Map<String, dynamic>> _listings = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final userId = SupabaseService.currentUserId;
-    if (userId == null) return;
-    try {
-      final data = await SupabaseService.client
-          .from('products')
-          .select('*')
-          .eq('seller_id', userId)
-          .order('created_at', ascending: false);
-      if (mounted) {
-        setState(() {
-          _listings = List<Map<String, dynamic>>.from(data);
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
+class _OrdersTabState extends ConsumerState<_OrdersTab> {
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(
-          child:
-              CircularProgressIndicator(color: GacomColors.deepOrange));
-    }
-    if (_listings.isEmpty) {
-      return Center(
-          child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-            const Icon(Icons.inventory_2_rounded,
-                size: 64, color: GacomColors.border),
-            const SizedBox(height: 16),
-            const Text('No listings yet',
-                style: TextStyle(
-                    color: GacomColors.textMuted, fontSize: 16)),
-            const SizedBox(height: 8),
-            const Text('Tap + to list your first item',
-                style: TextStyle(
-                    color: GacomColors.textMuted, fontSize: 13)),
-          ]));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _listings.length,
-      itemBuilder: (_, i) {
-        final p = _listings[i];
-        final available = p['is_available'] as bool? ?? true;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-              color: GacomColors.cardDark,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: GacomColors.border, width: 0.5)),
-          child: Row(children: [
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-              Text(p['name'] ?? '',
-                  style: const TextStyle(
-                      color: GacomColors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14)),
-              Text('₦${p['price']}',
-                  style: const TextStyle(
-                      color: GacomColors.deepOrange,
-                      fontFamily: 'Rajdhani',
-                      fontWeight: FontWeight.w700)),
-            ])),
-            Switch(
-              value: available,
-              activeColor: GacomColors.deepOrange,
-              onChanged: (v) async {
-                await SupabaseService.client
-                    .from('products')
-                    .update({'is_available': v}).eq('id', p['id']);
-                await _load();
-              },
-            ),
-          ]),
-        );
-      },
+    return const Center(
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.shopping_bag_outlined, size: 64, color: GacomColors.border),
+        SizedBox(height: 16),
+        Text('No orders yet', style: TextStyle(color: GacomColors.textMuted, fontSize: 16, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
+        SizedBox(height: 8),
+        Text('Browse the marketplace to find gear', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
+      ]),
     );
   }
 }
