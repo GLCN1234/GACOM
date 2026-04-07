@@ -1,9 +1,11 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/supabase_service.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -16,30 +18,44 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell>
     with SingleTickerProviderStateMixin {
   int _selectedIndex = 0;
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnim;
+  late AnimationController _glowCtrl;
+  late Animation<double> _glowAnim;
 
-  final _navItems = [
-    _NavItem(icon: Icons.home_rounded, label: 'Home', route: AppConstants.homeRoute),
-    _NavItem(icon: Icons.sports_esports_rounded, label: 'Compete', route: AppConstants.competitionsRoute),
-    _NavItem(icon: Icons.add_rounded, label: 'Post', route: AppConstants.createPostRoute, isCreate: true),
-    _NavItem(icon: Icons.groups_rounded, label: 'Community', route: AppConstants.communityRoute),
-    _NavItem(icon: Icons.storefront_rounded, label: 'Store', route: AppConstants.storeRoute),
+  // 6-tab nav: Home, Compete, [FAB Post], Community, Wallet, Profile
+  final _tabs = const [
+    _Tab(icon: Icons.home_rounded,             label: 'Home',      route: AppConstants.homeRoute),
+    _Tab(icon: Icons.sports_esports_rounded,   label: 'Compete',   route: AppConstants.competitionsRoute),
+    _Tab(icon: Icons.add_rounded,              label: '',          route: AppConstants.createPostRoute, isFab: true),
+    _Tab(icon: Icons.groups_rounded,           label: 'Community', route: AppConstants.communityRoute),
+    _Tab(icon: Icons.account_balance_wallet_rounded, label: 'Wallet', route: AppConstants.walletRoute),
+    _Tab(icon: Icons.person_rounded,           label: 'Profile',   route: '', isProfile: true),
   ];
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+    _glowCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1800))
+      ..repeat(reverse: true);
+    _glowAnim = CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut);
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _glowCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTap(int i) {
+    HapticFeedback.selectionClick();
+    final tab = _tabs[i];
+    setState(() => _selectedIndex = i);
+    if (tab.isProfile) {
+      final uid = SupabaseService.currentUserId ?? '';
+      context.go('/profile/$uid');
+    } else {
+      context.go(tab.route);
+    }
   }
 
   @override
@@ -47,64 +63,87 @@ class _MainShellState extends ConsumerState<MainShell>
     return Scaffold(
       extendBody: true,
       body: widget.child,
-      bottomNavigationBar: _GlassNavBar(
-        items: _navItems,
-        selectedIndex: _selectedIndex,
-        pulseAnim: _pulseAnim,
-        onTap: (i) {
-          setState(() => _selectedIndex = i);
-          context.go(_navItems[i].route);
-        },
-      ),
+      bottomNavigationBar: _buildNav(),
     );
   }
-}
 
-class _GlassNavBar extends StatelessWidget {
-  final List<_NavItem> items;
-  final int selectedIndex;
-  final Animation<double> pulseAnim;
-  final void Function(int) onTap;
-
-  const _GlassNavBar({
-    required this.items,
-    required this.selectedIndex,
-    required this.pulseAnim,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildNav() {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: GacomColors.darkVoid.withOpacity(0.85),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            color: GacomColors.darkVoid.withOpacity(0.88),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
             border: const Border(
-              top: BorderSide(color: GacomColors.border, width: 0.8),
+              top: BorderSide(color: GacomColors.border, width: 0.7),
             ),
           ),
           child: SafeArea(
             top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
+            child: SizedBox(
+              height: 64,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(items.length, (i) {
-                  final item = items[i];
-                  final isSelected = selectedIndex == i;
+                children: List.generate(_tabs.length, (i) {
+                  final tab = _tabs[i];
+                  final sel = _selectedIndex == i;
 
-                  if (item.isCreate) {
-                    return _CreateButton(pulseAnim: pulseAnim, onTap: () => onTap(i));
-                  }
+                  if (tab.isFab) return _FabButton(anim: _glowAnim, onTap: () => _onTap(i));
 
-                  return _NavTile(
-                    item: item,
-                    isSelected: isSelected,
-                    onTap: () => onTap(i),
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => _onTap(i),
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? GacomColors.deepOrange.withOpacity(0.13)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          border: sel
+                              ? Border.all(
+                                  color: GacomColors.deepOrange.withOpacity(0.3),
+                                  width: 0.7)
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedScale(
+                              scale: sel ? 1.15 : 1.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                tab.icon,
+                                size: 22,
+                                color: sel
+                                    ? GacomColors.deepOrange
+                                    : GacomColors.textMuted,
+                              ),
+                            ),
+                            if (tab.label.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 200),
+                                style: TextStyle(
+                                  fontFamily: 'Rajdhani',
+                                  fontSize: 9,
+                                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                  color: sel
+                                      ? GacomColors.deepOrange
+                                      : GacomColors.textMuted,
+                                  letterSpacing: 0.4,
+                                ),
+                                child: Text(tab.label),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   );
                 }),
               ),
@@ -116,102 +155,53 @@ class _GlassNavBar extends StatelessWidget {
   }
 }
 
-class _NavTile extends StatelessWidget {
-  final _NavItem item;
-  final bool isSelected;
+class _FabButton extends StatelessWidget {
+  final Animation<double> anim;
   final VoidCallback onTap;
-
-  const _NavTile({required this.item, required this.isSelected, required this.onTap});
+  const _FabButton({required this.anim, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? GacomColors.deepOrange.withOpacity(0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-          border: isSelected
-              ? Border.all(color: GacomColors.deepOrange.withOpacity(0.25), width: 0.8)
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              child: Icon(
-                item.icon,
-                color: isSelected ? GacomColors.deepOrange : GacomColors.textMuted,
-                size: isSelected ? 24 : 22,
+      child: SizedBox(
+        width: 64,
+        child: Center(
+          child: AnimatedBuilder(
+            animation: anim,
+            builder: (_, __) => Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: GacomColors.orangeGradient,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: GacomColors.deepOrange.withOpacity(0.55 * anim.value),
+                    blurRadius: 20 * anim.value,
+                  ),
+                ],
               ),
+              child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
             ),
-            const SizedBox(height: 4),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 250),
-              style: TextStyle(
-                fontFamily: 'Rajdhani',
-                fontSize: 9,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                letterSpacing: 0.5,
-                color: isSelected ? GacomColors.deepOrange : GacomColors.textMuted,
-              ),
-              child: Text(item.label),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CreateButton extends StatelessWidget {
-  final Animation<double> pulseAnim;
-  final VoidCallback onTap;
-
-  const _CreateButton({required this.pulseAnim, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedBuilder(
-        animation: pulseAnim,
-        builder: (_, child) => Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: GacomColors.orangeGradient,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: GacomColors.deepOrange.withOpacity(0.5 * pulseAnim.value),
-                blurRadius: 18 * pulseAnim.value,
-                spreadRadius: 0,
-              ),
-            ],
           ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
         ),
       ),
     );
   }
 }
 
-class _NavItem {
+class _Tab {
   final IconData icon;
   final String label;
   final String route;
-  final bool isCreate;
-
-  const _NavItem({
+  final bool isFab;
+  final bool isProfile;
+  const _Tab({
     required this.icon,
     required this.label,
     required this.route,
-    this.isCreate = false,
+    this.isFab = false,
+    this.isProfile = false,
   });
 }
