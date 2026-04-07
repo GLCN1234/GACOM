@@ -7,7 +7,6 @@ import '../../../core/theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -20,9 +19,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 2500));
+    await Future.delayed(const Duration(milliseconds: 3000));
     if (!mounted) return;
-
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       context.go(AppConstants.homeRoute);
@@ -39,29 +37,37 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo
+            // GACOM Logo from cloudinary – blended into dark background
             Container(
-              width: 100,
-              height: 100,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                gradient: GacomColors.orangeGradient,
-                borderRadius: BorderRadius.circular(28),
+                shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: GacomColors.deepOrange.withOpacity(0.5),
-                    blurRadius: 40,
-                    spreadRadius: 10,
+                    color: GacomColors.deepOrange.withOpacity(0.45),
+                    blurRadius: 50,
+                    spreadRadius: 12,
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'G',
-                  style: TextStyle(
-                    fontFamily: 'Rajdhani',
-                    fontSize: 60,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+              child: ClipOval(
+                child: Image.network(
+                  'https://res.cloudinary.com/dtchp470a/image/upload/v1775540390/WhatsApp_Image_2026-03-27_at_03.12.01_3_jxyhbj.jpg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    decoration: BoxDecoration(
+                      gradient: GacomColors.orangeGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text('G',
+                          style: TextStyle(
+                              fontFamily: 'Rajdhani',
+                              fontSize: 60,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white)),
+                    ),
                   ),
                 ),
               ),
@@ -70,24 +76,21 @@ class _SplashScreenState extends State<SplashScreen> {
                 .scale(
                   begin: const Offset(0.5, 0.5),
                   end: const Offset(1, 1),
-                  duration: 600.ms,
+                  duration: 700.ms,
                   curve: Curves.elasticOut,
                 )
                 .fadeIn(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
             const Text(
               'GACOM',
               style: TextStyle(
                 fontFamily: 'Rajdhani',
-                fontSize: 40,
+                fontSize: 42,
                 fontWeight: FontWeight.w700,
                 color: GacomColors.textPrimary,
-                letterSpacing: 8,
+                letterSpacing: 10,
               ),
-            )
-                .animate(delay: 300.ms)
-                .fadeIn()
-                .slideY(begin: 0.3, end: 0),
+            ).animate(delay: 350.ms).fadeIn().slideY(begin: 0.3, end: 0),
             const SizedBox(height: 8),
             const Text(
               'GAME. CONNECT. DOMINATE.',
@@ -98,22 +101,18 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: GacomColors.deepOrange,
                 letterSpacing: 4,
               ),
-            )
-                .animate(delay: 500.ms)
-                .fadeIn()
-                .slideY(begin: 0.3, end: 0),
+            ).animate(delay: 550.ms).fadeIn().slideY(begin: 0.3, end: 0),
             const SizedBox(height: 80),
             SizedBox(
-              width: 40,
+              width: 48,
               height: 2,
               child: LinearProgressIndicator(
                 backgroundColor: GacomColors.border,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  GacomColors.deepOrange,
-                ),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(GacomColors.deepOrange),
                 borderRadius: BorderRadius.circular(10),
               ),
-            ).animate(delay: 800.ms).fadeIn(),
+            ).animate(delay: 900.ms).fadeIn(),
           ],
         ),
       ),

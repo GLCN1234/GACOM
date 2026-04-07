@@ -26,9 +26,9 @@ import '../../features/profile/screens/settings_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
-
-// ✅ ADDED IMPORT
 import '../../features/ads/screens/ads_screen.dart';
+import '../../features/support/screens/support_chat_screen.dart';
+import '../../features/support/screens/agent_chat_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -36,15 +36,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
-      final isAuthRoute = state.matchedLocation == AppConstants.loginRoute ||
-          state.matchedLocation == AppConstants.registerRoute ||
-          state.matchedLocation == AppConstants.onboardingRoute ||
-          state.matchedLocation == AppConstants.splashRoute;
+      final loc = state.matchedLocation;
+      final isAuthRoute = loc == AppConstants.loginRoute ||
+          loc == AppConstants.registerRoute ||
+          loc == AppConstants.onboardingRoute ||
+          loc == AppConstants.splashRoute;
 
       if (!isLoggedIn && !isAuthRoute) {
         return AppConstants.loginRoute;
       }
-
       return null;
     },
     routes: [
@@ -161,11 +161,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppConstants.createPostRoute,
             builder: (context, state) => const CreatePostScreen(),
           ),
-
-          // ✅ ADDED ROUTE (exactly as requested)
           GoRoute(
-            path: '/ads',
+            path: AppConstants.adsRoute,
             builder: (context, state) => const AdsScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.supportRoute,
+            builder: (context, state) => const SupportChatScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.agentChatRoute,
+            builder: (context, state) => const AgentChatScreen(),
           ),
         ],
       ),

@@ -1,27 +1,20 @@
 class AppConstants {
-  // App Info
   static const appName = 'GACOM';
   static const appTagline = 'Game. Connect. Dominate.';
   static const appVersion = '1.0.0';
 
-  // Supabase — URL points to Netlify proxy to avoid ERR_QUIC_PROTOCOL_ERROR.
-  // The proxy rule in netlify.toml forwards /supabase-proxy/* → Supabase server-side.
-  // In local dev (flutter run) use the real URL via --dart-define or just swap back.
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://rxccipqvyrcfpsadgpzp.supabase.co',
   );
   static const supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y2NpcHF2eXJjZnBzYWRncHpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgzMDYsImV4cCI6MjA5MTA4NDMwNn0.XYFX3fyA8F57dTmfApRD0-Ub3cziKFz8o5IyAoGt5dw',
+    defaultValue:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y2NpcHF2eXJjZnBzYWRncHpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MDgzMDYsImV4cCI6MjA5MTA4NDMwNn0.XYFX3fyA8F57dTmfApRD0-Ub3cziKFz8o5IyAoGt5dw',
   );
-
-  // The proxy base — used ONLY on web builds deployed to Netlify.
-  // supabase_flutter will use supabaseUrl above; this proxy works because
-  // Netlify rewrites /supabase-proxy/* to the real Supabase host.
   static const supabaseProxyUrl = '/supabase-proxy';
 
-  // Paystack
+  // Paystack — only initialise via backend; never expose key in payment URL
   static const paystackPublicKey = String.fromEnvironment(
     'PAYSTACK_PUBLIC_KEY',
     defaultValue: 'pk_live_6e268b9f79535f285acad8a437b946a9f6f6f441',
@@ -40,14 +33,18 @@ class AppConstants {
   static const feedPageSize = 15;
 
   // Wallet
-  static const minDeposit = 500; // NGN
-  static const minWithdrawal = 1000; // NGN
+  static const minDeposit = 500;
+  static const minWithdrawal = 1000;
 
   // Verification
-  static const verificationFee = 2000; // NGN
+  static const verificationFee = 2000;
 
   // Competition
   static const platformFeePercent = 10;
+
+  // Logo
+  static const logoUrl =
+      'https://res.cloudinary.com/dtchp470a/image/upload/v1775540390/WhatsApp_Image_2026-03-27_at_03.12.01_3_jxyhbj.jpg';
 
   // Routes
   static const splashRoute = '/';
@@ -75,6 +72,9 @@ class AppConstants {
   static const notificationsRoute = '/notifications';
   static const searchRoute = '/search';
   static const createPostRoute = '/create-post';
+  static const adsRoute = '/ads';
+  static const supportRoute = '/support';
+  static const agentChatRoute = '/agent-chat';
 }
 
 class UserRole {
@@ -82,6 +82,15 @@ class UserRole {
   static const admin = 'admin';
   static const superAdmin = 'super_admin';
   static const moderator = 'moderator';
+  static const exco = 'exco'; // Gacom executives
+}
+
+/// Exco roles assigned from admin dashboard by email
+class ExcoRole {
+  static const communityManager = 'community_manager';
+  static const inventoryManager = 'inventory_manager';
+  static const financeTeam = 'finance_team';
+  static const customerAgent = 'customer_agent';
 }
 
 class AdminPermission {
@@ -94,6 +103,7 @@ class AdminPermission {
   static const manageAdmins = 'manage_admins';
   static const viewAnalytics = 'view_analytics';
   static const manageVerification = 'manage_verification';
+  static const createCompetitions = 'create_competitions';
 }
 
 class CompetitionStatus {

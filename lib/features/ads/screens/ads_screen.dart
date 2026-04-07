@@ -1,235 +1,640 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
+import '../../../shared/widgets/gacom_text_field.dart';
 
-class AdsScreen extends StatefulWidget {
+class AdsScreen extends ConsumerStatefulWidget {
   const AdsScreen({super.key});
   @override
-  State<AdsScreen> createState() => _AdsScreenState();
+  ConsumerState<AdsScreen> createState() => _AdsScreenState();
 }
 
-class _AdsScreenState extends State<AdsScreen> with SingleTickerProviderStateMixin {
+class _AdsScreenState extends ConsumerState<AdsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tab;
-  @override
-  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); }
-  @override
-  void dispose() { _tab.dispose(); super.dispose(); }
+  List<Map<String, dynamic>> _myCampaigns = [];
+  bool _loading = true;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: GacomColors.obsidian,
-    appBar: AppBar(
-      title: const Text('PROMOTIONS'),
-      bottom: TabBar(controller: _tab, tabs: const [Tab(text: 'CREATE AD'), Tab(text: 'MY CAMPAIGNS')]),
-    ),
-    body: TabBarView(controller: _tab, children: [_CreateAdTab(), _CampaignsTab()]),
-  );
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    _loadCampaigns();
+  }
+
+  Future<void> _loadCampaigns() async {
+    final userId = SupabaseService.currentUserId;
+    if (userId == null) return;
+    try {
+      final data = await SupabaseService.client
+          .from('ad_campaigns')
+          .select('*')
+          .eq('advertiser_id', userId)
+          .order('created_at', ascending: false);
+      if (mounted) {
+        setState(() {
+          _myCampaigns = List<Map<String, dynamic>>.from(data);
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: GacomColors.obsidian,
+      appBar: AppBar(
+        title: const Text('ADVERTISE'),
+        bottom: TabBar(
+          controller: _tab,
+          indicatorColor: GacomColors.deepOrange,
+          labelStyle: const TextStyle(
+              fontFamily: 'Rajdhani', fontWeight: FontWeight.w700),
+          tabs: const [Tab(text: 'OVERVIEW'), Tab(text: 'MY CAMPAIGNS')],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tab,
+        children: [
+          _OverviewTab(onLaunch: () => _showCreateCampaign(context)),
+          _CampaignsTab(
+              campaigns: _myCampaigns,
+              loading: _loading,
+              onCreate: () => _showCreateCampaign(context)),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateCampaign(BuildContext context) {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final linkCtrl = TextEditingController();
+    final budgetCtrl = TextEditingController();
+    String selectedType = 'banner';
+    String selectedAudience = 'all_gamers';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.92,
+          builder: (_, scroll) => Padding(
+            padding: EdgeInsets.fromLTRB(
+                24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 32),
+            child: ListView(controller: scroll, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: GacomColors.deepOrange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.campaign_rounded,
+                      color: GacomColors.deepOrange),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    Text('Launch Campaign',
+                        style: TextStyle(
+                            fontFamily: 'Rajdhani',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: GacomColors.textPrimary)),
+                    Text('Reach competitive gamers across Africa',
+                        style: TextStyle(
+                            color: GacomColors.textMuted, fontSize: 12)),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 24),
+
+              GacomTextField(
+                  controller: titleCtrl,
+                  label: 'Campaign Name',
+                  hint: 'e.g. GACOM Pro Controller Launch',
+                  prefixIcon: Icons.title_rounded),
+              const SizedBox(height: 12),
+              GacomTextField(
+                  controller: descCtrl,
+                  label: 'Ad Copy',
+                  hint: 'What do you want gamers to know?',
+                  prefixIcon: Icons.description_rounded,
+                  maxLines: 3),
+              const SizedBox(height: 12),
+              GacomTextField(
+                  controller: linkCtrl,
+                  label: 'Destination URL',
+                  hint: 'https://yoursite.com',
+                  prefixIcon: Icons.link_rounded,
+                  keyboardType: TextInputType.url),
+              const SizedBox(height: 16),
+
+              // Ad Type
+              const Text('Ad Format',
+                  style: TextStyle(
+                      color: GacomColors.textMuted, fontSize: 12)),
+              const SizedBox(height: 8),
+              Row(children: [
+                for (final t in [
+                  ('banner', 'Banner', Icons.view_agenda_rounded),
+                  ('interstitial', 'Full Screen', Icons.fullscreen_rounded),
+                  ('feed', 'In-Feed', Icons.view_stream_rounded),
+                ])
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setModal(() => selectedType = t.$1),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
+                        decoration: BoxDecoration(
+                            color: selectedType == t.$1
+                                ? GacomColors.deepOrange.withOpacity(0.15)
+                                : GacomColors.surfaceDark,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: selectedType == t.$1
+                                    ? GacomColors.deepOrange
+                                    : GacomColors.border)),
+                        child: Column(children: [
+                          Icon(t.$3,
+                              size: 20,
+                              color: selectedType == t.$1
+                                  ? GacomColors.deepOrange
+                                  : GacomColors.textMuted),
+                          const SizedBox(height: 4),
+                          Text(t.$2,
+                              style: TextStyle(
+                                  color: selectedType == t.$1
+                                      ? GacomColors.deepOrange
+                                      : GacomColors.textMuted,
+                                  fontFamily: 'Rajdhani',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11),
+                              textAlign: TextAlign.center),
+                        ]),
+                      ),
+                    ),
+                  ),
+              ]),
+
+              const SizedBox(height: 16),
+
+              // Audience
+              const Text('Target Audience',
+                  style: TextStyle(
+                      color: GacomColors.textMuted, fontSize: 12)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ('all_gamers', 'All Gamers'),
+                  ('competitive', 'Competitive Players'),
+                  ('mobile', 'Mobile Gamers'),
+                  ('pc', 'PC Gamers'),
+                  ('nigeria', 'Nigeria'),
+                  ('africa', 'Africa'),
+                ].map((a) {
+                  final isSel = selectedAudience == a.$1;
+                  return GestureDetector(
+                    onTap: () => setModal(() => selectedAudience = a.$1),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                          color: isSel
+                              ? GacomColors.deepOrange.withOpacity(0.15)
+                              : GacomColors.surfaceDark,
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(
+                              color: isSel
+                                  ? GacomColors.deepOrange
+                                  : GacomColors.border)),
+                      child: Text(a.$2,
+                          style: TextStyle(
+                              color: isSel
+                                  ? GacomColors.deepOrange
+                                  : GacomColors.textMuted,
+                              fontFamily: 'Rajdhani',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13)),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 16),
+
+              GacomTextField(
+                  controller: budgetCtrl,
+                  label: 'Daily Budget (₦)',
+                  hint: 'Min ₦1,000/day',
+                  prefixIcon: Icons.account_balance_wallet_rounded,
+                  keyboardType: TextInputType.number),
+
+              const SizedBox(height: 12),
+
+              // Pricing info
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                    color: GacomColors.info.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: GacomColors.info.withOpacity(0.2))),
+                child: Column(children: [
+                  _PriceRow('CPM (per 1,000 impressions)', '₦200'),
+                  _PriceRow('CPC (per click)', '₦50'),
+                  _PriceRow('Min budget', '₦1,000/day'),
+                  _PriceRow('Min duration', '3 days'),
+                ]),
+              ),
+
+              const SizedBox(height: 24),
+              GacomButton(
+                label: 'LAUNCH CAMPAIGN',
+                onPressed: () async {
+                  if (titleCtrl.text.trim().isEmpty) {
+                    GacomSnackbar.show(ctx, 'Campaign name required',
+                        isError: true);
+                    return;
+                  }
+                  final budget = double.tryParse(budgetCtrl.text) ?? 0;
+                  if (budget < 1000) {
+                    GacomSnackbar.show(
+                        ctx, 'Minimum budget is ₦1,000/day',
+                        isError: true);
+                    return;
+                  }
+                  try {
+                    await SupabaseService.client
+                        .from('ad_campaigns')
+                        .insert({
+                      'advertiser_id': SupabaseService.currentUserId,
+                      'title': titleCtrl.text.trim(),
+                      'description': descCtrl.text.trim(),
+                      'destination_url': linkCtrl.text.trim(),
+                      'ad_type': selectedType,
+                      'target_audience': selectedAudience,
+                      'daily_budget': budget,
+                      'status': 'pending_review',
+                    });
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      GacomSnackbar.show(context,
+                          'Campaign submitted for review! 🚀',
+                          isSuccess: true);
+                      setState(() => _loading = true);
+                      await _loadCampaigns();
+                    }
+                  } catch (_) {
+                    GacomSnackbar.show(
+                        ctx, 'Failed to submit campaign',
+                        isError: true);
+                  }
+                },
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _CreateAdTab extends StatefulWidget {
-  @override State<_CreateAdTab> createState() => _CreateAdTabState();
-}
-
-class _CreateAdTabState extends State<_CreateAdTab> {
-  String _adType = 'profile', _objective = 'awareness', _budget = '₦1,000';
-  int _duration = 3;
-  bool _loading = false;
+class _OverviewTab extends StatelessWidget {
+  final VoidCallback onLaunch;
+  const _OverviewTab({required this.onLaunch});
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Hero
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: GacomDecorations.neonCard(radius: 20),
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        // Hero card
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: GacomColors.orangeGradient,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                  color: GacomColors.deepOrange.withOpacity(0.4),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10))
+            ],
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Icon(Icons.campaign_rounded,
+                color: Colors.white, size: 36),
+            const SizedBox(height: 12),
+            const Text('Reach 50,000+\nActive Gamers',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Rajdhani',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                    height: 1.2)),
+            const SizedBox(height: 8),
+            const Text(
+                'Target competitive gamers across Nigeria and Africa. Get your brand in front of the right audience.',
+                style: TextStyle(
+                    color: Colors.white70, fontSize: 13, height: 1.5)),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: onLaunch,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50)),
+                child: const Text('LAUNCH CAMPAIGN',
+                    style: TextStyle(
+                        color: GacomColors.deepOrange,
+                        fontFamily: 'Rajdhani',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        letterSpacing: 1)),
+              ),
+            ),
+          ]),
+        ).animate().fadeIn(),
+
+        const SizedBox(height: 28),
+        const Text('WHY ADVERTISE ON GACOM?',
+            style: TextStyle(
+                fontFamily: 'Rajdhani',
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: GacomColors.textPrimary,
+                letterSpacing: 1)),
+        const SizedBox(height: 16),
+
+        ...[
+          (Icons.people_rounded, 'Engaged Audience',
+              'Gamers who are actively competing and spending money on gear.'),
+          (Icons.location_on_rounded, 'African Focus',
+              'Hyper-local targeting for Nigeria, Ghana, Kenya, and all African markets.'),
+          (Icons.bar_chart_rounded, 'Real Analytics',
+              'Track impressions, clicks, and conversions in real time.'),
+          (Icons.attach_money_rounded, 'Affordable Rates',
+              'Starting from just ₦200 CPM. No minimum contract.'),
+        ]
+            .asMap()
+            .entries
+            .map((e) => _FeatureCard(
+                  icon: e.value.$1,
+                  title: e.value.$2,
+                  desc: e.value.$3,
+                ).animate(delay: (e.key * 80).ms).fadeIn()),
+
+        const SizedBox(height: 28),
+        const Text('AD FORMATS',
+            style: TextStyle(
+                fontFamily: 'Rajdhani',
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: GacomColors.textPrimary,
+                letterSpacing: 1)),
+        const SizedBox(height: 16),
+
+        ...[
+          ('Banner Ads', 'Sticky top/bottom banners', '₦200 CPM'),
+          ('In-Feed Ads', 'Native ads in the activity feed', '₦300 CPM'),
+          ('Full Screen', 'High-impact interstitials', '₦500 CPM'),
+        ].map((f) => Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: GacomColors.cardDark,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: GacomColors.border, width: 0.5)),
+              child: Row(children: [
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                  Text(f.$1,
+                      style: const TextStyle(
+                          color: GacomColors.textPrimary,
+                          fontFamily: 'Rajdhani',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15)),
+                  Text(f.$2,
+                      style: const TextStyle(
+                          color: GacomColors.textMuted,
+                          fontSize: 12)),
+                ])),
+                Text(f.$3,
+                    style: const TextStyle(
+                        color: GacomColors.deepOrange,
+                        fontFamily: 'Rajdhani',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14)),
+              ]),
+            )),
+
+        const SizedBox(height: 24),
+        GacomButton(
+          label: 'LAUNCH YOUR FIRST CAMPAIGN',
+          onPressed: onLaunch,
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+}
+
+class _FeatureCard extends StatelessWidget {
+  final IconData icon;
+  final String title, desc;
+  const _FeatureCard(
+      {required this.icon, required this.title, required this.desc});
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: GacomColors.cardDark,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: GacomColors.border, width: 0.5)),
         child: Row(children: [
-          Container(padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 24)),
-          const SizedBox(width: 16),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Promote Your Content', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 18, color: GacomColors.textPrimary)),
-            SizedBox(height: 2),
-            Text('Reach thousands of gamers across Nigeria', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, height: 1.4)),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+                color: GacomColors.deepOrange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, color: GacomColors.deepOrange, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+            Text(title,
+                style: const TextStyle(
+                    color: GacomColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14)),
+            const SizedBox(height: 2),
+            Text(desc,
+                style: const TextStyle(
+                    color: GacomColors.textMuted,
+                    fontSize: 12,
+                    height: 1.4)),
           ])),
         ]),
-      ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+      );
+}
 
-      const SizedBox(height: 24),
-      _L('What to promote'),
-      const SizedBox(height: 12),
-      Row(children: [
-        _TypeCard(icon: Icons.person_rounded, label: 'Profile', sub: 'Gain followers', sel: _adType == 'profile', onTap: () => setState(() => _adType = 'profile')),
-        const SizedBox(width: 10),
-        _TypeCard(icon: Icons.image_rounded, label: 'Post', sub: 'Boost reach', sel: _adType == 'post', onTap: () => setState(() => _adType = 'post')),
-        const SizedBox(width: 10),
-        _TypeCard(icon: Icons.play_circle_rounded, label: 'Clip', sub: 'Get views', sel: _adType == 'clip', onTap: () => setState(() => _adType = 'clip')),
-      ]).animate(delay: 80.ms).fadeIn(),
-
-      const SizedBox(height: 24),
-      _L('Campaign objective'),
-      const SizedBox(height: 12),
-      Column(children: [
-        _ObjRow(icon: Icons.visibility_rounded, label: 'Awareness', sub: 'Maximize impressions and visibility', sel: _objective == 'awareness', onTap: () => setState(() => _objective = 'awareness')),
-        const SizedBox(height: 8),
-        _ObjRow(icon: Icons.person_add_rounded, label: 'Followers', sub: 'Grow your follower count', sel: _objective == 'followers', onTap: () => setState(() => _objective = 'followers')),
-        const SizedBox(height: 8),
-        _ObjRow(icon: Icons.thumb_up_rounded, label: 'Engagement', sub: 'Drive likes, comments & shares', sel: _objective == 'engagement', onTap: () => setState(() => _objective = 'engagement')),
-      ]).animate(delay: 120.ms).fadeIn(),
-
-      const SizedBox(height: 24),
-      _L('Daily budget'),
-      const SizedBox(height: 12),
-      Wrap(spacing: 8, runSpacing: 8, children: ['₦500','₦1,000','₦2,500','₦5,000','₦10,000'].map((b) =>
-        GestureDetector(onTap: () => setState(() => _budget = b),
-          child: AnimatedContainer(duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            decoration: BoxDecoration(
-              color: _budget == b ? GacomColors.deepOrange.withOpacity(0.1) : GacomColors.cardDark,
-              borderRadius: BorderRadius.circular(50),
-              border: Border.all(color: _budget == b ? GacomColors.deepOrange : GacomColors.border, width: _budget == b ? 1.5 : 0.7),
-            ),
-            child: Text(b, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: _budget == b ? GacomColors.deepOrange : GacomColors.textSecondary)),
-          ))).toList()).animate(delay: 160.ms).fadeIn(),
-
-      const SizedBox(height: 24),
-      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        const Expanded(child: _L('Duration (days)')),
-        _DurPicker(value: _duration,
-          onDec: () { if (_duration > 1) setState(() => _duration--); },
-          onInc: () { if (_duration < 30) setState(() => _duration++); }),
-      ]).animate(delay: 200.ms).fadeIn(),
-
-      const SizedBox(height: 24),
-      _Summary(adType: _adType, objective: _objective, budget: _budget, duration: _duration)
-          .animate(delay: 240.ms).fadeIn(),
-
-      const SizedBox(height: 24),
-      _LaunchBtn(loading: _loading, onTap: () async {
-        setState(() => _loading = true);
-        await Future.delayed(const Duration(milliseconds: 1200));
-        if (mounted) {
-          setState(() => _loading = false);
-          GacomSnackbar.show(context, '🚀 Campaign submitted for review!', isError: false);
-        }
-      }).animate(delay: 280.ms).fadeIn().slideY(begin: 0.1, end: 0),
-    ]),
-  );
+class _PriceRow extends StatelessWidget {
+  final String label, value;
+  const _PriceRow(this.label, this.value);
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(children: [
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(
+                      color: GacomColors.textMuted, fontSize: 12))),
+          Text(value,
+              style: const TextStyle(
+                  color: GacomColors.info,
+                  fontFamily: 'Rajdhani',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13)),
+        ]),
+      );
 }
 
 class _CampaignsTab extends StatelessWidget {
+  final List<Map<String, dynamic>> campaigns;
+  final bool loading;
+  final VoidCallback onCreate;
+  const _CampaignsTab(
+      {required this.campaigns,
+      required this.loading,
+      required this.onCreate});
+
   @override
   Widget build(BuildContext context) {
-    final campaigns = [
-      {'type': 'Profile Boost', 'status': 'active', 'budget': '₦1,000/day', 'reach': '4,820', 'days': '2 days left'},
-      {'type': 'Post Promotion', 'status': 'ended', 'budget': '₦500/day', 'reach': '1,230', 'days': 'Ended'},
-    ];
+    if (loading) {
+      return const Center(
+          child:
+              CircularProgressIndicator(color: GacomColors.deepOrange));
+    }
+    if (campaigns.isEmpty) {
+      return Center(
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+            const Icon(Icons.campaign_rounded,
+                size: 64, color: GacomColors.border),
+            const SizedBox(height: 16),
+            const Text('No campaigns yet',
+                style: TextStyle(
+                    color: GacomColors.textMuted, fontSize: 16)),
+            const SizedBox(height: 24),
+            GacomButton(
+              label: 'LAUNCH FIRST CAMPAIGN',
+              onPressed: onCreate,
+            ),
+          ]));
+    }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: campaigns.length,
       itemBuilder: (_, i) {
         final c = campaigns[i];
-        final active = c['status'] == 'active';
+        final status = c['status'] as String? ?? 'pending_review';
+        Color statusColor = status == 'active'
+            ? GacomColors.success
+            : status == 'pending_review'
+                ? GacomColors.warning
+                : GacomColors.textMuted;
+
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(18),
-          decoration: GacomDecorations.glassCard(radius: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: GacomColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: GacomColors.border, width: 0.5)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
+              Expanded(
+                  child: Text(c['title'] ?? '',
+                      style: const TextStyle(
+                          color: GacomColors.textPrimary,
+                          fontFamily: 'Rajdhani',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15))),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: active ? GacomColors.success.withOpacity(0.1) : GacomColors.border, borderRadius: BorderRadius.circular(8)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: active ? GacomColors.success : GacomColors.textMuted)),
-                  const SizedBox(width: 5),
-                  Text(active ? 'ACTIVE' : 'ENDED', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10, letterSpacing: 0.8, color: active ? GacomColors.success : GacomColors.textMuted)),
-                ]),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6)),
+                child: Text(
+                    status.replaceAll('_', ' ').toUpperCase(),
+                    style: TextStyle(
+                        color: statusColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700)),
               ),
-              const Spacer(),
-              Text(c['days']!, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
             ]),
-            const SizedBox(height: 12),
-            Text(c['type']!, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 18, color: GacomColors.textPrimary)),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(children: [
-              _Pill(icon: Icons.attach_money_rounded, label: c['budget']!),
-              const SizedBox(width: 8),
-              _Pill(icon: Icons.people_rounded, label: '${c['reach']} reached'),
+              _CampaignStat('Budget',
+                  '₦${c['daily_budget']}/day'),
+              const SizedBox(width: 16),
+              _CampaignStat('Impressions',
+                  '${c['impressions'] ?? 0}'),
+              const SizedBox(width: 16),
+              _CampaignStat('Clicks', '${c['clicks'] ?? 0}'),
             ]),
           ]),
-        ).animate(delay: (i * 80).ms).fadeIn().slideY(begin: 0.1, end: 0);
+        );
       },
     );
   }
 }
 
-// ── Sub widgets ───────────────────────────────────────────────────────────────
-
-class _L extends StatelessWidget {
-  final String t; const _L(this.t);
-  @override Widget build(BuildContext context) => Text(t, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary, letterSpacing: 0.3));
-}
-
-class _TypeCard extends StatelessWidget {
-  final IconData icon; final String label, sub; final bool sel; final VoidCallback onTap;
-  const _TypeCard({required this.icon, required this.label, required this.sub, required this.sel, required this.onTap});
-  @override Widget build(BuildContext context) => Expanded(child: GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8), decoration: BoxDecoration(color: sel ? GacomColors.deepOrange.withOpacity(0.08) : GacomColors.cardDark, borderRadius: BorderRadius.circular(18), border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.border, width: sel ? 1.5 : 0.7)), child: Column(children: [Icon(icon, color: sel ? GacomColors.deepOrange : GacomColors.textSecondary, size: 24), const SizedBox(height: 6), Text(label, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: sel ? GacomColors.deepOrange : GacomColors.textPrimary)), const SideOffset(2), Text(sub, style: const TextStyle(color: GacomColors.textMuted, fontSize: 10), textAlign: TextAlign.center)]))));
-}
-
-class SideOffset extends StatelessWidget {
-  final double h; const SideOffset(this.h);
-  @override Widget build(BuildContext context) => SizedBox(height: h);
-}
-
-class _ObjRow extends StatelessWidget {
-  final IconData icon; final String label, sub; final bool sel; final VoidCallback onTap;
-  const _ObjRow({required this.icon, required this.label, required this.sub, required this.sel, required this.onTap});
-  @override Widget build(BuildContext context) => GestureDetector(onTap: onTap, child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: sel ? GacomColors.deepOrange.withOpacity(0.06) : GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.border, width: sel ? 1.5 : 0.7)), child: Row(children: [Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: sel ? GacomColors.deepOrange.withOpacity(0.12) : GacomColors.surfaceDark, borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: sel ? GacomColors.deepOrange : GacomColors.textSecondary, size: 18)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: sel ? GacomColors.textPrimary : GacomColors.textSecondary)), Text(sub, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12))])), if (sel) const Icon(Icons.check_circle_rounded, color: GacomColors.deepOrange, size: 18)])));
-}
-
-class _DurPicker extends StatelessWidget {
-  final int value; final VoidCallback onDec, onInc;
-  const _DurPicker({required this.value, required this.onDec, required this.onInc});
-  @override Widget build(BuildContext context) => Row(children: [GestureDetector(onTap: onDec, child: Container(width: 34, height: 34, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.border), color: GacomColors.surfaceDark), child: const Icon(Icons.remove_rounded, color: GacomColors.textSecondary, size: 16))), Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: AnimatedSwitcher(duration: const Duration(milliseconds: 150), child: Text('$value', key: ValueKey(value), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)))), GestureDetector(onTap: onInc, child: Container(width: 34, height: 34, decoration: BoxDecoration(gradient: GacomColors.orangeGradient, shape: BoxShape.circle), child: const Icon(Icons.add_rounded, color: Colors.white, size: 16)))]);
-}
-
-class _Summary extends StatelessWidget {
-  final String adType, objective, budget; final int duration;
-  const _Summary({required this.adType, required this.objective, required this.budget, required this.duration});
-  @override Widget build(BuildContext context) {
-    final num = double.tryParse(budget.replaceAll(RegExp(r'[₦,]'), '')) ?? 0;
-    final total = num * duration;
-    final rMin = (num * duration * 2).toInt(); final rMax = (num * duration * 8).toInt();
-    String fmt(int n) => n >= 1000 ? '${(n/1000).toStringAsFixed(1)}K' : '$n';
-    return Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: GacomColors.surfaceDark, borderRadius: BorderRadius.circular(18), border: Border.all(color: GacomColors.border, width: 0.7)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Campaign Summary', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
-      const SizedBox(height: 14),
-      _Row('Type', adType[0].toUpperCase() + adType.substring(1)),
-      const SizedBox(height: 8), _Row('Objective', objective[0].toUpperCase() + objective.substring(1)),
-      const SizedBox(height: 8), _Row('Duration', '$duration days'),
-      const SizedBox(height: 8), _Row('Daily Budget', budget),
-      const Divider(height: 20, color: GacomColors.border),
-      Row(children: [const Expanded(child: Text('Estimated Reach', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))), Text('${fmt(rMin)} – ${fmt(rMax)} gamers', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary))]),
-      const SizedBox(height: 8),
-      Row(children: [const Expanded(child: Text('Total Cost', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary))), Text('₦${total.toStringAsFixed(0)}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.deepOrange))]),
-    ]));
-  }
-}
-
-class _Row extends StatelessWidget {
-  final String k, v; const _Row(this.k, this.v);
-  @override Widget build(BuildContext context) => Row(children: [Text(k, style: const TextStyle(color: GacomColors.textMuted, fontSize: 13)), const Spacer(), Text(v, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13, color: GacomColors.textPrimary))]);
-}
-
-class _Pill extends StatelessWidget {
-  final IconData icon; final String label; const _Pill({required this.icon, required this.label});
-  @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5), decoration: BoxDecoration(color: GacomColors.surfaceDark, borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.border, width: 0.7)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, color: GacomColors.textMuted, size: 14), const SizedBox(width: 5), Text(label, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12))]));
-}
-
-class _LaunchBtn extends StatelessWidget {
-  final bool loading; final VoidCallback onTap;
-  const _LaunchBtn({required this.loading, required this.onTap});
-  @override Widget build(BuildContext context) => GestureDetector(onTap: loading ? null : onTap, child: Container(height: 56, width: double.infinity, decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(50), boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))]), child: Center(child: loading ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Text('LAUNCH CAMPAIGN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1.5, color: Colors.white)))));
+class _CampaignStat extends StatelessWidget {
+  final String label, value;
+  const _CampaignStat(this.label, this.value);
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: GacomColors.textMuted, fontSize: 11)),
+          Text(value,
+              style: const TextStyle(
+                  color: GacomColors.textPrimary,
+                  fontFamily: 'Rajdhani',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14)),
+        ],
+      );
 }

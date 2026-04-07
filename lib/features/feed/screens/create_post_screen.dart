@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
@@ -22,17 +22,29 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   String _selectedType = 'text';
   List<XFile> _selectedMedia = [];
   bool _loading = false;
-  List<Map<String, dynamic>> _tags = [];
   final _tagCtrl = TextEditingController();
+  final List<String> _tags = [];
 
   Future<void> _pickMedia({bool video = false}) async {
     final picker = ImagePicker();
     if (video) {
-      final file = await picker.pickVideo(source: ImageSource.gallery, maxDuration: const Duration(seconds: 60));
-      if (file != null) setState(() { _selectedMedia = [file]; _selectedType = 'video'; });
+      final file = await picker.pickVideo(
+          source: ImageSource.gallery,
+          maxDuration: const Duration(seconds: 60));
+      if (file != null) {
+        setState(() {
+          _selectedMedia = [file];
+          _selectedType = 'video';
+        });
+      }
     } else {
       final files = await picker.pickMultiImage(limit: 4);
-      if (files.isNotEmpty) setState(() { _selectedMedia = files; _selectedType = 'image'; });
+      if (files.isNotEmpty) {
+        setState(() {
+          _selectedMedia = files;
+          _selectedType = 'image';
+        });
+      }
     }
   }
 
@@ -40,7 +52,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
     if (_captionCtrl.text.trim().isEmpty && _selectedMedia.isEmpty) {
-      GacomSnackbar.show(context, 'Add a caption or media to post', isError: true);
+      GacomSnackbar.show(context, 'Add a caption or media to post',
+          isError: true);
       return;
     }
     setState(() => _loading = true);
@@ -49,24 +62,49 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       for (final file in _selectedMedia) {
         final bytes = await file.readAsBytes();
         final ext = file.name.split('.').last;
-        final path = '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
-        final url = await SupabaseService.uploadFile(bucket: AppConstants.postMediaBucket, path: path, bytes: bytes, contentType: _selectedType == 'video' ? 'video/mp4' : 'image/jpeg');
+        final path =
+            '$userId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+        final url = await SupabaseService.uploadFile(
+          bucket: AppConstants.postMediaBucket,
+          path: path,
+          bytes: bytes,
+          contentType: _selectedType == 'video' ? 'video/mp4' : 'image/jpeg',
+        );
         mediaUrls.add(url);
       }
+
       await SupabaseService.client.from('posts').insert({
         'author_id': userId,
         'post_type': _selectedType,
         'caption': _captionCtrl.text.trim(),
         'media_urls': mediaUrls,
-        'tags': _tags.map((t) => t['tag']).toList(),
+        'tags': _tags,
       });
-      await SupabaseService.client.from('profiles').update({'posts_count': SupabaseService.client.rpc('increment')}).eq('id', userId);
+
+      // Increment posts_count safely
+      await SupabaseService.client.rpc('increment_posts_count',
+          params: {'user_id': userId});
+
       if (mounted) {
         GacomSnackbar.show(context, 'Post published! 🔥', isSuccess: true);
         context.go(AppConstants.homeRoute);
       }
     } catch (e) {
-      if (mounted) { setState(() => _loading = false); GacomSnackbar.show(context, 'Failed to publish post', isError: true); }
+      if (mounted) {
+        setState(() => _loading = false);
+        GacomSnackbar.show(context, 'Failed to publish. Check your connection.',
+            isError: true);
+      }
+    }
+  }
+
+  void _addTag() {
+    final tag = _tagCtrl.text.trim().replaceAll('#', '');
+    if (tag.isNotEmpty && !_tags.contains(tag)) {
+      setState(() {
+        _tags.add(tag);
+        _tagCtrl.clear();
+      });
     }
   }
 
@@ -80,148 +118,214 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           TextButton(
             onPressed: _loading ? null : _publish,
             child: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: GacomColors.deepOrange, strokeWidth: 2))
-                : const Text('PUBLISH', style: TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: 1)),
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: GacomColors.deepOrange))
+                : const Text('POST',
+                    style: TextStyle(
+                        color: GacomColors.deepOrange,
+                        fontFamily: 'Rajdhani',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16)),
           ),
+          const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Post type selector
-            Row(
-              children: [
-                _TypeButton(icon: Icons.text_fields_rounded, label: 'Text', selected: _selectedType == 'text', onTap: () => setState(() => _selectedType = 'text')),
-                const SizedBox(width: 10),
-                _TypeButton(icon: Icons.image_outlined, label: 'Photo', selected: _selectedType == 'image', onTap: () => _pickMedia()),
-                const SizedBox(width: 10),
-                _TypeButton(icon: Icons.play_circle_outline_rounded, label: 'Video', selected: _selectedType == 'video', onTap: () => _pickMedia(video: true)),
-                const SizedBox(width: 10),
-                _TypeButton(icon: Icons.movie_filter_rounded, label: 'Clip', selected: _selectedType == 'clip', onTap: () => _pickMedia(video: true)),
-              ],
-            ).animate().fadeIn(),
-            const SizedBox(height: 24),
+        children: [
+          // User info
+          FutureBuilder(
+            future: SupabaseService.client
+                .from('profiles')
+                .select('display_name, avatar_url')
+                .eq('id', SupabaseService.currentUserId ?? '')
+                .maybeSingle(),
+            builder: (ctx, snap) {
+              final name =
+                  (snap.data as Map?)?['display_name'] ?? 'You';
+              final avatar = (snap.data as Map?)?['avatar_url'];
+              return Row(children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundImage:
+                      avatar != null ? NetworkImage(avatar) : null,
+                  backgroundColor: GacomColors.deepOrange,
+                  child: avatar == null
+                      ? Text(name[0].toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700))
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Text(name,
+                    style: const TextStyle(
+                        color: GacomColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15)),
+              ]);
+            },
+          ),
 
-            // Media preview
-            if (_selectedMedia.isNotEmpty) ...[
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _selectedMedia.length + 1,
-                  itemBuilder: (_, i) {
-                    if (i == _selectedMedia.length) {
-                      return GestureDetector(
-                        onTap: () => _pickMedia(),
+          const SizedBox(height: 16),
+
+          // Caption
+          TextField(
+            controller: _captionCtrl,
+            maxLines: 6,
+            style: const TextStyle(
+                color: GacomColors.textPrimary, fontSize: 16),
+            decoration: const InputDecoration(
+              hintText: "What's on your mind, gamer? 🎮",
+              hintStyle:
+                  TextStyle(color: GacomColors.textMuted, fontSize: 16),
+              border: InputBorder.none,
+            ),
+          ),
+
+          // Media preview
+          if (_selectedMedia.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _selectedMedia.length,
+                itemBuilder: (_, i) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Stack(children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: FutureBuilder<Uint8List>(
+                        future: _selectedMedia[i].readAsBytes(),
+                        builder: (_, snap) {
+                          if (snap.hasData) {
+                            return Image.memory(snap.data!,
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover);
+                          }
+                          return Container(
+                              width: 100,
+                              height: 100,
+                              color: GacomColors.cardDark);
+                        },
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => setState(() =>
+                            _selectedMedia.removeAt(i)),
                         child: Container(
-                          width: 120, margin: const EdgeInsets.only(right: 8),
-                          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border, style: BorderStyle.solid)),
-                          child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_rounded, color: GacomColors.deepOrange, size: 32), Text('Add More', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))]),
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle),
+                          child: const Icon(Icons.close,
+                              size: 14, color: Colors.white),
                         ),
-                      );
-                    }
-                    return Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.file(File(_selectedMedia[i].path), width: 140, height: 200, fit: BoxFit.cover),
-                        ),
-                        Positioned(
-                          top: 6, right: 6,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedMedia.removeAt(i)),
-                            child: Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: GacomColors.error, shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: Colors.white, size: 14)),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                  ]),
                 ),
               ),
-              const SizedBox(height: 20),
-            ],
-
-            // Caption
-            GacomTextField(
-              controller: _captionCtrl,
-              hint: 'What\'s happening in your gaming world? 🎮',
-              maxLines: 5,
-              maxLength: 500,
             ),
-            const SizedBox(height: 20),
-
-            // Tags
-            const Text('Add Tags', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 16, fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: GacomTextField(
-                    controller: _tagCtrl,
-                    hint: 'e.g. callofduty, fps',
-                    prefixIcon: Icons.tag_rounded,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    final tag = _tagCtrl.text.trim().replaceAll(' ', '').replaceAll('#', '');
-                    if (tag.isNotEmpty && !_tags.any((t) => t['tag'] == tag)) {
-                      setState(() { _tags.add({'tag': tag}); _tagCtrl.clear(); });
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18)),
-                  child: const Text('ADD'),
-                ),
-              ],
-            ),
-            if (_tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8, runSpacing: 8,
-                children: _tags.map((t) => Chip(
-                  label: Text('#${t['tag']}', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
-                  backgroundColor: GacomColors.cardDark,
-                  side: const BorderSide(color: GacomColors.border),
-                  deleteIcon: const Icon(Icons.close_rounded, size: 14, color: GacomColors.textMuted),
-                  onDeleted: () => setState(() => _tags.remove(t)),
-                )).toList(),
-              ),
-            ],
-            const SizedBox(height: 40),
           ],
-        ),
+
+          const Divider(color: GacomColors.border, height: 32),
+
+          // Tags
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _tagCtrl,
+                style: const TextStyle(
+                    color: GacomColors.textPrimary, fontSize: 14),
+                decoration: const InputDecoration(
+                  hintText: 'Add tag (e.g. PUBG)',
+                  hintStyle: TextStyle(color: GacomColors.textMuted),
+                  border: InputBorder.none,
+                  prefixIcon:
+                      Icon(Icons.tag_rounded, color: GacomColors.textMuted),
+                ),
+                onSubmitted: (_) => _addTag(),
+              ),
+            ),
+            TextButton(onPressed: _addTag, child: const Text('ADD')),
+          ]),
+          if (_tags.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              children: _tags
+                  .map((t) => Chip(
+                        label: Text('#$t',
+                            style: const TextStyle(
+                                color: GacomColors.deepOrange,
+                                fontSize: 12)),
+                        backgroundColor:
+                            GacomColors.deepOrange.withOpacity(0.1),
+                        deleteIconColor: GacomColors.textMuted,
+                        onDeleted: () =>
+                            setState(() => _tags.remove(t)),
+                        side: const BorderSide(
+                            color: GacomColors.borderOrange),
+                      ))
+                  .toList(),
+            ),
+
+          const Divider(color: GacomColors.border, height: 32),
+
+          // Media action row
+          Row(children: [
+            _MediaButton(
+              icon: Icons.image_rounded,
+              label: 'Photo',
+              onTap: () => _pickMedia(),
+            ),
+            const SizedBox(width: 12),
+            _MediaButton(
+              icon: Icons.videocam_rounded,
+              label: 'Video',
+              onTap: () => _pickMedia(video: true),
+            ),
+          ]),
+        ],
       ),
     );
   }
 }
 
-class _TypeButton extends StatelessWidget {
+class _MediaButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final bool selected;
   final VoidCallback onTap;
-  const _TypeButton({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _MediaButton(
+      {required this.icon, required this.label, required this.onTap});
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? GacomColors.deepOrange : GacomColors.cardDark,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: selected ? GacomColors.deepOrange : GacomColors.border),
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+              color: GacomColors.cardDark,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: GacomColors.border)),
+          child: Row(children: [
+            Icon(icon, color: GacomColors.deepOrange, size: 18),
+            const SizedBox(width: 6),
+            Text(label,
+                style: const TextStyle(
+                    color: GacomColors.textPrimary,
+                    fontFamily: 'Rajdhani',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
+          ]),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 16, color: selected ? Colors.white : GacomColors.textMuted),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: selected ? Colors.white : GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
-        ]),
-      ),
-    );
-  }
+      );
 }
