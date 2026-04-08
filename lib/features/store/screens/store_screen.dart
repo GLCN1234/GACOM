@@ -14,37 +14,37 @@ final _demoProducts = [
   {
     'id': 'd1', 'name': 'Gaming Headset Pro X', 'price': 45000.0,
     'condition': 'new', 'category': 'accessories', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'TechVault NG', 'verification_status': 'verified'},
   },
   {
     'id': 'd2', 'name': 'GACOM Limited Hoodie', 'price': 18500.0,
     'condition': 'new', 'category': 'apparel', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'GACOM Official', 'verification_status': 'verified'},
   },
   {
     'id': 'd3', 'name': 'FC 25 (PS5) — Nigerian Edition', 'price': 32000.0,
     'condition': 'new', 'category': 'games', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'GameZone Lagos', 'verification_status': 'unverified'},
   },
   {
     'id': 'd4', 'name': 'RGB Mechanical Keyboard', 'price': 28000.0,
     'condition': 'used', 'category': 'accessories', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'GadgetHub', 'verification_status': 'verified'},
   },
   {
     'id': 'd5', 'name': 'PUBG Mobile Figurine', 'price': 12000.0,
     'condition': 'new', 'category': 'collectibles', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'CollectorsNG', 'verification_status': 'unverified'},
   },
   {
     'id': 'd6', 'name': 'Gaming Chair — Black/Orange', 'price': 95000.0,
     'condition': 'new', 'category': 'accessories', 'images': [],
-    'is_active': true,
+    'is_available': true,
     'seller': {'display_name': 'ComfortGear', 'verification_status': 'verified'},
   },
 ];
@@ -109,7 +109,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
       var q = SupabaseService.client
           .from('products')
           .select('*')
-          .eq('is_active', true);
+          .eq('is_available', true);
 
       if (_selectedCategory != 'all') {
         q = q.eq('category', _selectedCategory) as dynamic;
@@ -310,7 +310,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
                         'price': double.tryParse(priceCtrl.text) ?? 0,
                         'condition': condition,
                         'category': category,
-                        'is_active': true,
+                        'is_available': true,
                       });
                       if (ctx.mounted) {
                         Navigator.pop(ctx);

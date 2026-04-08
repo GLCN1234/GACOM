@@ -68,7 +68,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       final posts = await SupabaseService.client
           .from('posts').select('*')
           .eq('author_id', widget.userId).eq('is_deleted', false)
-          .order('created_at', ascending: false).limit(30);
+          .order('created_at', ascending: false).limit(20);
       bool following = false;
       final myId = SupabaseService.currentUserId;
       if (myId != null && !_isOwn) {
@@ -148,6 +148,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             const SizedBox(height: 12),
             GacomTextField(controller: locCtrl, label: 'Location', hint: 'e.g. Lagos, Nigeria', prefixIcon: Icons.location_on_rounded),
             const SizedBox(height: 28),
+            // ✅ Always full-width, always visible
             SizedBox(
               width: double.infinity,
               child: GacomButton(
@@ -180,73 +181,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
-  /// Show a post in a full-screen modal — caption, media, likes
-  void _openPost(Map<String, dynamic> post) {
-    final urls = post['media_urls'] as List? ?? [];
-    final caption = post['caption'] as String? ?? '';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: GacomColors.cardDark,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        maxChildSize: 0.95,
-        builder: (_, scroll) => ListView(controller: scroll, children: [
-          // Drag handle
-          Center(child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            width: 36, height: 4,
-            decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2)),
-          )),
-          // Media
-          if (urls.isNotEmpty)
-            ClipRRect(
-              child: CachedNetworkImage(
-                imageUrl: urls.first as String,
-                width: double.infinity,
-                height: 280,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => Container(height: 200, color: GacomColors.cardDark,
-                    child: const Icon(Icons.image_not_supported_outlined, color: GacomColors.textMuted)),
-              ),
-            )
-          else
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: GacomColors.surfaceDark,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: GacomColors.border),
-              ),
-              child: const Icon(Icons.text_snippet_outlined, color: GacomColors.textMuted, size: 40),
-            ),
-          // Caption
-          if (caption.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Text(caption, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 15, height: 1.6)),
-            ),
-          // Stats row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            child: Row(children: [
-              const Icon(Icons.favorite_border_rounded, color: GacomColors.textMuted, size: 18),
-              const SizedBox(width: 6),
-              Text('${post['likes_count'] ?? 0}', style: const TextStyle(color: GacomColors.textSecondary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
-              const SizedBox(width: 20),
-              const Icon(Icons.chat_bubble_outline_rounded, color: GacomColors.textMuted, size: 18),
-              const SizedBox(width: 6),
-              Text('${post['comments_count'] ?? 0}', style: const TextStyle(color: GacomColors.textSecondary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -264,6 +198,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       backgroundColor: GacomColors.obsidian,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
+          // ── Banner (fixed height, no expand) ───────────────────────────
           SliverAppBar(
             pinned: true,
             expandedHeight: 180,
@@ -291,79 +226,100 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: Stack(fit: StackFit.expand, children: [
+                // Banner background
                 p['banner_url'] != null
                     ? CachedNetworkImage(imageUrl: p['banner_url'], fit: BoxFit.cover)
                     : Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [GacomColors.darkOrange.withOpacity(0.5), GacomColors.obsidian],
-                            begin: Alignment.topLeft, end: Alignment.bottomRight,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
                         child: CustomPaint(painter: _GridPainter()),
                       ),
+                // Bottom fade so banner blends into page
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Colors.transparent, GacomColors.obsidian],
-                      begin: const Alignment(0, 0.4), end: Alignment.bottomCenter,
+                      begin: const Alignment(0, 0.4),
+                      end: Alignment.bottomCenter,
                     ),
                   ),
                 ),
+                // Rank badge
                 Positioned(top: 60, right: 16, child: _RankBadge(rank: rank)),
               ]),
             ),
           ),
 
+          // ── Profile info below banner ────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
               color: GacomColors.obsidian,
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                // ✅ FIXED: Avatar is BELOW the banner in normal flow — no negative positioning
                 Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                  Stack(children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: GacomColors.obsidian, width: 3),
-                      ),
-                      child: Container(
+                  // Avatar with camera button
+                  Stack(
+                    children: [
+                      Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: GacomColors.deepOrange, width: 2),
-                          boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.3), blurRadius: 16)],
+                          // Dark ring separates avatar from banner and page background
+                          border: Border.all(color: GacomColors.obsidian, width: 3),
                         ),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundColor: GacomColors.cardDark,
-                          backgroundImage: p['avatar_url'] != null ? CachedNetworkImageProvider(p['avatar_url']) : null,
-                          child: p['avatar_url'] == null
-                              ? Text((p['display_name'] ?? 'G')[0].toUpperCase(),
-                                  style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 30))
-                              : null,
-                        ),
-                      ),
-                    ),
-                    if (_isOwn)
-                      Positioned(
-                        bottom: 2, right: 2,
-                        child: GestureDetector(
-                          onTap: _pickAvatar,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              gradient: GacomColors.orangeGradient,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: GacomColors.obsidian, width: 2),
-                            ),
-                            child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: GacomColors.deepOrange, width: 2),
+                            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.3), blurRadius: 16)],
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: GacomColors.cardDark,
+                            backgroundImage: p['avatar_url'] != null
+                                ? CachedNetworkImageProvider(p['avatar_url'])
+                                : null,
+                            child: p['avatar_url'] == null
+                                ? Text(
+                                    (p['display_name'] ?? 'G')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                        color: GacomColors.textPrimary,
+                                        fontFamily: 'Rajdhani',
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 30),
+                                  )
+                                : null,
                           ),
                         ),
                       ),
-                  ]),
+                      if (_isOwn)
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: GestureDetector(
+                            onTap: _pickAvatar,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                gradient: GacomColors.orangeGradient,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: GacomColors.obsidian, width: 2),
+                              ),
+                              child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
 
                   const Spacer(),
 
+                  // Action buttons — right side
                   if (!_isOwn) ...[
                     GestureDetector(
                       onTap: () {},
@@ -374,26 +330,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    GacomButton(label: _isFollowing ? 'FOLLOWING' : 'FOLLOW', width: 100, height: 38, isOutlined: _isFollowing, isLoading: _followLoading, onPressed: _toggleFollow),
+                    GacomButton(
+                      label: _isFollowing ? 'FOLLOWING' : 'FOLLOW',
+                      width: 100, height: 38,
+                      isOutlined: _isFollowing,
+                      isLoading: _followLoading,
+                      onPressed: _toggleFollow,
+                    ),
                   ] else
                     GestureDetector(
                       onTap: _showEditSheet,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.deepOrange, width: 1.2)),
-                        child: const Text('Edit Profile', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.deepOrange)),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(color: GacomColors.deepOrange, width: 1.2),
+                        ),
+                        child: const Text('Edit Profile',
+                            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.deepOrange)),
                       ),
                     ),
                 ]),
 
                 const SizedBox(height: 14),
 
+                // Name + verified
                 Row(children: [
-                  Expanded(child: Text(p['display_name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
+                  Expanded(child: Text(p['display_name'] ?? '',
+                      style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
                   if (verified)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(6), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
+                      decoration: BoxDecoration(
+                        color: GacomColors.deepOrange.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4)),
+                      ),
                       child: const Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.verified_rounded, size: 10, color: GacomColors.deepOrange),
                         SizedBox(width: 3),
@@ -420,6 +392,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
                 const SizedBox(height: 16),
 
+                // Stats bar
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: GacomDecorations.glassCard(radius: 16),
@@ -439,6 +412,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ),
           ),
 
+          // ── Pinned tab bar ───────────────────────────────────────────────
           SliverPersistentHeader(
             pinned: true,
             delegate: _TabDelegate(TabBar(
@@ -454,9 +428,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         body: TabBarView(
           controller: _tab,
           children: [
-            // ✅ FIXED: Grid items are now tappable — shows post detail modal
-            _Grid(posts: _posts.where((x) => x['post_type'] != 'clip').toList(), onTap: _openPost),
-            _Grid(posts: _posts.where((x) => x['post_type'] == 'clip').toList(), onTap: _openPost),
+            _Grid(posts: _posts.where((x) => x['post_type'] != 'clip').toList()),
+            _Grid(posts: _posts.where((x) => x['post_type'] == 'clip').toList()),
             _StatsTab(profile: p),
           ],
         ),
@@ -471,6 +444,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return '$i';
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 class _TabDelegate extends SliverPersistentHeaderDelegate {
   final TabBar tabBar;
@@ -496,7 +471,11 @@ class _RankBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(color: _color.withOpacity(0.15), borderRadius: BorderRadius.circular(50), border: Border.all(color: _color.withOpacity(0.5), width: 1)),
+    decoration: BoxDecoration(
+      color: _color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(50),
+      border: Border.all(color: _color.withOpacity(0.5), width: 1),
+    ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(Icons.diamond_rounded, size: 12, color: _color),
       const SizedBox(width: 5),
@@ -505,57 +484,22 @@ class _RankBadge extends StatelessWidget {
   );
 }
 
-// ✅ FIXED: _Grid now accepts onTap callback and wraps each item in GestureDetector
 class _Grid extends StatelessWidget {
   final List<Map<String, dynamic>> posts;
-  final void Function(Map<String, dynamic>) onTap;
-  const _Grid({required this.posts, required this.onTap});
+  const _Grid({required this.posts});
   @override
   Widget build(BuildContext context) {
     if (posts.isEmpty) return const Center(child: Text('No posts yet.', style: TextStyle(color: GacomColors.textMuted)));
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(2, 2, 2, 100), // bottom padding clears nav bar
+      padding: const EdgeInsets.all(2),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2),
       itemCount: posts.length,
       itemBuilder: (_, i) {
-        final post = posts[i];
-        final urls = post['media_urls'] as List? ?? [];
-        return GestureDetector(
-          onTap: () => onTap(post),
-          child: ClipRRect(
-            child: Stack(fit: StackFit.expand, children: [
-              Container(
-                color: GacomColors.cardDark,
-                child: urls.isNotEmpty
-                    ? CachedNetworkImage(imageUrl: post['thumbnail_url'] ?? urls.first, fit: BoxFit.cover)
-                    : Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        const Icon(Icons.text_snippet_outlined, color: GacomColors.textMuted, size: 22),
-                        if ((post['caption'] as String? ?? '').isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Text(
-                              post['caption'] as String,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: GacomColors.textMuted, fontSize: 10),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                      ])),
-              ),
-              // Like count overlay
-              Positioned(
-                bottom: 4, left: 4,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.favorite_rounded, color: Colors.white, size: 11),
-                  const SizedBox(width: 2),
-                  Text('${post['likes_count'] ?? 0}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, shadows: [Shadow(color: Colors.black54, blurRadius: 4)])),
-                ]),
-              ),
-            ]),
-          ),
-        );
+        final urls = posts[i]['media_urls'] as List? ?? [];
+        return ClipRRect(child: Container(color: GacomColors.cardDark,
+            child: urls.isNotEmpty
+                ? CachedNetworkImage(imageUrl: posts[i]['thumbnail_url'] ?? urls.first, fit: BoxFit.cover)
+                : const Icon(Icons.text_snippet_outlined, color: GacomColors.textMuted)));
       },
     );
   }
@@ -565,7 +509,7 @@ class _StatsTab extends StatelessWidget {
   final Map<String, dynamic> profile;
   const _StatsTab({required this.profile});
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 100), children: [
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(20), children: [
     _Block('Tournament Record', [
       _Row('Competitions Won', '${profile['competitions_won'] ?? 0}'),
       _Row('Win Rate', '${(profile['win_rate'] as num?)?.toStringAsFixed(1) ?? '0'}%'),
@@ -576,6 +520,7 @@ class _StatsTab extends StatelessWidget {
       _Row('Balance', '₦${(profile['wallet_balance'] as num?)?.toStringAsFixed(0) ?? '0'}'),
       _Row('Total Winnings', '₦${(profile['total_winnings'] as num?)?.toStringAsFixed(0) ?? '0'}'),
     ]),
+    const SizedBox(height: 80),
   ]);
 }
 
