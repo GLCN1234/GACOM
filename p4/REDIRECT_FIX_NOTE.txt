@@ -1,0 +1,13 @@
+  Future<void> _sendPasswordReset(String email, {bool fromMigration = false}) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        // ✅ FIXED: redirectTo must match the exact deployed URL + route
+        // The router now has /reset-password which shows the form
+        redirectTo: 'https://gamicom.netlify.app/#/reset-password',
+      );
+    } catch (_) {
+      // Supabase never reveals if email exists — always show success for security
+    }
+    if (mounted) _showResetSentDialog(email, fromMigration: fromMigration);
+  }
