@@ -397,7 +397,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
       final result = await SupabaseService.client.from('post_comments')
           .insert({'post_id': widget.postId, 'author_id': uid, 'content': text}).select('*, author:profiles!author_id(id, username, display_name, avatar_url)').single();
       // Also increment comment count
-      await SupabaseService.client.from('posts').rpc('increment_comments_count', params: {'post_id': widget.postId}).catchError((_) async {
+      await SupabaseService.client.rpc('increment_comments_count', params: {'post_id': widget.postId}).catchError((_) async {
         // fallback if rpc doesn't exist
         final p = await SupabaseService.client.from('posts').select('comments_count').eq('id', widget.postId).single();
         await SupabaseService.client.from('posts').update({'comments_count': ((p['comments_count'] as int? ?? 0) + 1)}).eq('id', widget.postId);
