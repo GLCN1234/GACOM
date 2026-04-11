@@ -40,17 +40,19 @@ class _BlogScreenState extends ConsumerState<BlogScreen> with SingleTickerProvid
 
   Future<void> _load() async {
     try {
-      var query = SupabaseService.client
+      // Build filter chain first — ilike() must come before order()/limit()
+      var baseQuery = SupabaseService.client
           .from('blog_posts')
           .select('*, author:profiles!author_id(username, display_name, avatar_url, verification_status)')
-          .eq('is_published', true)
-          .order('published_at', ascending: false);
+          .eq('is_published', true);
 
       if (_selectedCategory != null) {
-        query = query.ilike('category', _selectedCategory!);
+        baseQuery = baseQuery.ilike('category', _selectedCategory!);
       }
 
-      final data = await query.limit(30);
+      final data = await baseQuery
+          .order('published_at', ascending: false)
+          .limit(30);
       final all = List<Map<String, dynamic>>.from(data);
       final featured = all.where((p) => p['is_featured'] == true).take(3).toList();
 
