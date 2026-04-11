@@ -14,10 +14,10 @@ import '../../features/feed/screens/create_post_screen.dart';
 import '../../features/feed/screens/reels_screen.dart';
 import '../../features/competitions/screens/competitions_screen.dart';
 import '../../features/competitions/screens/competition_detail_screen.dart';
+import '../../features/competitions/screens/tournament_manager_screen.dart'; // ← FIXED: was 'competition' (missing 's')
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/community_detail_screen.dart';
 import '../../features/community/screens/gaming_teams_screen.dart';
-import '../../features/competition/screens/tournament_manager_screen.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/chat/screens/chat_detail_screen.dart';
 import '../../features/store/screens/store_screen.dart';
@@ -42,7 +42,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = session != null;
       final loc = state.matchedLocation;
       if (loc == '/reset-password') return null;
-      final isAuthRoute = loc == AppConstants.loginRoute || loc == AppConstants.registerRoute || loc == AppConstants.onboardingRoute || loc == AppConstants.splashRoute;
+      final isAuthRoute = loc == AppConstants.loginRoute ||
+          loc == AppConstants.registerRoute ||
+          loc == AppConstants.onboardingRoute ||
+          loc == AppConstants.splashRoute;
       if (!isLoggedIn && !isAuthRoute) return AppConstants.loginRoute;
       return null;
     },
@@ -57,18 +60,82 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: AppConstants.homeRoute, builder: (_, __) => const FeedScreen()),
           GoRoute(path: AppConstants.feedRoute, builder: (_, __) => const FeedScreen()),
-          GoRoute(path: AppConstants.competitionsRoute, builder: (_, __) => const CompetitionsScreen(),
-            routes: [GoRoute(path: ':id', builder: (_, s) => CompetitionDetailScreen(competitionId: s.pathParameters['id']!))]),
-          GoRoute(path: AppConstants.communityRoute, builder: (_, __) => const CommunityScreen(),
-            routes: [GoRoute(path: ':id', builder: (_, s) => CommunityDetailScreen(communityId: s.pathParameters['id']!))]),
-          GoRoute(path: AppConstants.chatRoute, builder: (_, __) => const ChatListScreen(),
-            routes: [GoRoute(path: ':id', builder: (_, s) => ChatDetailScreen(chatId: s.pathParameters['id']!))]),
-          GoRoute(path: AppConstants.storeRoute, builder: (_, __) => const StoreScreen(),
-            routes: [GoRoute(path: 'product/:id', builder: (_, s) => ProductDetailScreen(productId: s.pathParameters['id']!))]),
+          GoRoute(
+            path: AppConstants.competitionsRoute,
+            builder: (_, __) => const CompetitionsScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) => CompetitionDetailScreen(
+                    competitionId: s.pathParameters['id']!),
+                routes: [
+                  // Tournament manager for a specific competition
+                  GoRoute(
+                    path: 'manage',
+                    builder: (_, s) => TournamentManagerScreen(
+                      competitionId: s.pathParameters['id']!,
+                      isAdmin: true,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppConstants.communityRoute,
+            builder: (_, __) => const CommunityScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) =>
+                    CommunityDetailScreen(communityId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          // Gaming teams screen
+          GoRoute(
+            path: '/teams',
+            builder: (_, __) => const GamingTeamsScreen(),
+          ),
+          GoRoute(
+            path: AppConstants.chatRoute,
+            builder: (_, __) => const ChatListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) =>
+                    ChatDetailScreen(chatId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppConstants.storeRoute,
+            builder: (_, __) => const StoreScreen(),
+            routes: [
+              GoRoute(
+                path: 'product/:id',
+                builder: (_, s) =>
+                    ProductDetailScreen(productId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
           GoRoute(path: AppConstants.walletRoute, builder: (_, __) => const WalletScreen()),
-          GoRoute(path: AppConstants.blogRoute, builder: (_, __) => const BlogScreen(),
-            routes: [GoRoute(path: ':id', builder: (_, s) => BlogDetailScreen(blogId: s.pathParameters['id']!))]),
-          GoRoute(path: '/profile/:id', builder: (_, s) => ProfileScreen(userId: s.pathParameters['id']!)),
+          GoRoute(
+            path: AppConstants.blogRoute,
+            builder: (_, __) => const BlogScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (_, s) =>
+                    BlogDetailScreen(blogId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/profile/:id',
+            builder: (_, s) =>
+                ProfileScreen(userId: s.pathParameters['id']!),
+          ),
           GoRoute(path: AppConstants.settingsRoute, builder: (_, __) => const SettingsScreen()),
           GoRoute(path: AppConstants.notificationsRoute, builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: AppConstants.searchRoute, builder: (_, __) => const SearchScreen()),
@@ -76,7 +143,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppConstants.adsRoute, builder: (_, __) => const AdsScreen()),
           GoRoute(path: AppConstants.supportRoute, builder: (_, __) => const SupportChatScreen()),
           GoRoute(path: AppConstants.agentChatRoute, builder: (_, __) => const AgentChatScreen()),
-          // ── Reels ──────────────────────────────────────────────────────────
           GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
         ],
       ),
@@ -84,6 +150,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 
+  // Listen for password recovery deep link
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       router.go('/reset-password');
