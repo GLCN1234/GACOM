@@ -233,6 +233,12 @@ class _MatchCard extends StatelessWidget {
       default: statusColor = GacomColors.textMuted;
     }
 
+    // dart2js fix: extract typed bool comparisons in method scope, not inside widget tree
+    final _p1Id = isTeam ? (t1?['id'] as String?) : (p1?['id'] as String?);
+    final _w1 = winner != null && (winner['id'] as String?) == _p1Id;
+    final _p2Id = isTeam ? (t2?['id'] as String?) : (p2?['id'] as String?);
+    final _w2 = winner != null && (winner['id'] as String?) == _p2Id;
+
     return Opacity(
       opacity: dimmed ? 0.6 : 1.0,
       child: Container(
@@ -245,13 +251,13 @@ class _MatchCard extends StatelessWidget {
         ),
         child: Column(children: [
           Row(children: [
-            Expanded(child: _PlayerSlot(name: isTeam ? (t1?['name'] ?? 'TBD') : (p1?['display_name'] ?? 'TBD'), tag: isTeam ? t1?['tag'] : null, isWinner: winner != null && winner['id'] == p1?['id'])),
+            Expanded(child: _PlayerSlot(name: isTeam ? (t1?['name'] ?? 'TBD') : (p1?['display_name'] ?? 'TBD'), tag: isTeam ? (t1?['tag'] as String?) : null, isWinner: _w1)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(50)),
               child: Text('VS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: statusColor, fontSize: 13)),
             ),
-            Expanded(child: _PlayerSlot(name: isTeam ? (t2?['name'] ?? 'TBD') : (p2?['display_name'] ?? 'TBD'), tag: isTeam ? t2?['tag'] : null, isRight: true, isWinner: winner != null && winner['id'] == p2?['id'])),
+            Expanded(child: _PlayerSlot(name: isTeam ? (t2?['name'] ?? 'TBD') : (p2?['display_name'] ?? 'TBD'), tag: isTeam ? (t2?['tag'] as String?) : null, isRight: true, isWinner: _w2)),
           ]),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [

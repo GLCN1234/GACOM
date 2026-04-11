@@ -14,7 +14,7 @@ import '../../features/feed/screens/create_post_screen.dart';
 import '../../features/feed/screens/reels_screen.dart';
 import '../../features/competitions/screens/competitions_screen.dart';
 import '../../features/competitions/screens/competition_detail_screen.dart';
-import '../../features/competitions/screens/tournament_manager_screen.dart'; // ← FIXED: was 'competition' (missing 's')
+import '../../features/competitions/screens/tournament_manager_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/community_detail_screen.dart';
 import '../../features/community/screens/gaming_teams_screen.dart';
@@ -69,7 +69,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, s) => CompetitionDetailScreen(
                     competitionId: s.pathParameters['id']!),
                 routes: [
-                  // Tournament manager for a specific competition
                   GoRoute(
                     path: 'manage',
                     builder: (_, s) => TournamentManagerScreen(
@@ -89,13 +88,17 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':id',
                 builder: (_, s) =>
                     CommunityDetailScreen(communityId: s.pathParameters['id']!),
+                routes: [
+                  // Teams for a specific community — communityId from parent param
+                  GoRoute(
+                    path: 'teams',
+                    builder: (_, s) => GamingTeamsScreen(
+                      communityId: s.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-          // Gaming teams screen
-          GoRoute(
-            path: '/teams',
-            builder: (_, __) => const GamingTeamsScreen(),
           ),
           GoRoute(
             path: AppConstants.chatRoute,
@@ -133,8 +136,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/profile/:id',
-            builder: (_, s) =>
-                ProfileScreen(userId: s.pathParameters['id']!),
+            builder: (_, s) => ProfileScreen(userId: s.pathParameters['id']!),
           ),
           GoRoute(path: AppConstants.settingsRoute, builder: (_, __) => const SettingsScreen()),
           GoRoute(path: AppConstants.notificationsRoute, builder: (_, __) => const NotificationsScreen()),
@@ -150,7 +152,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 
-  // Listen for password recovery deep link
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       router.go('/reset-password');
