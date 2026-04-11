@@ -16,6 +16,8 @@ import '../../features/competitions/screens/competitions_screen.dart';
 import '../../features/competitions/screens/competition_detail_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/community_detail_screen.dart';
+import '../../features/community/screens/gaming_teams_screen.dart';
+import '../../features/competition/screens/tournament_manager_screen.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/chat/screens/chat_detail_screen.dart';
 import '../../features/store/screens/store_screen.dart';
