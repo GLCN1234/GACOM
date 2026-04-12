@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -131,20 +132,26 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         return;
       }
 
-      // Create new DM
-      final chat = await SupabaseService.client.from('chats').insert({
+      // Create new DM — insert members BEFORE doing any select,
+      // because chats_select policy checks chat_members membership.
+      // We generate the id client-side so we can insert members atomically.
+      final newChatId = const Uuid().v4();
+
+      // Insert chat row (no .select() here — avoids RLS SELECT before members exist)
+      await SupabaseService.client.from('chats').insert({
+        'id': newChatId,
         'type': 'direct',
         'created_by': myId,
         'last_message_at': DateTime.now().toIso8601String(),
-      }).select().single();
+      });
 
-      final chatId = chat['id'] as String;
+      // Insert both members immediately — now user_chat_ids() will return this chat
       await SupabaseService.client.from('chat_members').insert([
-        {'chat_id': chatId, 'user_id': myId},
-        {'chat_id': chatId, 'user_id': otherUserId},
+        {'chat_id': newChatId, 'user_id': myId},
+        {'chat_id': newChatId, 'user_id': otherUserId},
       ]);
 
-      if (mounted) context.go('/chat/$chatId');
+      if (mounted) context.go('/chat/$newChatId');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
