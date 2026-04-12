@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,7 +31,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
     try {
-      // Use simple query - avoid nested chat_members to prevent recursion
       final memberRows = await SupabaseService.client
           .from('chat_members')
           .select('chat_id, joined_at')
@@ -38,25 +38,24 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           .order('joined_at', ascending: false)
           .limit(30);
 
-      final chatIds = (memberRows as List).map((r) => r['chat_id'] as String).toList();
+      final chatIds = (memberRows as List)
+          .map((r) => r['chat_id'] as String)
+          .toList();
 
       if (chatIds.isEmpty) {
         if (mounted) setState(() { _chats = []; _loading = false; });
         return;
       }
 
-      // Fetch chats separately
       final chats = await SupabaseService.client
           .from('chats')
           .select('*')
           .inFilter('id', chatIds)
           .order('last_message_at', ascending: false);
 
-      // For each DM, fetch the other user's profile
       final enriched = <Map<String, dynamic>>[];
       for (final chat in chats as List) {
         final chatId = chat['id'] as String;
-        // Get members of this chat
         final members = await SupabaseService.client
             .from('chat_members')
             .select('user_id')
@@ -78,18 +77,20 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             otherUser = p;
           } catch (_) {}
         }
-
         enriched.add({...chat as Map<String, dynamic>, '_other_user': otherUser});
       }
 
-      // Active users for story-style row (online users the current user follows)
+      // Active users (story row) — people you follow
       final following = await SupabaseService.client
           .from('follows')
           .select('following_id')
           .eq('follower_id', userId)
           .limit(20);
 
-      final followingIds = (following as List).map((f) => f['following_id'] as String).toList();
+      final followingIds = (following as List)
+          .map((f) => f['following_id'] as String)
+          .toList();
+
       List<Map<String, dynamic>> activeUsers = [];
       if (followingIds.isNotEmpty) {
         activeUsers = await SupabaseService.client
@@ -105,7 +106,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         _activeUsers = List<Map<String, dynamic>>.from(activeUsers);
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -115,7 +116,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     if (myId == null || myId == otherUserId) return;
 
     try {
-      // Use the safe server function to find existing DM
       final result = await SupabaseService.client
           .rpc('get_direct_chats_for_user', params: {'uid': myId});
 
@@ -132,20 +132,13 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         return;
       }
 
-      // Create new DM — insert members BEFORE doing any select,
-      // because chats_select policy checks chat_members membership.
-      // We generate the id client-side so we can insert members atomically.
       final newChatId = const Uuid().v4();
-
-      // Insert chat row (no .select() here — avoids RLS SELECT before members exist)
       await SupabaseService.client.from('chats').insert({
         'id': newChatId,
         'type': 'direct',
         'created_by': myId,
         'last_message_at': DateTime.now().toIso8601String(),
       });
-
-      // Insert both members immediately — now user_chat_ids() will return this chat
       await SupabaseService.client.from('chat_members').insert([
         {'chat_id': newChatId, 'user_id': myId},
         {'chat_id': newChatId, 'user_id': otherUserId},
@@ -164,15 +157,14 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     }
   }
 
-  void _showNewDmSheet() {
+  void _showNewChatSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _NewDmSheet(onSelectUser: (uid) {
-        Navigator.pop(context);
-        _startDm(uid);
-      }),
+      builder: (_) => _NewChatSheet(
+        onNewMessage: (uid) { Navigator.pop(context); _startDm(uid); },
+      ),
     );
   }
 
@@ -182,60 +174,180 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       backgroundColor: GacomColors.obsidian,
       body: SafeArea(
         child: Column(children: [
-          // ── Header ────────────────────────────────────────────────────────
+          // ── Header ──────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
             child: Row(children: [
               const Expanded(
-                child: Text('Messages', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 26, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+                child: Text('Messages',
+                    style: TextStyle(
+                        fontFamily: 'Rajdhani',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: GacomColors.textPrimary)),
               ),
               IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.search_rounded, color: GacomColors.textSecondary),
+                icon: const Icon(Icons.search_rounded,
+                    color: GacomColors.textSecondary, size: 24),
+                onPressed: () => context.go('/search'),
               ),
-              IconButton(
-                onPressed: _showNewDmSheet,
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
-                ),
+              // Three-dot menu matching the reference UI
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_horiz_rounded,
+                    color: GacomColors.textSecondary, size: 24),
+                color: GacomColors.cardDark,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                onSelected: (v) {
+                  if (v == 'new_chat') _showNewChatSheet();
+                },
+                itemBuilder: (_) => [
+                  _menuItem('new_chat', Icons.chat_outlined, 'New Chat'),
+                  _menuItem('new_community', Icons.group_add_outlined,
+                      'New Community'),
+                ],
               ),
             ]),
           ),
 
-          // ── Active users row (story-style) ────────────────────────────────
-          if (_activeUsers.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 88,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _activeUsers.length,
-                itemBuilder: (_, i) => _ActiveUserBubble(
-                  user: _activeUsers[i],
-                  onTap: () => _startDm(_activeUsers[i]['id']),
-                ).animate(delay: (i * 50).ms).fadeIn().slideX(begin: 0.3, end: 0),
-              ),
+          // ── Story-style active users row ─────────────────────────────────
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 90,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _activeUsers.length + 1, // +1 for "Add story" button
+              itemBuilder: (_, i) {
+                if (i == 0) {
+                  // "Add story" / new chat button — first item
+                  return GestureDetector(
+                    onTap: _showNewChatSheet,
+                    child: Container(
+                      width: 60,
+                      margin: const EdgeInsets.only(right: 14),
+                      child: Column(children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            color: GacomColors.surfaceDark,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: GacomColors.border, width: 1.5),
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: GacomColors.deepOrange, size: 26),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text('New',
+                            style: TextStyle(
+                                color: GacomColors.textMuted,
+                                fontSize: 11,
+                                fontFamily: 'Rajdhani',
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  );
+                }
+                final u = _activeUsers[i - 1];
+                final isOnline = u['is_online'] == true;
+                final name = (u['display_name'] as String? ?? '')
+                    .split(' ')
+                    .first;
+                return GestureDetector(
+                  onTap: () => _startDm(u['id']),
+                  child: Container(
+                    width: 60,
+                    margin: const EdgeInsets.only(right: 14),
+                    child: Column(children: [
+                      Stack(children: [
+                        // Orange ring when online, grey when offline
+                        Container(
+                          width: 54,
+                          height: 54,
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: isOnline
+                                ? GacomColors.orangeGradient
+                                : null,
+                            color: isOnline
+                                ? null
+                                : GacomColors.border,
+                          ),
+                          child: CircleAvatar(
+                            backgroundColor: GacomColors.cardDark,
+                            backgroundImage: u['avatar_url'] != null
+                                ? CachedNetworkImageProvider(u['avatar_url'])
+                                : null,
+                            child: u['avatar_url'] == null
+                                ? Text(
+                                    name.isNotEmpty ? name[0] : '?',
+                                    style: const TextStyle(
+                                        color: GacomColors.textPrimary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18))
+                                : null,
+                          ),
+                        ),
+                        if (isOnline)
+                          Positioned(
+                            right: 1,
+                            bottom: 1,
+                            child: Container(
+                              width: 13,
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: GacomColors.success,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: GacomColors.obsidian, width: 2),
+                              ),
+                            ),
+                          ),
+                      ]),
+                      const SizedBox(height: 6),
+                      Text(name,
+                          style: const TextStyle(
+                              color: GacomColors.textSecondary,
+                              fontSize: 11,
+                              fontFamily: 'Rajdhani',
+                              fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center),
+                    ]),
+                  ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.2),
+                );
+              },
             ),
-          ],
+          ),
 
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 0, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Messages', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w700, color: GacomColors.textMuted, letterSpacing: 1.5)),
-            ),
+          // ── "Chats" label ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+            child: Row(children: [
+              const Text('Chats',
+                  style: TextStyle(
+                      fontFamily: 'Rajdhani',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: GacomColors.textPrimary)),
+              const Spacer(),
+              // Three dots on the Chats section
+              Icon(Icons.more_horiz_rounded,
+                  color: GacomColors.textMuted, size: 20),
+            ]),
           ),
 
           // ── Chat list ────────────────────────────────────────────────────
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
+                ? const Center(
+                    child: CircularProgressIndicator(
+                        color: GacomColors.deepOrange))
                 : _chats.isEmpty
-                    ? _EmptyState(onNewMessage: _showNewDmSheet)
+                    ? _EmptyState(onNewChat: _showNewChatSheet)
                     : RefreshIndicator(
                         color: GacomColors.deepOrange,
                         backgroundColor: GacomColors.cardDark,
@@ -247,153 +359,185 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                           itemCount: _chats.length,
                           itemBuilder: (_, i) => _ChatTile(
                             chat: _chats[i],
-                          ).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.15, end: 0),
+                            onTap: () =>
+                                context.go('/chat/${_chats[i]['id']}'),
+                          ).animate(delay: (i * 35).ms).fadeIn(),
                         ),
                       ),
           ),
         ]),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showNewDmSheet,
+
+      // ── "+ New Chat" FAB — matches reference bottom centre button ────────
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showNewChatSheet,
         backgroundColor: GacomColors.deepOrange,
         elevation: 4,
-        child: const Icon(Icons.chat_rounded, color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text('New Chat',
+            style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'Rajdhani',
+                fontWeight: FontWeight.w700,
+                fontSize: 15)),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
-}
 
-// ── Active user bubble (story style) ─────────────────────────────────────────
-class _ActiveUserBubble extends StatelessWidget {
-  final Map<String, dynamic> user;
-  final VoidCallback onTap;
-  const _ActiveUserBubble({required this.user, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isOnline = user['is_online'] == true;
-    final name = (user['display_name'] as String? ?? '').split(' ').first;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        margin: const EdgeInsets.only(right: 12),
-        child: Column(children: [
-          Stack(children: [
-            Container(
-              width: 54, height: 54,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: isOnline ? GacomColors.orangeGradient : null,
-                color: isOnline ? null : GacomColors.border,
-              ),
-              padding: const EdgeInsets.all(2.5),
-              child: CircleAvatar(
-                backgroundColor: GacomColors.cardDark,
-                backgroundImage: user['avatar_url'] != null ? CachedNetworkImageProvider(user['avatar_url']) : null,
-                child: user['avatar_url'] == null
-                    ? Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold))
-                    : null,
-              ),
-            ),
-            if (isOnline)
-              Positioned(
-                right: 2, bottom: 2,
-                child: Container(
-                  width: 12, height: 12,
-                  decoration: BoxDecoration(
-                    color: GacomColors.success,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: GacomColors.obsidian, width: 2),
-                  ),
-                ),
-              ),
-          ]),
-          const SizedBox(height: 5),
-          Text(name, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+  PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
+      PopupMenuItem(
+        value: value,
+        child: Row(children: [
+          Icon(icon, color: GacomColors.textSecondary, size: 18),
+          const SizedBox(width: 10),
+          Text(label,
+              style: const TextStyle(
+                  color: GacomColors.textPrimary,
+                  fontFamily: 'Rajdhani',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14)),
         ]),
-      ),
-    );
-  }
+      );
 }
 
-// ── Chat tile ─────────────────────────────────────────────────────────────────
+// ── Chat tile ──────────────────────────────────────────────────────────────────
 class _ChatTile extends StatelessWidget {
   final Map<String, dynamic> chat;
-  const _ChatTile({required this.chat});
+  final VoidCallback onTap;
+  const _ChatTile({required this.chat, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isGroup = chat['type'] == 'group';
-    final lastAt = DateTime.tryParse(chat['last_message_at'] ?? '') ?? DateTime.now();
+    final lastAt =
+        DateTime.tryParse(chat['last_message_at'] ?? '') ?? DateTime.now();
     final other = chat['_other_user'] as Map<String, dynamic>?;
-    final name = isGroup ? (chat['name'] ?? 'Group Chat') : (other?['display_name'] ?? 'User');
+    final name = isGroup
+        ? (chat['name'] ?? 'Group Chat')
+        : (other?['display_name'] ?? 'User');
     final avatar = isGroup ? chat['icon_url'] : other?['avatar_url'];
     final isOnline = other?['is_online'] == true;
     final isVerified = other?['verification_status'] == 'verified';
     final preview = chat['last_message_preview'] as String?;
+    final unread = (chat['unread_count'] as int?) ?? 0;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => context.go('/chat/${chat['id']}'),
-        splashColor: GacomColors.deepOrange.withOpacity(0.05),
-        highlightColor: GacomColors.deepOrange.withOpacity(0.03),
+        onTap: onTap,
+        splashColor: GacomColors.deepOrange.withOpacity(0.04),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Row(children: [
-            // Avatar with online indicator
+            // Avatar + online dot
             Stack(children: [
               CircleAvatar(
                 radius: 28,
                 backgroundColor: GacomColors.border,
-                backgroundImage: avatar != null ? CachedNetworkImageProvider(avatar) : null,
+                backgroundImage: avatar != null
+                    ? CachedNetworkImageProvider(avatar)
+                    : null,
                 child: avatar == null
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18))
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                            color: GacomColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20))
                     : null,
               ),
               if (isOnline)
                 Positioned(
-                  right: 1, bottom: 1,
+                  right: 1,
+                  bottom: 1,
                   child: Container(
-                    width: 13, height: 13,
+                    width: 14,
+                    height: 14,
                     decoration: BoxDecoration(
                       color: GacomColors.success,
                       shape: BoxShape.circle,
-                      border: Border.all(color: GacomColors.obsidian, width: 2),
+                      border: Border.all(
+                          color: GacomColors.obsidian, width: 2.5),
                     ),
                   ),
                 ),
             ]),
+
             const SizedBox(width: 14),
 
             // Name + preview
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Flexible(child: Text(name, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary), overflow: TextOverflow.ellipsis)),
-                if (isVerified) ...[
-                  const SizedBox(width: 4),
-                  const Icon(Icons.verified_rounded, size: 14, color: GacomColors.deepOrange),
-                ],
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(name,
+                        style: const TextStyle(
+                            fontFamily: 'Rajdhani',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: GacomColors.textPrimary),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  if (isVerified) ...[
+                    const SizedBox(width: 4),
+                    const Icon(Icons.verified_rounded,
+                        size: 14, color: GacomColors.deepOrange),
+                  ],
+                ]),
+                const SizedBox(height: 3),
+                Text(
+                  preview ?? 'Start a conversation',
+                  style: TextStyle(
+                      color: preview != null
+                          ? GacomColors.textSecondary
+                          : GacomColors.textMuted,
+                      fontSize: 13,
+                      height: 1.3),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ]),
-              const SizedBox(height: 2),
-              Text(
-                preview ?? 'Start a conversation',
-                style: TextStyle(color: preview != null ? GacomColors.textSecondary : GacomColors.textMuted, fontSize: 13),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ])),
-            const SizedBox(width: 8),
+            ),
 
-            // Time + unread badge placeholder
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            const SizedBox(width: 10),
+
+            // Time + unread badge — right side like reference
+            Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
               Text(
                 timeago.format(lastAt, allowFromNow: true),
-                style: const TextStyle(color: GacomColors.textMuted, fontSize: 11),
+                style: TextStyle(
+                    color: unread > 0
+                        ? GacomColors.deepOrange
+                        : GacomColors.textMuted,
+                    fontSize: 11,
+                    fontFamily: 'Rajdhani',
+                    fontWeight: unread > 0
+                        ? FontWeight.w700
+                        : FontWeight.w500),
               ),
+              const SizedBox(height: 4),
+              if (unread > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: GacomColors.deepOrange,
+                    borderRadius: BorderRadius.circular(50),
+                  ),
+                  child: Text('$unread',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                )
+              else
+                const SizedBox(height: 18),
             ]),
           ]),
         ),
@@ -402,71 +546,80 @@ class _ChatTile extends StatelessWidget {
   }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+// ── Empty state ────────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
-  final VoidCallback onNewMessage;
-  const _EmptyState({required this.onNewMessage});
+  final VoidCallback onNewChat;
+  const _EmptyState({required this.onNewChat});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(
-          width: 100, height: 100,
+          width: 96,
+          height: 96,
           decoration: BoxDecoration(
             color: GacomColors.deepOrange.withOpacity(0.08),
             shape: BoxShape.circle,
-            border: Border.all(color: GacomColors.deepOrange.withOpacity(0.2), width: 1.5),
+            border: Border.all(
+                color: GacomColors.deepOrange.withOpacity(0.2), width: 1.5),
           ),
-          child: const Icon(Icons.chat_bubble_outline_rounded, size: 44, color: GacomColors.deepOrange),
+          child: const Icon(Icons.chat_bubble_outline_rounded,
+              size: 44, color: GacomColors.deepOrange),
         ).animate().scale(curve: Curves.elasticOut),
         const SizedBox(height: 24),
-        const Text('No messages yet', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
+        const Text('No messages yet',
+            style: TextStyle(
+                fontFamily: 'Rajdhani',
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: GacomColors.textPrimary)),
         const SizedBox(height: 8),
-        const Text('Find a gamer and start a conversation', style: TextStyle(color: GacomColors.textMuted, fontSize: 14)),
-        const SizedBox(height: 28),
-        ElevatedButton.icon(
-          onPressed: onNewMessage,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: GacomColors.deepOrange,
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-          ),
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: const Text('NEW MESSAGE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white, letterSpacing: 1)),
-        ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.3, end: 0),
+        const Text('Find a gamer and start a conversation',
+            style: TextStyle(color: GacomColors.textMuted, fontSize: 14)),
       ]),
     );
   }
 }
 
-// ── New DM search sheet ───────────────────────────────────────────────────────
-class _NewDmSheet extends StatefulWidget {
-  final Function(String userId) onSelectUser;
-  const _NewDmSheet({required this.onSelectUser});
+// ── New Chat bottom sheet ──────────────────────────────────────────────────────
+class _NewChatSheet extends StatefulWidget {
+  final Function(String userId) onNewMessage;
+  const _NewChatSheet({required this.onNewMessage});
 
   @override
-  State<_NewDmSheet> createState() => _NewDmSheetState();
+  State<_NewChatSheet> createState() => _NewChatSheetState();
 }
 
-class _NewDmSheetState extends State<_NewDmSheet> {
+class _NewChatSheetState extends State<_NewChatSheet> {
   final _ctrl = TextEditingController();
   List<Map<String, dynamic>> _users = [];
   bool _searching = false;
 
-  Future<void> _search(String query) async {
-    if (query.trim().isEmpty) { setState(() => _users = []); return; }
+  Future<void> _search(String q) async {
+    if (q.trim().isEmpty) {
+      setState(() => _users = []);
+      return;
+    }
     setState(() => _searching = true);
     try {
       final myId = SupabaseService.currentUserId;
       final data = await SupabaseService.client
           .from('profiles')
-          .select('id, username, display_name, avatar_url, verification_status, is_online')
-          .or('username.ilike.%${query.trim()}%,display_name.ilike.%${query.trim()}%')
+          .select(
+              'id, username, display_name, avatar_url, verification_status, is_online')
+          .or('username.ilike.%${q.trim()}%,display_name.ilike.%${q.trim()}%')
           .neq('id', myId ?? '')
           .limit(20);
-      if (mounted) setState(() { _users = List<Map<String, dynamic>>.from(data); _searching = false; });
-    } catch (_) { if (mounted) setState(() => _searching = false); }
+      if (mounted) {
+        setState(() {
+          _users = List<Map<String, dynamic>>.from(data);
+          _searching = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
   }
 
   @override
@@ -488,46 +641,99 @@ class _NewDmSheetState extends State<_NewDmSheet> {
             initialChildSize: 0.75,
             maxChildSize: 0.95,
             builder: (_, scroll) => Column(children: [
-              const SizedBox(height: 12),
-              Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Align(alignment: Alignment.centerLeft, child: Text('New Message', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
+              const SizedBox(height: 10),
+              // Handle bar
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: GacomColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 18),
+
+              // Sheet title row — matches reference "New Message" style
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(children: [
+                  const Text('New Chat',
+                      style: TextStyle(
+                          fontFamily: 'Rajdhani',
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: GacomColors.textPrimary)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                          color: GacomColors.surfaceDark,
+                          shape: BoxShape.circle),
+                      child: const Icon(Icons.close_rounded,
+                          color: GacomColors.textMuted, size: 18),
+                    ),
+                  ),
+                ]),
               ),
               const SizedBox(height: 14),
+
+              // Search field
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _ctrl,
                   autofocus: true,
                   onChanged: _search,
-                  style: const TextStyle(color: GacomColors.textPrimary),
+                  style: const TextStyle(
+                      color: GacomColors.textPrimary, fontSize: 15),
                   decoration: InputDecoration(
-                    hintText: 'Search by name or @username...',
-                    hintStyle: const TextStyle(color: GacomColors.textMuted),
-                    prefixIcon: const Icon(Icons.search_rounded, color: GacomColors.textMuted),
+                    hintText: 'Search by name or @username…',
+                    hintStyle:
+                        const TextStyle(color: GacomColors.textMuted),
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: GacomColors.textMuted),
                     filled: true,
                     fillColor: GacomColors.surfaceDark,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.border)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.border)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide:
+                            const BorderSide(color: GacomColors.border)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide:
+                            const BorderSide(color: GacomColors.border)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                            color: GacomColors.deepOrange, width: 1.5)),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
+
               Expanded(
                 child: _searching
-                    ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: GacomColors.deepOrange))
                     : _users.isEmpty
-                        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            const Icon(Icons.person_search_rounded, size: 48, color: GacomColors.border),
-                            const SizedBox(height: 12),
-                            Text(
-                              _ctrl.text.isEmpty ? 'Search for gamers to message' : 'No users found',
-                              style: const TextStyle(color: GacomColors.textMuted),
-                            ),
-                          ]))
+                        ? Center(
+                            child: Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                children: [
+                              const Icon(Icons.person_search_rounded,
+                                  size: 48, color: GacomColors.border),
+                              const SizedBox(height: 12),
+                              Text(
+                                _ctrl.text.isEmpty
+                                    ? 'Search for gamers'
+                                    : 'No users found',
+                                style: const TextStyle(
+                                    color: GacomColors.textMuted),
+                              ),
+                            ]))
                         : ListView.builder(
                             controller: scroll,
                             itemCount: _users.length,
@@ -535,25 +741,85 @@ class _NewDmSheetState extends State<_NewDmSheet> {
                               final u = _users[i];
                               final isOnline = u['is_online'] == true;
                               return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 4),
                                 leading: Stack(children: [
                                   CircleAvatar(
                                     radius: 24,
                                     backgroundColor: GacomColors.border,
-                                    backgroundImage: u['avatar_url'] != null ? CachedNetworkImageProvider(u['avatar_url']) : null,
-                                    child: u['avatar_url'] == null ? Text((u['display_name'] ?? 'G')[0], style: const TextStyle(color: GacomColors.textPrimary)) : null,
+                                    backgroundImage:
+                                        u['avatar_url'] != null
+                                            ? CachedNetworkImageProvider(
+                                                u['avatar_url'])
+                                            : null,
+                                    child: u['avatar_url'] == null
+                                        ? Text(
+                                            (u['display_name'] ??
+                                                'G')[0],
+                                            style: const TextStyle(
+                                                color: GacomColors
+                                                    .textPrimary))
+                                        : null,
                                   ),
-                                  if (isOnline) Positioned(right: 0, bottom: 0, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.cardDark, width: 2)))),
+                                  if (isOnline)
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                          width: 11,
+                                          height: 11,
+                                          decoration: BoxDecoration(
+                                              color: GacomColors.success,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                  color: GacomColors
+                                                      .cardDark,
+                                                  width: 2))),
+                                    ),
                                 ]),
                                 title: Row(children: [
-                                  Text(u['display_name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary, fontSize: 16)),
-                                  if (u['verification_status'] == 'verified') ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 14, color: GacomColors.deepOrange)],
+                                  Text(u['display_name'] ?? '',
+                                      style: const TextStyle(
+                                          fontFamily: 'Rajdhani',
+                                          fontWeight: FontWeight.w700,
+                                          color: GacomColors.textPrimary,
+                                          fontSize: 16)),
+                                  if (u['verification_status'] ==
+                                      'verified') ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.verified_rounded,
+                                        size: 14,
+                                        color: GacomColors.deepOrange),
+                                  ],
                                 ]),
-                                subtitle: Text('@${u['username'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+                                subtitle: Text(
+                                    '@${u['username'] ?? ''}',
+                                    style: const TextStyle(
+                                        color: GacomColors.textMuted,
+                                        fontSize: 12)),
                                 trailing: isOnline
-                                    ? Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.15), borderRadius: BorderRadius.circular(50)), child: const Text('Online', style: TextStyle(color: GacomColors.success, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)))
+                                    ? Container(
+                                        padding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 3),
+                                        decoration: BoxDecoration(
+                                            color: GacomColors.success
+                                                .withOpacity(0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(
+                                                    50)),
+                                        child: const Text('Online',
+                                            style: TextStyle(
+                                                color: GacomColors.success,
+                                                fontSize: 11,
+                                                fontFamily: 'Rajdhani',
+                                                fontWeight:
+                                                    FontWeight.w600)))
                                     : null,
-                                onTap: () => widget.onSelectUser(u['id'] as String),
+                                onTap: () =>
+                                    widget.onNewMessage(u['id'] as String),
                               ).animate(delay: (i * 30).ms).fadeIn();
                             },
                           ),
