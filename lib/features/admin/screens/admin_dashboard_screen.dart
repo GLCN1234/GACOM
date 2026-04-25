@@ -460,6 +460,50 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
     catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
+  Future<void> _removeExco(String assignmentId, String userId, String role) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: GacomColors.cardDark,
+        title: const Text('Remove Exco', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
+        content: Text('Remove this person from the ${role.replaceAll('_', ' ')} role?',
+            style: const TextStyle(color: GacomColors.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('REMOVE', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      // Delete the exco assignment row
+      await SupabaseService.client
+          .from('exco_assignments')
+          .delete()
+          .eq('id', assignmentId);
+
+      // Check if user has any remaining exco roles; if not, revert role to 'user'
+      final remaining = await SupabaseService.client
+          .from('exco_assignments')
+          .select('id')
+          .eq('exco_id', userId);
+      if ((remaining as List).isEmpty) {
+        await SupabaseService.client
+            .from('profiles')
+            .update({'role': 'user'})
+            .eq('id', userId);
+      }
+
+      GacomSnackbar.show(context, 'Exco role removed ✅', isSuccess: true);
+      await _load();
+    } catch (e) {
+      GacomSnackbar.show(context, 'Failed to remove: $e', isError: true);
+    }
+  }
+
   Future<void> _assignExco() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) { GacomSnackbar.show(context, 'Enter user email', isError: true); return; }
@@ -484,7 +528,7 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
         return;
       }
 
-      await SupabaseService.client.from('exco_assignments').upsert({'exco_id': userId, 'exco_role': _selectedRole, 'assigned_by': SupabaseService.currentUserId});
+      await SupabaseService.client.from('exco_assignments').upsert({'exco_id': userId, 'exco_role': _selectedRole, 'assigned_by': SupabaseService.currentUserId}, onConflict: 'exco_id,exco_role');
       await SupabaseService.client.from('profiles').update({'role': 'exco'}).eq('id', userId);
       
       // If blog editor, also grant blog permission
@@ -527,7 +571,25 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
         final profile = a['profile'] as Map? ?? {};
         return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border, width: 0.5)),
           child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(profile['display_name'] ?? '', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14)), Text('@${profile['username'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12))])),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: GacomColors.info.withOpacity(0.3))), child: Text((a['exco_role'] as String? ?? '').replaceAll('_', ' ').toUpperCase(), style: const TextStyle(color: GacomColors.info, fontSize: 10, fontWeight: FontWeight.w700)))]));
+            Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(6), border: Border.all(color: GacomColors.info.withOpacity(0.3))),
+                  child: Text((a['exco_role'] as String? ?? '').replaceAll('_', ' ').toUpperCase(), style: const TextStyle(color: GacomColors.info, fontSize: 10, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _removeExco(a['id'] as String, a['exco_id'] as String, a['exco_role'] as String? ?? ''),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: GacomColors.error.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: GacomColors.error.withOpacity(0.3)),
+                    ),
+                    child: const Icon(Icons.person_remove_rounded, size: 14, color: GacomColors.error),
+                  ),
+                ),
+              ]));
       }),
     ]);
   }
