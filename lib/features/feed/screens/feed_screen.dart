@@ -288,6 +288,71 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
     );
   }
 
+  void _showOptions(BuildContext context, Map<String, dynamic> post, Map<String, dynamic> author) {
+    final myId = SupabaseService.currentUserId;
+    final isOwn = myId != null && myId == (author['id'] as String?);
+    final postId = post['id'] as String? ?? '';
+    final isDemo = postId.startsWith('demo');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 12),
+          Container(width: 36, height: 3,
+              decoration: BoxDecoration(color: GacomColors.borderBright, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Row(children: [
+              CircleAvatar(radius: 18, backgroundColor: GacomColors.border,
+                backgroundImage: (author['avatar_url'] as String?) != null
+                    ? CachedNetworkImageProvider(author['avatar_url'] as String) : null,
+                child: (author['avatar_url'] as String?) == null
+                    ? Text((author['display_name'] as String? ?? 'G')[0],
+                        style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))
+                    : null),
+              const SizedBox(width: 10),
+              Text(author['display_name'] as String? ?? 'Gamer',
+                  style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
+            ]),
+          ),
+          const Divider(height: 1, color: GacomColors.border),
+          if (isOwn && !isDemo) ...[
+            _OptionTile(icon: Icons.delete_outline_rounded, label: 'Delete Post', color: GacomColors.error,
+              onTap: () async {
+                Navigator.pop(context);
+                if (!isDemo) {
+                  try { await SupabaseService.client.from('posts').update({'is_deleted': true}).eq('id', postId); } catch (_) {}
+                }
+              }),
+            _OptionTile(icon: Icons.edit_rounded, label: 'Edit Caption', color: GacomColors.textPrimary,
+              onTap: () => Navigator.pop(context)),
+          ],
+          if (!isOwn) ...[
+            _OptionTile(icon: Icons.person_remove_outlined, label: 'Unfollow @${author['username'] ?? ''}', color: GacomColors.textPrimary,
+              onTap: () async {
+                Navigator.pop(context);
+                if (myId != null && !isDemo) {
+                  try { await SupabaseService.client.from('follows').delete().eq('follower_id', myId).eq('following_id', author['id'] as String); } catch (_) {}
+                }
+              }),
+            _OptionTile(icon: Icons.report_gmailerrorred_rounded, label: 'Report Post', color: GacomColors.error,
+              onTap: () => Navigator.pop(context)),
+            _OptionTile(icon: Icons.not_interested_rounded, label: 'Not Interested', color: GacomColors.textPrimary,
+              onTap: () => Navigator.pop(context)),
+          ],
+          _OptionTile(icon: Icons.link_rounded, label: 'Copy Link', color: GacomColors.textPrimary,
+            onTap: () { Navigator.pop(context); _sharePost(); }),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
   void _sharePost() {
     final caption = widget.post['caption'] as String? ?? '';
     final author = (widget.post['author'] as Map?)?['username'] as String? ?? 'someone';
@@ -326,7 +391,10 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
             Row(children: [Text(displayName, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)), if (isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 13, color: GacomColors.deepOrange)]]),
             Text('@$username · ${timeago.format(createdAt, locale: 'en_short')}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani')),
           ])),
-          IconButton(icon: const Icon(Icons.more_horiz_rounded, color: GacomColors.textMuted, size: 20), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.more_horiz_rounded, color: GacomColors.textMuted, size: 20),
+            onPressed: () => _showOptions(context, post, author),
+          ),
         ])),
 
         if (caption.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: Text(caption, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 14, height: 1.5))),
@@ -619,6 +687,30 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
           ),
         ),
       ]),
+    );
+  }
+}
+
+// ── Option tile for post options sheet ────────────────────────────────────────
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  const _OptionTile({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: color, size: 18),
+      ),
+      title: Text(label,
+          style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 15, color: color)),
+      onTap: onTap,
+      dense: true,
     );
   }
 }

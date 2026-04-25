@@ -32,24 +32,40 @@ class _ExcoDashboardScreenState extends ConsumerState<ExcoDashboardScreen> {
     if (uid == null) { if (mounted) context.go(AppConstants.loginRoute); return; }
     try {
       final p = await SupabaseService.client
-          .from('profiles').select('display_name, avatar_url, role').eq('id', uid).single();
+          .from('profiles').select('display_name, avatar_url, role, exco_role').eq('id', uid).single();
 
-      if ((p['role'] as String?) != 'exco') {
-        // Not exco — redirect them away
+      final role = p['role'] as String? ?? 'user';
+
+      // Allow both 'exco' role and any admin who reaches this page
+      if (!['exco', 'admin', 'super_admin', 'moderator'].contains(role)) {
         if (mounted) { GacomSnackbar.show(context, 'Access denied', isError: true); context.go(AppConstants.homeRoute); }
         return;
       }
 
-      // Get their specific exco role
-      final assignment = await SupabaseService.client
-          .from('exco_assignments').select('exco_role').eq('exco_id', uid).maybeSingle();
+      // Try exco_assignments table first
+      String? excoRole;
+      try {
+        final assignment = await SupabaseService.client
+            .from('exco_assignments').select('exco_role').eq('exco_id', uid).maybeSingle();
+        excoRole = assignment?['exco_role'] as String?;
+      } catch (_) {}
+
+      // Fallback: check if exco_role column exists on profiles table directly
+      if (excoRole == null) {
+        excoRole = p['exco_role'] as String?;
+      }
 
       if (mounted) setState(() {
         _profile = p;
-        _excoRole = assignment?['exco_role'] as String?;
+        // If still null, use 'inventory_manager' as default for exco role
+        // so they at least see something useful instead of a blank screen
+        _excoRole = excoRole ?? (role == 'exco' ? 'inventory_manager' : null);
         _loading = false;
       });
-    } catch (_) { if (mounted) context.go(AppConstants.homeRoute); }
+    } catch (e) {
+      // Don't redirect on error — show a loading retry instead
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   String get _roleLabel {
