@@ -97,7 +97,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     setState(() => _loading = true);
     try {
       final data = await SupabaseService.client.from('products')
-          .select('id, name, description, price, condition, brand, images, tags, is_active, is_featured, rating, stock, category, whatsapp_contact, location, seller:profiles!seller_id(display_name, avatar_url, verification_status)')
+          .select('id, name, description, price, condition, brand, images, tags, is_active, is_featured, rating, stock, category, location, seller:profiles!seller_id(display_name, avatar_url, verification_status)')
           .eq('is_active', true).order('created_at', ascending: false).limit(60);
       final rows = List<Map<String, dynamic>>.from(data);
       if (mounted) setState(() { _allProducts = rows.isNotEmpty ? rows : List.from(_demoProducts); _loading = false; });
@@ -118,7 +118,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     final condition = product['condition'] as String? ?? 'new';
     final sellerName = product['seller_name'] as String? ?? ((product['seller'] as Map?)?['display_name'] as String?) ?? 'GACOM Store';
     final sellerVerified = product['seller_verified'] as bool? ?? ((product['seller'] as Map?)?['verification_status'] == 'verified');
-    final whatsapp = product['whatsapp_contact'] as String?;
     final location = product['location'] as String?;
 
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: GacomColors.cardDark,
@@ -153,13 +152,22 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
           const SizedBox(height: 8),
           Text(product['description'] as String? ?? 'No description available.', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 14, height: 1.65)),
           const SizedBox(height: 28),
-          if (!isDemo && whatsapp != null)
-            GacomButton(label: '📱 CONTACT VIA WHATSAPP', onPressed: () { Navigator.pop(ctx); GacomSnackbar.show(context, 'Opening WhatsApp...'); })
-          else if (!isDemo)
+          if (!isDemo)
             GacomButton(label: 'MESSAGE SELLER', onPressed: () { Navigator.pop(ctx); context.go('/chat'); })
           else
             GacomButton(label: 'COMING SOON — Demo Item', onPressed: () { Navigator.pop(ctx); GacomSnackbar.show(context, 'This is a demo listing!'); }),
         ])));
+  }
+
+
+  void _showDeliveryZonesSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => _DeliveryZonesSheet(),
+    );
   }
 
   void _showAddProductSheet(BuildContext context) {
@@ -167,7 +175,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final brandCtrl = TextEditingController();
-    final whatsappCtrl = TextEditingController();
     final locationCtrl = TextEditingController();
     final stockCtrl = TextEditingController(text: '1');
     String condition = 'new';
@@ -217,8 +224,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
             const SizedBox(height: 12),
             GacomTextField(controller: locationCtrl, label: 'Location', hint: 'e.g. Lagos, Abuja', prefixIcon: Icons.location_on_rounded),
             const SizedBox(height: 12),
-            GacomTextField(controller: whatsappCtrl, label: 'WhatsApp Number', hint: '+234 800 000 0000', prefixIcon: Icons.phone_rounded, keyboardType: TextInputType.phone),
-            const SizedBox(height: 14),
+            const SizedBox(height: 4),
 
             // Category
             const Text('Category', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 1)),
@@ -253,7 +259,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
                   'is_active': true, 'images': uploadedImageUrls,
                   'seller_id': uid,
                   'location': locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
-                  'whatsapp_contact': whatsappCtrl.text.trim().isEmpty ? null : whatsappCtrl.text.trim(),
                 });
                 if (ctx.mounted) { Navigator.pop(ctx); GacomSnackbar.show(context, 'Product added to store! 🛍️', isSuccess: true); await _load(); }
               } catch (e) { if (ctx.mounted) GacomSnackbar.show(ctx, 'Failed: ${e.toString()}', isError: true); }
@@ -284,7 +289,10 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       appBar: AppBar(title: const Text('MARKETPLACE'), actions: [
-        if (_isAdmin) IconButton(icon: const Icon(Icons.add_circle_rounded, color: GacomColors.deepOrange), tooltip: 'Add Product', onPressed: () => _showAddProductSheet(context)),
+        if (_isAdmin) ...[
+          IconButton(icon: const Icon(Icons.local_shipping_rounded, color: GacomColors.info), tooltip: 'Delivery Zones', onPressed: () => _showDeliveryZonesSheet(context)),
+          IconButton(icon: const Icon(Icons.add_circle_rounded, color: GacomColors.deepOrange), tooltip: 'Add Product', onPressed: () => _showAddProductSheet(context)),
+        ],
       ], bottom: TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, labelColor: GacomColors.deepOrange, unselectedLabelColor: GacomColors.textMuted, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13), tabs: const [Tab(text: 'BROWSE'), Tab(text: 'MY LISTINGS')])),
       body: TabBarView(controller: _tab, children: [
         Column(children: [
@@ -374,4 +382,276 @@ class _CondBadge extends StatelessWidget {
   final String condition; const _CondBadge(this.condition);
   Color get _color { if (condition == 'new' || condition == 'active') return GacomColors.success; if (condition == 'used' || condition == 'inactive') return GacomColors.warning; return GacomColors.info; }
   @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: _color.withOpacity(0.12), borderRadius: BorderRadius.circular(6), border: Border.all(color: _color.withOpacity(0.3))), child: Text(condition[0].toUpperCase() + condition.substring(1), style: TextStyle(color: _color, fontSize: 9, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)));
+}
+
+// ── Delivery Zones Sheet (Inventory Manager / Admin only) ─────────────────────
+class _DeliveryZonesSheet extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DeliveryZonesSheet> createState() => _DeliveryZonesSheetState();
+}
+
+class _DeliveryZonesSheetState extends ConsumerState<_DeliveryZonesSheet> {
+  List<Map<String, dynamic>> _zones = [];
+  bool _loading = true;
+  bool _saving = false;
+  String _search = '';
+
+  @override
+  void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    try {
+      final data = await SupabaseService.client
+          .from('delivery_zones')
+          .select('*')
+          .order('state_name');
+      if (mounted) setState(() { _zones = List<Map<String, dynamic>>.from(data); _loading = false; });
+    } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
+
+  Future<void> _saveZone(String id, double fee, String days) async {
+    setState(() => _saving = true);
+    try {
+      await SupabaseService.client.from('delivery_zones').update({
+        'fee': fee,
+        'estimated_days': days,
+        'updated_by': SupabaseService.currentUserId,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', id);
+      GacomSnackbar.show(context, 'Delivery fee updated ✅', isSuccess: true);
+      await _load();
+    } catch (e) {
+      GacomSnackbar.show(context, 'Failed to save: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_search.isEmpty) return _zones;
+    return _zones.where((z) => (z['state_name'] as String).toLowerCase().contains(_search.toLowerCase())).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.92,
+      maxChildSize: 0.97,
+      builder: (_, scroll) => Column(children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Column(children: [
+            Center(child: Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.local_shipping_rounded, color: GacomColors.info, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Delivery Zones', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+                Text('Set delivery fee per state', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+              ])),
+              if (_saving) const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: GacomColors.deepOrange)),
+            ]),
+            const SizedBox(height: 14),
+            // Summary chips
+            Row(children: [
+              _SummaryChip(label: '${_zones.length} States', icon: Icons.map_rounded, color: GacomColors.info),
+              const SizedBox(width: 8),
+              _SummaryChip(
+                label: 'Avg ₦${_zones.isEmpty ? 0 : (_zones.map((z) => (z['fee'] as num).toDouble()).reduce((a, b) => a + b) / _zones.length).toStringAsFixed(0)}',
+                icon: Icons.payments_rounded,
+                color: GacomColors.success,
+              ),
+            ]),
+            const SizedBox(height: 12),
+            // Search
+            TextField(
+              onChanged: (v) => setState(() => _search = v),
+              style: const TextStyle(color: GacomColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search state...',
+                hintStyle: const TextStyle(color: GacomColors.textMuted),
+                prefixIcon: const Icon(Icons.search_rounded, color: GacomColors.textMuted, size: 18),
+                filled: true, fillColor: GacomColors.surfaceDark,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: GacomColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: GacomColors.border)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 4),
+          ]),
+        ),
+        const Divider(color: GacomColors.border, height: 1),
+        // Zone list
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
+              : _filtered.isEmpty
+                  ? const Center(child: Text('No states found', style: TextStyle(color: GacomColors.textMuted)))
+                  : ListView.builder(
+                      controller: scroll,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      itemCount: _filtered.length,
+                      itemBuilder: (_, i) => _ZoneTile(
+                        zone: _filtered[i],
+                        onSave: (fee, days) => _saveZone(_filtered[i]['id'] as String, fee, days),
+                      ),
+                    ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _SummaryChip extends StatelessWidget {
+  final String label; final IconData icon; final Color color;
+  const _SummaryChip({required this.label, required this.icon, required this.color});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(50), border: Border.all(color: color.withOpacity(0.25))),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 12, color: color),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(color: color, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)),
+    ]),
+  );
+}
+
+class _ZoneTile extends StatefulWidget {
+  final Map<String, dynamic> zone;
+  final Future<void> Function(double fee, String days) onSave;
+  const _ZoneTile({required this.zone, required this.onSave});
+  @override State<_ZoneTile> createState() => _ZoneTileState();
+}
+
+class _ZoneTileState extends State<_ZoneTile> {
+  bool _editing = false;
+  late TextEditingController _feeCtrl;
+  late TextEditingController _daysCtrl;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _feeCtrl = TextEditingController(text: (widget.zone['fee'] as num).toStringAsFixed(0));
+    _daysCtrl = TextEditingController(text: widget.zone['estimated_days'] as String? ?? '3-5 days');
+  }
+
+  @override
+  void dispose() { _feeCtrl.dispose(); _daysCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final fee = (widget.zone['fee'] as num).toDouble();
+    final state = widget.zone['state_name'] as String;
+    final days = widget.zone['estimated_days'] as String? ?? '3-5 days';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _editing ? GacomColors.deepOrange.withOpacity(0.05) : GacomColors.cardDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _editing ? GacomColors.deepOrange.withOpacity(0.4) : GacomColors.border, width: _editing ? 1.2 : 0.5),
+      ),
+      child: _editing ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Edit mode
+        Row(children: [
+          const Icon(Icons.location_on_rounded, size: 14, color: GacomColors.deepOrange),
+          const SizedBox(width: 6),
+          Text(state, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
+          const Spacer(),
+          GestureDetector(onTap: () => setState(() => _editing = false),
+            child: const Icon(Icons.close_rounded, color: GacomColors.textMuted, size: 18)),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Delivery Fee (₦)', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani')),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _feeCtrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16),
+              decoration: InputDecoration(
+                prefixText: '₦ ',
+                prefixStyle: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700),
+                filled: true, fillColor: GacomColors.surfaceDark,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.border)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+          ])),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Est. Delivery', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani')),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _daysCtrl,
+              style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '3-5 days',
+                hintStyle: const TextStyle(color: GacomColors.textMuted),
+                filled: true, fillColor: GacomColors.surfaceDark,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.border)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.border)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+          ])),
+        ]),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GacomColors.deepOrange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            onPressed: _saving ? null : () async {
+              final fee = double.tryParse(_feeCtrl.text);
+              if (fee == null) return;
+              setState(() => _saving = true);
+              await widget.onSave(fee, _daysCtrl.text.trim());
+              if (mounted) setState(() { _saving = false; _editing = false; });
+            },
+            child: _saving
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('SAVE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white, fontSize: 15, letterSpacing: 1)),
+          ),
+        ),
+      ]) : GestureDetector(
+        onTap: () => setState(() => _editing = true),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(color: GacomColors.surfaceDark, borderRadius: BorderRadius.circular(10)),
+            child: const Center(child: Icon(Icons.location_on_rounded, size: 18, color: GacomColors.textMuted)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(state, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+            Text(days, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+          ])),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('₦${fee.toStringAsFixed(0)}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.deepOrange)),
+            const Text('tap to edit', style: TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+          ]),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right_rounded, color: GacomColors.textMuted, size: 18),
+        ]),
+      ),
+    );
+  }
 }
