@@ -42,46 +42,51 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
   ];
 
   @override
-  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); _checkAdmin(); _load(); }
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    // Run sequentially so _isAdmin is set before the first meaningful paint
+    _checkAdmin().then((_) => _load());
+  }
 
   @override void dispose() { _tab.dispose(); super.dispose(); }
 
   Future<void> _checkAdmin() async {
     final uid = SupabaseService.currentUserId;
     if (uid == null) return;
+
+    // Run both checks in parallel so neither can block the other
     try {
-      final p = await SupabaseService.client
-          .from('profiles')
-          .select('role')
-          .eq('id', uid)
-          .single();
-      final role = p['role'] as String? ?? 'user';
+      final results = await Future.wait([
+        // Check 1: Is user admin/super_admin in profiles?
+        SupabaseService.client
+            .from('profiles')
+            .select('role')
+            .eq('id', uid)
+            .single()
+            .then((p) {
+              final role = p['role'] as String? ?? 'user';
+              return ['admin', 'super_admin'].contains(role);
+            })
+            .catchError((_) => false),
 
-      // Admins and super_admins always have full access
-      if (['admin', 'super_admin'].contains(role)) {
-        if (mounted) setState(() => _isAdmin = true);
-        return;
-      }
+        // Check 2: Is user an inventory_manager in exco_assignments?
+        // This works regardless of what role is set in profiles,
+        // so even if the profile role update lagged, this still grants access.
+        SupabaseService.client
+            .from('exco_assignments')
+            .select('id')
+            .eq('exco_id', uid)
+            .eq('exco_role', 'inventory_manager')
+            .limit(1)
+            .then((rows) => (rows as List).isNotEmpty)
+            .catchError((_) => false),
+      ]);
 
-      // If role is 'exco', check their specific exco assignment
-      if (role == 'exco') {
-        try {
-          final exco = await SupabaseService.client
-              .from('exco_assignments')
-              .select('exco_role')
-              .eq('exco_id', uid)
-              .eq('exco_role', 'inventory_manager')
-              .maybeSingle();
-          if (mounted) setState(() => _isAdmin = exco != null);
-        } catch (_) {
-          // exco_assignments read failed — still grant basic access since role=exco
-          if (mounted) setState(() => _isAdmin = true);
-        }
-        return;
-      }
+      final isAdminRole = results[0] as bool;
+      final isInventoryManager = results[1] as bool;
 
-      // Not an admin or exco — no store management access
-      if (mounted) setState(() => _isAdmin = false);
+      if (mounted) setState(() => _isAdmin = isAdminRole || isInventoryManager);
     } catch (_) {
       if (mounted) setState(() => _isAdmin = false);
     }
