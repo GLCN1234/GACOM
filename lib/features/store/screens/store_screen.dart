@@ -763,8 +763,9 @@ class _DeliveryZonesSheetState extends ConsumerState<_DeliveryZonesSheet> {
                                 fontSize: 18, color: GacomColors.textPrimary)),
                         const SizedBox(height: 8),
                         const Text(
-                          'Add zones manually using the + button above,
-or tap "Seed All" to auto-populate all 37 Nigerian states with a default ₦2,000 fee (you can change each one after).',
+                          'Add zones manually using the + button above, '
+                          'or tap "Seed All" to auto-populate all 37 Nigerian states '
+                          'with a default fee (you can edit each one after).',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: GacomColors.textMuted, fontSize: 13, height: 1.5),
                         ),
