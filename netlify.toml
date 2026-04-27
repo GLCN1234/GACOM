@@ -6,17 +6,13 @@
   FLUTTER_VERSION = "stable"
   PYTHON_VERSION = "3.8"
 
-# ── CORS / COOP / COEP headers ────────────────────────────────────────────────
-# Required for Flutter Web video_player iframe and SharedArrayBuffer.
-# Without these, browser throws ERR_BLOCKED_BY_RESPONSE.NotSameOrigin
 [[headers]]
   for = "/*"
   [headers.values]
-    Cross-Origin-Opener-Policy = "same-origin"
-    Cross-Origin-Embedder-Policy = "require-corp"
-    Cross-Origin-Resource-Policy = "cross-origin"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Embedder-Policy = "unsafe-none"
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization, apikey, x-client-info"
 
 [[redirects]]
