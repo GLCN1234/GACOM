@@ -333,12 +333,6 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
               onTap: () async {
                 Navigator.pop(context);
                 if (!isDemo) {
-                  // Pause any playing video on this post before showing dialog
-                  // prevents Flutter Web renderer crash (blank screen) on delete
-                  if (_playing) {
-                    _ctrl?.pause();
-                    if (mounted) setState(() => _playing = false);
-                  }
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (dialogCtx) => AlertDialog(
