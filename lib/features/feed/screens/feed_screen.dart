@@ -326,11 +326,85 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
               onTap: () async {
                 Navigator.pop(context);
                 if (!isDemo) {
-                  try { await SupabaseService.client.from('posts').update({'is_deleted': true}).eq('id', postId); } catch (_) {}
+                  final confirm = await showDialog<bool>(context: context,
+                    builder: (_) => AlertDialog(backgroundColor: GacomColors.cardDark,
+                      title: const Text('Delete Post', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
+                      content: const Text('This post will be permanently deleted.', style: TextStyle(color: GacomColors.textSecondary)),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(context, true),
+                          child: const Text('DELETE', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
+                      ]));
+                  if (confirm == true) {
+                    try {
+                      await SupabaseService.client.from('posts').update({'is_deleted': true}).eq('id', postId);
+                      // Notify feed to remove this post
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Post deleted'), backgroundColor: GacomColors.success,
+                            behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+                        // Pop back if on post detail
+                        if (context.canPop()) context.pop();
+                      }
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed: $e'), backgroundColor: GacomColors.error, behavior: SnackBarBehavior.floating));
+                    }
+                  }
                 }
               }),
             _OptionTile(icon: Icons.edit_rounded, label: 'Edit Caption', color: GacomColors.textPrimary,
-              onTap: () => Navigator.pop(context)),
+              onTap: () {
+                Navigator.pop(context);
+                if (!isDemo) {
+                  final captionCtrl = TextEditingController(text: post['caption'] as String? ?? '');
+                  showModalBottomSheet(context: context, isScrollControlled: true,
+                    backgroundColor: GacomColors.cardDark,
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                    builder: (ctx) => Padding(
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
+                        const SizedBox(height: 16),
+                        const Align(alignment: Alignment.centerLeft,
+                          child: Text('Edit Caption', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary))),
+                        const SizedBox(height: 14),
+                        TextField(controller: captionCtrl, maxLines: 5, autofocus: true,
+                          style: const TextStyle(color: GacomColors.textPrimary, fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: 'What\'s on your mind?',
+                            hintStyle: const TextStyle(color: GacomColors.textMuted),
+                            filled: true, fillColor: GacomColors.surfaceDark,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.border)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.border)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+                          )),
+                        const SizedBox(height: 16),
+                        SizedBox(width: double.infinity, child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
+                          onPressed: () async {
+                            try {
+                              await SupabaseService.client.from('posts')
+                                .update({'caption': captionCtrl.text.trim()}).eq('id', postId);
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: const Text('Caption updated'), backgroundColor: GacomColors.success,
+                                  behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                content: Text('Failed: $e'), backgroundColor: GacomColors.error, behavior: SnackBarBehavior.floating));
+                            }
+                          },
+                          child: const Text('SAVE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)),
+                        )),
+                      ]),
+                    ));
+                }
+              }),
           ],
           if (!isOwn) ...[
             _OptionTile(icon: Icons.person_remove_outlined, label: 'Unfollow @${author['username'] ?? ''}', color: GacomColors.textPrimary,

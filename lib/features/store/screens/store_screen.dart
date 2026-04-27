@@ -341,12 +341,204 @@ class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
     ]));
     return ListView.builder(padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), itemCount: _listings.length, itemBuilder: (_, i) {
       final p = _listings[i]; final images = (p['images'] as List?)?.cast<String>() ?? [];
-      return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border, width: 0.5)),
-        child: Row(children: [ClipRRect(borderRadius: BorderRadius.circular(10), child: Container(width: 56, height: 56, color: GacomColors.surfaceDark, child: images.isNotEmpty ? CachedNetworkImage(imageUrl: images.first, fit: BoxFit.cover) : const Icon(Icons.inventory_2_rounded, color: GacomColors.textMuted))),
-          const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(p['name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary, fontSize: 14)), Text('₦${(p['price'] as num?)?.toStringAsFixed(0) ?? '0'} · ${p['condition'] ?? 'new'}', style: const TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600))])),
-          _CondBadge((p['is_active'] as bool? ?? true) ? 'active' : 'inactive'),
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border, width: 0.5)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            ClipRRect(borderRadius: BorderRadius.circular(10), child: Container(width: 56, height: 56, color: GacomColors.surfaceDark,
+              child: images.isNotEmpty ? CachedNetworkImage(imageUrl: images.first, fit: BoxFit.cover) : const Icon(Icons.inventory_2_rounded, color: GacomColors.textMuted))),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(p['name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary, fontSize: 14)),
+              Text('₦${(p['price'] as num?)?.toStringAsFixed(0) ?? '0'} · ${p['condition'] ?? 'new'}', style: const TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
+              if ((p['description'] as String?)?.isNotEmpty == true)
+                Text(p['description'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+            ])),
+            _CondBadge((p['is_active'] as bool? ?? true) ? 'active' : 'inactive'),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            // Toggle active/inactive
+            GestureDetector(
+              onTap: () async {
+                final newVal = !(p['is_active'] as bool? ?? true);
+                await SupabaseService.client.from('products').update({'is_active': newVal}).eq('id', p['id']);
+                await _load();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: GacomColors.surfaceDark, borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.border)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon((p['is_active'] as bool? ?? true) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 13, color: GacomColors.textMuted),
+                  const SizedBox(width: 5),
+                  Text((p['is_active'] as bool? ?? true) ? 'Hide' : 'Show', style: const TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                ]),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Edit button
+            GestureDetector(
+              onTap: () => _showEditSheet(context, p),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.info.withOpacity(0.3))),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.edit_rounded, size: 13, color: GacomColors.info),
+                  SizedBox(width: 5),
+                  Text('Edit', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                ]),
+              ),
+            ),
+            const Spacer(),
+            // Delete button
+            GestureDetector(
+              onTap: () async {
+                final confirm = await showDialog<bool>(context: context,
+                  builder: (_) => AlertDialog(backgroundColor: GacomColors.cardDark,
+                    title: const Text('Delete Product', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
+                    content: const Text('This product will be permanently deleted.', style: TextStyle(color: GacomColors.textSecondary)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                      TextButton(onPressed: () => Navigator.pop(context, true),
+                        child: const Text('DELETE', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
+                    ]));
+                if (confirm == true) {
+                  await SupabaseService.client.from('products').delete().eq('id', p['id']);
+                  await _load();
+                  if (context.mounted) GacomSnackbar.show(context, 'Product deleted', isSuccess: true);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: GacomColors.error.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.error.withOpacity(0.3))),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.delete_outline_rounded, size: 13, color: GacomColors.error),
+                  SizedBox(width: 5),
+                  Text('Delete', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                ]),
+              ),
+            ),
+          ]),
         ]));
     });
+  }
+}
+Map<String, dynamic> p) {
+    final nameCtrl = TextEditingController(text: p['name'] as String? ?? '');
+    final descCtrl = TextEditingController(text: p['description'] as String? ?? '');
+    final priceCtrl = TextEditingController(text: (p['price'] as num?)?.toStringAsFixed(0) ?? '');
+    final stockCtrl = TextEditingController(text: '${p['stock'] ?? 1}');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        builder: (_, scroll) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: ListView(controller: scroll, children: [
+            Row(children: [
+              Container(padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.edit_rounded, color: GacomColors.info, size: 20)),
+              const SizedBox(width: 12),
+              const Text('Edit Product', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
+            ]),
+            const SizedBox(height: 20),
+            GacomTextField(controller: nameCtrl, label: 'Product Name *', hint: '', prefixIcon: Icons.inventory_2_rounded),
+            const SizedBox(height: 12),
+            GacomTextField(controller: descCtrl, label: 'Description *', hint: 'Describe the product...', prefixIcon: Icons.description_rounded, maxLines: 3),
+            const SizedBox(height: 12),
+            GacomTextField(controller: priceCtrl, label: 'Price (₦) *', hint: '0', prefixIcon: Icons.attach_money_rounded, keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            GacomTextField(controller: stockCtrl, label: 'Stock Quantity', hint: '1', prefixIcon: Icons.numbers_rounded, keyboardType: TextInputType.number),
+            const SizedBox(height: 24),
+            GacomButton(
+              label: 'SAVE CHANGES',
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty || priceCtrl.text.isEmpty) {
+                  GacomSnackbar.show(ctx, 'Name and price required', isError: true); return;
+                }
+                try {
+                  await SupabaseService.client.from('products').update({
+                    'name': nameCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                    'price': double.tryParse(priceCtrl.text) ?? 0,
+                    'stock': int.tryParse(stockCtrl.text) ?? 1,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  }).eq('id', p['id']);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    GacomSnackbar.show(context, 'Product updated ✅', isSuccess: true);
+                    await _load();
+                  }
+                } catch (e) {
+                  GacomSnackbar.show(ctx, 'Failed: $e', isError: true);
+                }
+              },
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void _showEditSheet(BuildContext context, Map<String, dynamic> p) {
+    final nameCtrl = TextEditingController(text: p['name'] as String? ?? '');
+    final descCtrl = TextEditingController(text: p['description'] as String? ?? '');
+    final priceCtrl = TextEditingController(text: (p['price'] as num?)?.toStringAsFixed(0) ?? '');
+    final stockCtrl = TextEditingController(text: '${p['stock'] ?? 1}');
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false, initialChildSize: 0.85,
+        builder: (_, scroll) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: ListView(controller: scroll, children: [
+            Row(children: [
+              Container(padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.edit_rounded, color: GacomColors.info, size: 20)),
+              const SizedBox(width: 12),
+              const Text('Edit Product', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
+            ]),
+            const SizedBox(height: 20),
+            GacomTextField(controller: nameCtrl, label: 'Product Name', hint: '', prefixIcon: Icons.inventory_2_rounded),
+            const SizedBox(height: 12),
+            GacomTextField(controller: descCtrl, label: 'Description', hint: 'Describe the product in detail...', prefixIcon: Icons.description_rounded, maxLines: 4),
+            const SizedBox(height: 12),
+            GacomTextField(controller: priceCtrl, label: 'Price', hint: '0', prefixIcon: Icons.attach_money_rounded, keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            GacomTextField(controller: stockCtrl, label: 'Stock Quantity', hint: '1', prefixIcon: Icons.numbers_rounded, keyboardType: TextInputType.number),
+            const SizedBox(height: 24),
+            GacomButton(
+              label: 'SAVE CHANGES',
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty || priceCtrl.text.isEmpty) {
+                  GacomSnackbar.show(ctx, 'Name and price required', isError: true); return;
+                }
+                try {
+                  await SupabaseService.client.from('products').update({
+                    'name': nameCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                    'price': double.tryParse(priceCtrl.text) ?? 0,
+                    'stock': int.tryParse(stockCtrl.text) ?? 1,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  }).eq('id', p['id']);
+                  if (ctx.mounted) { Navigator.pop(ctx); GacomSnackbar.show(context, 'Product updated', isSuccess: true); await _load(); }
+                } catch (e) { GacomSnackbar.show(ctx, 'Failed: $e', isError: true); }
+              },
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 }
 
