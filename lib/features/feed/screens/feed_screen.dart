@@ -227,7 +227,13 @@ class _PostListState extends ConsumerState<_PostList> {
       child: ListView.builder(padding: const EdgeInsets.fromLTRB(0, 8, 0, 120), itemCount: _posts.length + (_hasMore ? 1 : 0),
         itemBuilder: (_, i) {
           if (i == _posts.length) { _load(); return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange, strokeWidth: 2))); }
-          return _PostCard(post: _posts[i], isDiscovery: _posts[i]['_is_discovery'] == true)
+          return _PostCard(
+            post: _posts[i],
+            isDiscovery: _posts[i]['_is_discovery'] == true,
+            onDeleted: () {
+              if (mounted) setState(() => _posts.removeWhere((p) => p['id'] == _posts[i]['id']));
+            },
+          )
               .animate(delay: Duration(milliseconds: math.min(i * 60, 240))).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
         }));
   }
@@ -236,7 +242,8 @@ class _PostListState extends ConsumerState<_PostList> {
 // ── Post Card ─────────────────────────────────────────────────────────────────
 class _PostCard extends ConsumerStatefulWidget {
   final Map<String, dynamic> post; final bool isDiscovery;
-  const _PostCard({required this.post, this.isDiscovery = false});
+  final VoidCallback? onDeleted;
+  const _PostCard({required this.post, this.isDiscovery = false, this.onDeleted});
   @override ConsumerState<_PostCard> createState() => _PostCardState();
 }
 
@@ -326,29 +333,59 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
               onTap: () async {
                 Navigator.pop(context);
                 if (!isDemo) {
-                  final confirm = await showDialog<bool>(context: context,
-                    builder: (_) => AlertDialog(backgroundColor: GacomColors.cardDark,
-                      title: const Text('Delete Post', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
-                      content: const Text('This post will be permanently deleted.', style: TextStyle(color: GacomColors.textSecondary)),
+                  // Pause any playing video on this post before showing dialog
+                  // prevents Flutter Web renderer crash (blank screen) on delete
+                  if (_playing) {
+                    _ctrl?.pause();
+                    if (mounted) setState(() => _playing = false);
+                  }
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogCtx) => AlertDialog(
+                      backgroundColor: GacomColors.cardDark,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      title: const Text('Delete Post',
+                          style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
+                      content: const Text('This post will be permanently removed from your feed.',
+                          style: TextStyle(color: GacomColors.textSecondary)),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(context, true),
-                          child: const Text('DELETE', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
-                      ]));
+                        TextButton(
+                          // ✅ FIX: dialogCtx — not the outer context
+                          onPressed: () => Navigator.of(dialogCtx).pop(false),
+                          child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted)),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(dialogCtx).pop(true),
+                          child: const Text('DELETE', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                  );
                   if (confirm == true) {
                     try {
-                      await SupabaseService.client.from('posts').update({'is_deleted': true}).eq('id', postId);
-                      // Notify feed to remove this post
+                      await SupabaseService.client
+                          .from('posts')
+                          .update({'is_deleted': true})
+                          .eq('id', postId);
+                      // ✅ FIX: call onDeleted callback to remove post from list in-place
+                      // NEVER call context.pop() here — it blanks the feed page
+                      widget.onDeleted?.call();
                       if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: const Text('Post deleted'), backgroundColor: GacomColors.success,
-                            behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
-                        // Pop back if on post detail
-                        if (context.canPop()) context.pop();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: const Text('Post deleted'),
+                          backgroundColor: GacomColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ));
                       }
                     } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed: $e'), backgroundColor: GacomColors.error, behavior: SnackBarBehavior.floating));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Failed to delete: $e'),
+                          backgroundColor: GacomColors.error,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                      }
                     }
                   }
                 }
@@ -481,7 +518,9 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
           final isVideo = postType == 'video' || postType == 'clip'
               || url.contains('.mp4') || url.contains('.mov') || url.contains('.webm');
           if (isVideo) {
-            return _InlineVideoPlayer(url: url);
+            // ValueKey ensures Flutter properly disposes the old controller
+            // when this post is removed from the list (prevents blank screen on delete)
+            return _InlineVideoPlayer(key: ValueKey('video_${widget.post['id']}'), url: url);
           }
           // ✅ FIX: AspectRatio 4:3 shows full image — no cropping, no tiny frame
           return AspectRatio(
@@ -634,7 +673,7 @@ class _Shim extends StatelessWidget {
 // Muted by default so it doesn't blast audio when scrolling.
 class _InlineVideoPlayer extends StatefulWidget {
   final String url;
-  const _InlineVideoPlayer({required this.url});
+  const _InlineVideoPlayer({super.key, required this.url});
   @override State<_InlineVideoPlayer> createState() => _InlineVideoPlayerState();
 }
 
@@ -643,6 +682,7 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
   bool _initialized = false;
   bool _playing = false;
   bool _error = false;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -652,30 +692,37 @@ class _InlineVideoPlayerState extends State<_InlineVideoPlayer> {
 
   Future<void> _init() async {
     try {
-      _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-        ..setVolume(0) // muted by default while scrolling
+      final ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+        ..setVolume(0)
         ..setLooping(false);
-      await _ctrl!.initialize();
-      if (mounted) setState(() => _initialized = true);
+      await ctrl.initialize();
+      // Guard against widget being disposed while we were awaiting
+      if (_disposed) { ctrl.dispose(); return; }
+      if (mounted) setState(() { _ctrl = ctrl; _initialized = true; });
     } catch (_) {
-      if (mounted) setState(() => _error = true);
+      if (mounted && !_disposed) setState(() => _error = true);
     }
   }
 
   @override
   void dispose() {
+    _disposed = true;
+    // Pause before disposing to prevent "video element removed while playing"
+    // crash on Flutter Web which causes the blank screen
+    _ctrl?.pause();
     _ctrl?.dispose();
+    _ctrl = null;
     super.dispose();
   }
 
   void _togglePlay() {
-    if (_ctrl == null) return;
+    if (_ctrl == null || !_initialized) return;
     setState(() {
       if (_playing) {
         _ctrl!.pause();
         _playing = false;
       } else {
-        _ctrl!.setVolume(1); // unmute when user actively plays
+        _ctrl!.setVolume(1);
         _ctrl!.play();
         _playing = true;
       }
