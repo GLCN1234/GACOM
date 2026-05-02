@@ -97,7 +97,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     setState(() => _loading = true);
     try {
       final data = await SupabaseService.client.from('products')
-          .select('id, name, description, price, condition, brand, images, tags, is_active, is_featured, rating, stock, category, location, seller:profiles!seller_id(display_name, avatar_url, verification_status)')
+          .select('id, name, description, price, condition, brand, images, tags, is_active, is_featured, rating, stock, category, seller:profiles!seller_id(display_name, avatar_url, verification_status)')
           .eq('is_active', true).order('created_at', ascending: false).limit(60);
       final rows = List<Map<String, dynamic>>.from(data);
       if (mounted) setState(() { _allProducts = rows.isNotEmpty ? rows : List.from(_demoProducts); _loading = false; });
@@ -118,7 +118,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     final condition = product['condition'] as String? ?? 'new';
     final sellerName = product['seller_name'] as String? ?? ((product['seller'] as Map?)?['display_name'] as String?) ?? 'GACOM Store';
     final sellerVerified = product['seller_verified'] as bool? ?? ((product['seller'] as Map?)?['verification_status'] == 'verified');
-    final location = product['location'] as String?;
 
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: GacomColors.cardDark,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -144,7 +143,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
             Expanded(child: Text(sellerName, style: const TextStyle(color: GacomColors.textMuted, fontSize: 13))),
             if (sellerVerified) const Icon(Icons.verified_rounded, size: 13, color: GacomColors.deepOrange),
           ]),
-          if (location != null) ...[const SizedBox(height: 6), Row(children: [const Icon(Icons.location_on_rounded, size: 13, color: GacomColors.textMuted), const SizedBox(width: 4), Text(location, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12))])],
           const SizedBox(height: 16), const Divider(color: GacomColors.border),
           if ((product['brand'] as String?) != null) ...[const SizedBox(height: 8), Row(children: [const Icon(Icons.local_offer_rounded, size: 13, color: GacomColors.textMuted), const SizedBox(width: 6), Text('Brand: ${product['brand']}', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))])],
           const SizedBox(height: 12),
@@ -175,7 +173,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
     final descCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final brandCtrl = TextEditingController();
-    final locationCtrl = TextEditingController();
     final stockCtrl = TextEditingController(text: '1');
     String condition = 'new';
     String category = 'accessories';
@@ -201,7 +198,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
                   final bytes = await file.readAsBytes();
                   final ext = file.name.split('.').last;
                   final path = 'products/${DateTime.now().millisecondsSinceEpoch}.$ext';
-                  final url = await SupabaseService.uploadFile(bucket: AppConstants.productImageBucket, path: path, bytes: bytes, contentType: 'image/jpeg');
+                  final mimeType = ext.toLowerCase() == 'png' ? 'image/png' : ext.toLowerCase() == 'webp' ? 'image/webp' : 'image/jpeg';
+                  final url = await SupabaseService.uploadFile(bucket: AppConstants.productImageBucket, path: path, bytes: bytes, contentType: mimeType);
                   setModal(() { uploadedImageUrls.add(url); uploadingImage = false; });
                 } catch (e) { setModal(() => uploadingImage = false); GacomSnackbar.show(ctx, 'Image upload failed', isError: true); }
               },
@@ -221,8 +219,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
             GacomTextField(controller: priceCtrl, label: 'Price (₦) *', hint: '0', prefixIcon: Icons.attach_money_rounded, keyboardType: TextInputType.number),
             const SizedBox(height: 12),
             GacomTextField(controller: stockCtrl, label: 'Stock Quantity', hint: '1', prefixIcon: Icons.numbers_rounded, keyboardType: TextInputType.number),
-            const SizedBox(height: 12),
-            GacomTextField(controller: locationCtrl, label: 'Location', hint: 'e.g. Lagos, Abuja', prefixIcon: Icons.location_on_rounded),
             const SizedBox(height: 12),
             const SizedBox(height: 4),
 
@@ -248,9 +244,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
               if (nameCtrl.text.trim().isEmpty || priceCtrl.text.isEmpty || descCtrl.text.trim().isEmpty) { GacomSnackbar.show(ctx, 'Name, description and price required', isError: true); return; }
               try {
                 final uid = SupabaseService.currentUserId;
-                final slug = nameCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-') + '-${DateTime.now().millisecondsSinceEpoch}';
                 await SupabaseService.client.from('products').insert({
-                  'name': nameCtrl.text.trim(), 'slug': slug,
+                  'name': nameCtrl.text.trim(),
                   'description': descCtrl.text.trim(),
                   'brand': brandCtrl.text.trim().isEmpty ? null : brandCtrl.text.trim(),
                   'price': double.tryParse(priceCtrl.text) ?? 0,
@@ -258,7 +253,6 @@ class _StoreScreenState extends ConsumerState<StoreScreen> with SingleTickerProv
                   'stock': int.tryParse(stockCtrl.text) ?? 1,
                   'is_active': true, 'images': uploadedImageUrls,
                   'seller_id': uid,
-                  'location': locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
                 });
                 if (ctx.mounted) { Navigator.pop(ctx); GacomSnackbar.show(context, 'Product added to store! 🛍️', isSuccess: true); await _load(); }
               } catch (e) { if (ctx.mounted) GacomSnackbar.show(ctx, 'Failed: ${e.toString()}', isError: true); }
@@ -359,8 +353,9 @@ class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
             _CondBadge((p['is_active'] as bool? ?? true) ? 'active' : 'inactive'),
           ]),
           const SizedBox(height: 10),
-          Row(children: [
-            // Toggle active/inactive
+          // Action buttons — Wrap so they never get pushed off screen
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            // Hide / Show
             GestureDetector(
               onTap: () async {
                 final newVal = !(p['is_active'] as bool? ?? true);
@@ -368,37 +363,35 @@ class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
                 await _load();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(color: GacomColors.surfaceDark, borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.border)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon((p['is_active'] as bool? ?? true) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 13, color: GacomColors.textMuted),
-                  const SizedBox(width: 5),
-                  Text((p['is_active'] as bool? ?? true) ? 'Hide' : 'Show', style: const TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                  Icon((p['is_active'] as bool? ?? true) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 14, color: GacomColors.textMuted),
+                  const SizedBox(width: 6),
+                  Text((p['is_active'] as bool? ?? true) ? 'Hide' : 'Show', style: const TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13)),
                 ]),
               ),
             ),
-            const SizedBox(width: 8),
-            // Edit button
+            // Edit
             GestureDetector(
               onTap: () => _showEditSheet(context, p),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.info.withOpacity(0.3))),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: GacomColors.info.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.info.withOpacity(0.4))),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.edit_rounded, size: 13, color: GacomColors.info),
-                  SizedBox(width: 5),
-                  Text('Edit', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                  Icon(Icons.edit_rounded, size: 14, color: GacomColors.info),
+                  SizedBox(width: 6),
+                  Text('Edit', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13)),
                 ]),
               ),
             ),
-            const Spacer(),
-            // Delete button
+            // Delete — always visible, red, can't be missed
             GestureDetector(
               onTap: () async {
                 final confirm = await showDialog<bool>(context: context,
                   builder: (_) => AlertDialog(backgroundColor: GacomColors.cardDark,
                     title: const Text('Delete Product', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
-                    content: const Text('This product will be permanently deleted.', style: TextStyle(color: GacomColors.textSecondary)),
+                    content: Text('Delete "${p['name']}"? This cannot be undone.', style: const TextStyle(color: GacomColors.textSecondary)),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
                       TextButton(onPressed: () => Navigator.pop(context, true),
@@ -411,12 +404,15 @@ class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: GacomColors.error.withOpacity(0.08), borderRadius: BorderRadius.circular(8), border: Border.all(color: GacomColors.error.withOpacity(0.3))),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [GacomColors.error.withOpacity(0.9), GacomColors.error]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.delete_outline_rounded, size: 13, color: GacomColors.error),
-                  SizedBox(width: 5),
-                  Text('Delete', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+                  Icon(Icons.delete_rounded, size: 14, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text('DELETE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
                 ]),
               ),
             ),
@@ -489,7 +485,7 @@ class _ProductCard extends StatelessWidget {
     final sellerName = product['seller_name'] as String? ?? ((product['seller'] as Map?)?['display_name'] as String?) ?? 'GACOM Store';
     return GestureDetector(onTap: onTap, child: Container(decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(18), border: Border.all(color: GacomColors.border, width: 0.6)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(18)), child: AspectRatio(aspectRatio: 1, child: images.isNotEmpty ? CachedNetworkImage(imageUrl: images.first, fit: BoxFit.cover, errorWidget: (_, __, ___) => _PlaceholderImg(condition: condition)) : _PlaceholderImg(condition: condition))),
+        ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(18)), child: AspectRatio(aspectRatio: 1, child: images.isNotEmpty ? CachedNetworkImage(imageUrl: images.first, fit: BoxFit.cover, fadeInDuration: const Duration(milliseconds: 200), errorWidget: (_, __, ___) => _PlaceholderImg(condition: condition), placeholder: (_, __) => Container(color: GacomColors.surfaceDark, child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: GacomColors.deepOrange))))) : _PlaceholderImg(condition: condition))),
         Padding(padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(product['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 4),
