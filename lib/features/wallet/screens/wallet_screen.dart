@@ -168,7 +168,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   if (_transactions.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(32),
-                      decoration: GacomDecorations.glassCard(radius: 16),
+                      decoration: GacomDecorations.glassCard(context, radius: 16),
                       child: const Column(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.receipt_long_rounded, size: 48, color: GacomColors.border),
                         SizedBox(height: 12),
@@ -381,7 +381,7 @@ class _TransactionItem extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: GacomDecorations.glassCard(radius: 14),
+      decoration: GacomDecorations.glassCard(context, radius: 14),
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(10),

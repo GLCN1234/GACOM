@@ -215,7 +215,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildProfileCard(String email) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: GacomDecorations.neonCard(radius: 20),
+      decoration: GacomDecorations.neonCard(context, radius: 20),
       child: Row(children: [
         Container(
           width: 52,
@@ -928,7 +928,7 @@ class _HelpCenterScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: GacomDecorations.neonCard(radius: 20),
+            decoration: GacomDecorations.neonCard(context, radius: 20),
             child: const Column(children: [
               Icon(Icons.help_outline_rounded,
                   color: GacomColors.deepOrange, size: 40),

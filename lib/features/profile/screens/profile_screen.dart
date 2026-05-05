@@ -395,7 +395,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 // Stats bar
                 Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: GacomDecorations.glassCard(radius: 16),
+                  decoration: GacomDecorations.glassCard(context, radius: 16),
                   child: Row(children: [
                     _Stat('${p['posts_count'] ?? 0}', 'Posts'),
                     _StatDiv(),
@@ -530,7 +530,7 @@ class _Block extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
-    decoration: GacomDecorations.glassCard(radius: 16),
+    decoration: GacomDecorations.glassCard(context, radius: 16),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(title, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
       const SizedBox(height: 12),
