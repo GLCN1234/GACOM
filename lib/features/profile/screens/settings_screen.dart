@@ -53,7 +53,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
 
     return Scaffold(
-      backgroundColor: GacomColors.obsidian,
+      backgroundColor: GacomColors.bg(context),
       appBar: AppBar(title: const Text('SETTINGS')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
@@ -921,7 +921,7 @@ class _HelpCenterScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: GacomColors.obsidian,
+      backgroundColor: GacomColors.bg(context),
       appBar: AppBar(title: const Text('HELP CENTER')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -1017,7 +1017,7 @@ class _PrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GacomColors.obsidian,
+      backgroundColor: GacomColors.bg(context),
       appBar: AppBar(title: const Text('PRIVACY POLICY')),
       body: ListView(
         padding: const EdgeInsets.all(20),
