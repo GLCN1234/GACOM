@@ -221,25 +221,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         // orders table not yet created — skip silently, payment still proceeds
       }
 
-      // 2 — Launch Paystack hosted checkout
-      final paystackUrl = Uri.parse(
-        'https://paystack.com/pay/${AppConstants.paystackPublicKey}'
-        '?email=${Uri.encodeComponent(email)}'
-        '&amount=${(_total * 100).round()}'
-        '&reference=$reference'
-        '&callback_url=https://gacom.netlify.app/store',
+      // 2 — Launch Paystack via Edge Function
+      final launched = await PaystackService.initializeAndPay(
+        context: context,
+        amountNaira: _total,
+        reference: reference,
+        callbackUrl: 'https://gacom.netlify.app/store',
       );
-
-      if (await canLaunchUrl(paystackUrl)) {
-        await launchUrl(paystackUrl, mode: LaunchMode.externalApplication);
-        // 3 — Clear cart after launching payment
+      if (launched != null && mounted) {
         await _clearCart();
-        if (mounted) {
-          GacomSnackbar.show(context, 'Complete payment in Paystack. Your order is saved!', isSuccess: true);
-          await _loadCart();
-        }
-      } else {
-        GacomSnackbar.show(context, 'Could not open Paystack. Try again.', isError: true);
+        GacomSnackbar.show(context, 'Complete payment in Paystack!', isSuccess: true);
+        await _loadCart();
       }
     } catch (e) {
       if (mounted) GacomSnackbar.show(context, 'Order failed: $e', isError: true);
