@@ -28,15 +28,15 @@ class GacomColors {
   static const textMuted     = Color(0xFF444444);
 
   // ── Light palette ─────────────────────────────────────────────────────────
-  static const lightBg        = Color(0xFFF2F4F7);   // main scaffold
+  static const lightBg        = Color(0xFFEEF1F5);   // main scaffold
   static const lightSurface   = Color(0xFFFFFFFF);   // cards / sheet bg
   static const lightCard      = Color(0xFFFFFFFF);   // card interiors
   static const lightElevated  = Color(0xFFF7F8FA);   // slightly raised
   static const lightBorder    = Color(0xFFE2E5EA);   // dividers / strokes
   static const lightBorderBt  = Color(0xFFCDD2DA);   // stronger border
   static const lightTextPrim  = Color(0xFF0F1117);   // headings
-  static const lightTextSec   = Color(0xFF4A5568);   // body
-  static const lightTextMuted = Color(0xFF94A3B8);   // hints / labels
+  static const lightTextSec   = Color(0xFF2D3748);   // body — darkened for readability
+  static const lightTextMuted = Color(0xFF64748B);   // hints — darkened for contrast
 
   // ── Semantic status (same both) ────────────────────────────────────────────
   static const success = Color(0xFF00D68F);
@@ -317,9 +317,9 @@ class GacomTheme {
         headlineMedium:const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: GacomColors.lightTextPrim),
         titleLarge:    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: GacomColors.lightTextPrim),
         titleMedium:   const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: GacomColors.lightTextPrim),
-        bodyLarge:     const TextStyle(fontSize: 15, color: GacomColors.lightTextSec),
-        bodyMedium:    const TextStyle(fontSize: 13, color: GacomColors.lightTextSec),
-        bodySmall:     const TextStyle(fontSize: 11, color: GacomColors.lightTextMuted),
+        bodyLarge:     const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: GacomColors.lightTextSec),
+        bodyMedium:    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: GacomColors.lightTextSec),
+        bodySmall:     const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: GacomColors.lightTextMuted),
         labelLarge:    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: GacomColors.lightTextPrim, letterSpacing: 1.2),
       )),
       appBarTheme: AppBarTheme(

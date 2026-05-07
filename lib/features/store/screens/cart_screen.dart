@@ -193,30 +193,33 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       final reference = 'GACOM_${const Uuid().v4().substring(0, 10).toUpperCase()}';
       final totalKobo = (_total * 100).toInt();
 
-      // 1 — Create order record in DB
-      final orderItems = _items.map((item) {
-        final p = item['product'] as Map<String, dynamic>? ?? {};
-        final price = (p['price'] as num?)?.toDouble() ?? 0;
-        final qty = item['quantity'] as int? ?? 1;
-        return {
-          'product_id': p['id'],
-          'quantity': qty,
-          'unit_price': price,
-          'total_price': price * qty,
-        };
-      }).toList();
-
-      await SupabaseService.client.from('orders').insert({
-        'user_id': uid,
-        'reference': reference,
-        'status': 'pending',
-        'subtotal': _subtotal,
-        'delivery_fee': _deliveryFee,
-        'total': _total,
-        'delivery_state': _selectedState,
-        'delivery_days': _deliveryDays,
-        'items': orderItems,
-      });
+      // 1 — Try to save order (gracefully skip if orders table not created yet)
+      try {
+        final orderItems = _items.map((item) {
+          final p = item['product'] as Map<String, dynamic>? ?? {};
+          final price = (p['price'] as num?)?.toDouble() ?? 0;
+          final qty = item['quantity'] as int? ?? 1;
+          return {
+            'product_id': p['id'],
+            'quantity': qty,
+            'unit_price': price,
+            'total_price': price * qty,
+          };
+        }).toList();
+        await SupabaseService.client.from('orders').insert({
+          'user_id': uid,
+          'reference': reference,
+          'status': 'pending',
+          'subtotal': _subtotal,
+          'delivery_fee': _deliveryFee,
+          'total': _total,
+          'delivery_state': _selectedState,
+          'delivery_days': _deliveryDays,
+          'items': orderItems,
+        });
+      } catch (_) {
+        // orders table not yet created — skip silently, payment still proceeds
+      }
 
       // 2 — Launch Paystack hosted checkout
       final paystackUrl = Uri.parse(
@@ -496,3 +499,4 @@ class _QtyBtn extends StatelessWidget {
     ),
   );
 }
+

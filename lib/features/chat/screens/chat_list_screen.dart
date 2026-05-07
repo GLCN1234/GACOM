@@ -277,7 +277,7 @@ class _ChatTile extends StatelessWidget {
     final lastAt = DateTime.tryParse(chat['last_message_at'] ?? '') ?? DateTime.now();
     final other = chat['_other_user'] as Map<String, dynamic>?;
     // ✅ FIX: fallback chain ensures name never shows 'User' if profile loaded
-    final name = isGroup ? (chat['name'] ?? 'Group Chat') : (other?['display_name'] ?? other?['username'] ?? 'User');
+    final name = isGroup ? (chat['name'] ?? 'Group Chat') : (other?['username'] as String? ?? other?['display_name'] as String? ?? 'Unknown');
     final avatar = isGroup ? chat['icon_url'] : other?['avatar_url'];
     final isOnline = other?['is_online'] == true;
     final isVerified = other?['verification_status'] == 'verified';

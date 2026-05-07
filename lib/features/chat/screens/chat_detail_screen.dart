@@ -263,7 +263,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
     final isGroup = _chat?['type'] == 'group';
     final name = isGroup
         ? (_chat?['name'] ?? 'Group')
-        : (_otherUser?['display_name'] ?? 'Chat');
+        : (_otherUser?['username'] as String? ?? _otherUser?['display_name'] as String? ?? 'Chat');
     final String? chatIcon = _chat?['icon_url'] as String?;
     final String? userAvatar = _otherUser?['avatar_url'] as String?;
     final String? avatar = isGroup ? chatIcon : userAvatar;
@@ -592,7 +592,7 @@ class _MessageBubble extends StatelessWidget {
                   : null,
               child: sender['avatar_url'] == null
                   ? Text(
-                      (sender['display_name'] ?? 'G')[0],
+                      (sender['username'] ?? sender['display_name'] ?? 'G')[0],
                       style: const TextStyle(
                           fontSize: 11,
                           color: GacomColors.textPrimary,
@@ -612,7 +612,7 @@ class _MessageBubble extends StatelessWidget {
                 if (!isMe && (message['chat_type'] == 'group'))
                   Padding(
                     padding: const EdgeInsets.only(left: 4, bottom: 3),
-                    child: Text(sender['display_name'] ?? '',
+                    child: Text(sender['username'] ?? sender['display_name'] ?? '',
                         style: const TextStyle(
                             color: GacomColors.deepOrange,
                             fontSize: 11,
