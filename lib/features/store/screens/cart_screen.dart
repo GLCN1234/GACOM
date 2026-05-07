@@ -225,7 +225,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       final paystackUrl = Uri.parse(
         'https://paystack.com/pay/${AppConstants.paystackPublicKey}'
         '?email=${Uri.encodeComponent(email)}'
-        '&amount=$totalKobo'
+        '&amount=${(_total * 100).round()}'
         '&reference=$reference'
         '&callback_url=https://gacom.netlify.app/store',
       );
