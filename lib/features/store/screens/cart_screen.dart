@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/paystack_service.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -191,7 +192,6 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     try {
       final reference = 'GACOM_${const Uuid().v4().substring(0, 10).toUpperCase()}';
-      final totalKobo = (_total * 100).toInt();
 
       // 1 — Try to save order (gracefully skip if orders table not created yet)
       try {

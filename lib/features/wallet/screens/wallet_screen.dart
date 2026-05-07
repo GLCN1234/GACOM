@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/paystack_service.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -58,22 +59,17 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   /// The public key goes in the URL — NOT as a Bearer authorization header
   /// (which requires the SECRET key and causes the ERR_CONNECTION_TIMED_OUT).
   Future<void> _initiatePaystack(double amount, BuildContext sheetCtx) async {
-    final userEmail = SupabaseService.currentUser?.email ?? '';
-    final reference = 'GAC_${const Uuid().v4().substring(0, 8).toUpperCase()}';
-    final amountKobo = (amount * 100).toInt();
-
-    // Paystack inline/hosted checkout — works from web without CORS issues
-    final url = Uri.parse(
-      'https://paystack.com/pay/${AppConstants.paystackPublicKey}'
-      '?email=${Uri.encodeComponent(userEmail)}'
-      '&amount=$amountKobo'
-      '&reference=$reference'
-      '&callback_url=https://gacom.netlify.app/wallet',
-    );
+    final reference = 'GAC_\${const Uuid().v4().substring(0, 8).toUpperCase()}';
 
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      final launched = await PaystackService.initializeAndPay(
+        context: context,
+        amountNaira: amount,
+        reference: reference,
+        callbackUrl: 'https://gacom.netlify.app/wallet',
+      );
+
+      if (launched != null) {
         // Record pending transaction
         await SupabaseService.client.from('wallet_transactions').insert({
           'user_id': SupabaseService.currentUserId,
@@ -84,10 +80,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           'description': 'Wallet funding via Paystack',
         });
         if (mounted) await _loadData();
-      } else {
-        if (mounted) {
-          GacomSnackbar.show(context, 'Could not open payment page', isError: true);
-        }
       }
     } catch (e) {
       if (mounted) {
