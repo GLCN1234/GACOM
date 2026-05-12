@@ -45,6 +45,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     _Tab(icon: Icons.add_rounded,     label: '',          route: AppConstants.createPostRoute, isFab: true),
     _Tab(icon: Icons.chat_rounded,    label: 'Chat',      route: AppConstants.chatRoute),
     _Tab(icon: Icons.groups_rounded,  label: 'Community', route: AppConstants.communityRoute),
+    _Tab(icon: Icons.sports_esports_rounded, label: 'Arena', route: AppConstants.arenaRoute),
     _Tab(icon: Icons.person_rounded,  label: 'Profile',   route: '', isProfile: true),
   ];
 

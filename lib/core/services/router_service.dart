@@ -35,6 +35,8 @@ import '../../features/ads/screens/ads_screen.dart';
 import '../../features/support/screens/support_chat_screen.dart';
 import '../../features/support/screens/agent_chat_screen.dart';
 import '../../features/exco/screens/exco_dashboard_screen.dart';
+import '../../features/arena/screens/arena_screen.dart';
+import '../../features/arena/screens/match_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -153,6 +155,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppConstants.agentChatRoute, builder: (_, __) => const AgentChatScreen()),
           GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
           GoRoute(path: '/exco-dashboard', builder: (_, __) => const ExcoDashboardScreen()),
+          GoRoute(
+            path: AppConstants.arenaRoute,
+            builder: (_, __) => const ArenaScreen(),
+            routes: [
+              GoRoute(
+                path: 'match/:id',
+                builder: (_, s) => MatchScreen(matchId: s.pathParameters['id']!),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(path: AppConstants.adminRoute, builder: (_, __) => const AdminDashboardScreen()),

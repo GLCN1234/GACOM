@@ -75,6 +75,8 @@ class AppConstants {
   static const adsRoute = '/ads';
   static const supportRoute = '/support';
   static const agentChatRoute = '/agent-chat';
+  static const arenaRoute = '/arena';
+  static const arenaMatchRoute = '/arena/match';
 }
 
 class UserRole {

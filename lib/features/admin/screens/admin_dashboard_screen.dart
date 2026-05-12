@@ -9,6 +9,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
+import '../../arena/screens/arena_admin_section.dart';
 
 // Permission + Role enums
 class AdminPermission {
@@ -38,8 +39,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _loading = true;
   String? _userRole;
 
-  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles'];
-  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded];
+  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena'];
+  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded];
 
   @override
   void initState() { super.initState(); _checkAccess(); _loadStats(); }
@@ -101,6 +102,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       case 4: return const _BlogAdminSection();
       case 6: return const _VerificationSection();
       case 7: return const _ExcoSection();
+      case 8: return const ArenaAdminSection();
       default: return Center(child: Text(_sections[_selectedSection], style: const TextStyle(color: GacomColors.textMuted, fontSize: 20)));
     }
   }
