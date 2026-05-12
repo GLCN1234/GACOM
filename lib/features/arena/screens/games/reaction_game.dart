@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/supabase_service.dart';
-import '../services/arena_service.dart';
+import '../../services/arena_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REACTION TAP GAME

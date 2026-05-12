@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../services/arena_service.dart';
-import '../widgets/arena_widgets.dart';
+
 import 'match_screen.dart';
 
 class ArenaScreen extends ConsumerStatefulWidget {

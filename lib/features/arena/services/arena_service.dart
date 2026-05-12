@@ -101,7 +101,7 @@ class ArenaService {
   }
 
   static Future<void> updateGameState(String matchId, Map<String, dynamic> state, {String? nextTurn}) async {
-    final update = {'game_state': state};
+    final Map<String, dynamic> update = <String, dynamic>{'game_state': state};
     if (nextTurn != null) update['current_turn'] = nextTurn;
     await _db.from('arena_matches').update(update).eq('id', matchId);
   }
