@@ -89,7 +89,7 @@ class _RpsGameState extends State<RpsGame> {
     _moveNumber++;
 
     final state = widget.match['game_state'] as Map? ?? {};
-    final newState = {...state, _isCreator ? 'creator_pick' : 'opponent_pick': choice};
+    final Map<String, dynamic> newState = <String, dynamic>{...state, _isCreator ? 'creator_pick' : 'opponent_pick': choice};
     await ArenaService.updateGameState(widget.match['id'], newState);
     await ArenaService.submitMove(widget.match['id'], {'round': _round, 'pick': choice}, _moveNumber);
   }
