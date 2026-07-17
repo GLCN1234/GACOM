@@ -26,11 +26,11 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
   bool _creating = false;
 
   final _games = [
-    {'id': 'chess', 'name': 'Chess', 'icon': '♟️', 'meta': 'Pure strategy', 'tag': 'HOT', 'bg': const Color(0xFFFAECE7)},
-    {'id': 'tictactoe', 'name': 'Tic-Tac-Toe', 'icon': '✖️', 'meta': '3 min avg', 'tag': 'LIVE', 'bg': const Color(0xFFE1F5EE)},
-    {'id': 'rps', 'name': 'RPS Battle', 'icon': '🪨', 'meta': 'Best of 5', 'tag': '', 'bg': const Color(0xFFE6F1FB)},
-    {'id': 'trivia', 'name': 'Trivia', 'icon': '🧠', 'meta': '10 questions', 'tag': 'NEW', 'bg': const Color(0xFFEEEDFE)},
-    {'id': 'reaction', 'name': 'Reaction', 'icon': '⚡', 'meta': 'Tap fastest', 'tag': '', 'bg': const Color(0xFFEAF3DE)},
+    {'id': 'chess', 'name': 'Chess', 'icon': '♟️', 'meta': 'Pure strategy', 'tag': 'HOT', 'bg': GacomColors.deepOrange.withOpacity(0.14)},
+    {'id': 'tictactoe', 'name': 'Tic-Tac-Toe', 'icon': '✖️', 'meta': '3 min avg', 'tag': 'LIVE', 'bg': GacomColors.accentCyan.withOpacity(0.14)},
+    {'id': 'rps', 'name': 'RPS Battle', 'icon': '🪨', 'meta': 'Best of 5', 'tag': '', 'bg': GacomColors.deepOrange.withOpacity(0.14)},
+    {'id': 'trivia', 'name': 'Trivia', 'icon': '🧠', 'meta': '10 questions', 'tag': 'NEW', 'bg': GacomColors.accentCyan.withOpacity(0.14)},
+    {'id': 'reaction', 'name': 'Reaction', 'icon': '⚡', 'meta': 'Tap fastest', 'tag': '', 'bg': GacomColors.deepOrange.withOpacity(0.14)},
   ];
 
   final _stakes = [200, 500, 1000, 2000, 5000];
@@ -186,11 +186,11 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
         // Skill badge
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(color: const Color(0xFFE1F5EE), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.14), borderRadius: BorderRadius.circular(20)),
           child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.verified_rounded, size: 13, color: Color(0xFF085041)),
+            Icon(Icons.verified_rounded, size: 13, color: GacomColors.success),
             SizedBox(width: 6),
-            Text('100% Skill Competition — No Gambling', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF085041))),
+            Text('100% Skill Competition — No Gambling', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: GacomColors.success)),
           ]),
         ),
         const SizedBox(height: 20),

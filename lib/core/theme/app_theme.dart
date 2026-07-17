@@ -6,26 +6,27 @@ import 'package:google_fonts/google_fonts.dart';
 // GACOM Color System
 // ─────────────────────────────────────────────────────────────────────────────
 class GacomColors {
-  // ── Brand (same in both themes) ───────────────────────────────────────────
-  static const deepOrange   = Color(0xFFE84B00);
-  static const burnOrange   = Color(0xFFFF5A1F);
-  static const darkOrange   = Color(0xFFB83800);
-  static const glowOrange   = Color(0xFFFF7A3D);
-  static const softOrange   = Color(0xFFFF6B35);
+  // ── Brand (GACOM design system — same in both themes) ─────────────────────
+  static const deepOrange   = Color(0xFFF8A400);   // primary
+  static const burnOrange   = Color(0xFFF8A833);   // secondary
+  static const darkOrange   = Color(0xFFC98600);   // pressed/darker state
+  static const glowOrange   = Color(0xFFFFC24D);
+  static const softOrange   = Color(0xFFF8A400);
+  static const accentCyan   = Color(0xFF00E5FF);   // accent
 
   // ── Dark palette ──────────────────────────────────────────────────────────
-  static const obsidian     = Color(0xFF080808);
-  static const darkVoid     = Color(0xFF0C0C0C);
-  static const surfaceDark  = Color(0xFF111111);
-  static const cardDark     = Color(0xFF161616);
-  static const elevatedCard = Color(0xFF1C1C1C);
-  static const border       = Color(0xFF242424);
-  static const borderBright = Color(0xFF2E2E2E);
-  static const borderOrange = Color(0x40E84B00);
+  static const obsidian     = Color(0xFF0B0B0F);   // dark 1
+  static const darkVoid     = Color(0xFF0B0B0F);
+  static const surfaceDark  = Color(0xFF121218);   // dark 2
+  static const cardDark     = Color(0xFF121218);
+  static const elevatedCard = Color(0xFF1A1A22);   // dark 3
+  static const border       = Color(0xFF232330);
+  static const borderBright = Color(0xFF2D2D3C);
+  static const borderOrange = Color(0x40F8A400);
 
-  static const textPrimary   = Color(0xFFF0F0F0);
-  static const textSecondary = Color(0xFF888888);
-  static const textMuted     = Color(0xFF444444);
+  static const textPrimary   = Color(0xFFF5F5F7);
+  static const textSecondary = Color(0xFF9A9AA6);
+  static const textMuted     = Color(0xFF5C5C68);
 
   // ── Light palette ─────────────────────────────────────────────────────────
   static const lightBg        = Color(0xFFEEF1F5);   // main scaffold

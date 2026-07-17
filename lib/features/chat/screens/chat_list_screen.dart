@@ -16,13 +16,25 @@ class ChatListScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends ConsumerState<ChatListScreen> {
+class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _chats = [];
   List<Map<String, dynamic>> _activeUsers = [];
   bool _loading = true;
+  late TabController _filterTab;
+
+  List<Map<String, dynamic>> get _visibleChats {
+    switch (_filterTab.index) {
+      case 1: return _chats.where((c) => ((c['unread_count'] as int?) ?? 0) > 0).toList();
+      case 2: return _chats.where((c) => c['type'] == 'group').toList();
+      default: return _chats;
+    }
+  }
 
   @override
-  void initState() { super.initState(); _load(); }
+  void initState() { super.initState(); _filterTab = TabController(length: 3, vsync: this)..addListener(() => setState(() {})); _load(); }
+
+  @override
+  void dispose() { _filterTab.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     final userId = SupabaseService.currentUserId;
@@ -230,12 +242,30 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           },
         )),
 
-        // Chats label
-        Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 4), child: Row(children: [
-          const Text('Chats', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 16, fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
-          const Spacer(),
-          const Icon(Icons.more_horiz_rounded, color: GacomColors.textMuted, size: 20),
-        ])),
+        // Search bar
+        Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), child: GestureDetector(
+          onTap: () => context.go('/search'),
+          child: Container(height: 44,
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 0.7)),
+            child: const Row(children: [SizedBox(width: 16), Icon(Icons.search_rounded, color: GacomColors.textMuted, size: 18), SizedBox(width: 10), Text('Search messages...', style: TextStyle(color: GacomColors.textMuted, fontSize: 13, fontFamily: 'Rajdhani'))])))),
+
+        // All / Unread / Groups tabs
+        Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), child: TabBar(
+          controller: _filterTab,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          indicatorColor: GacomColors.deepOrange,
+          indicatorSize: TabBarIndicatorSize.label,
+          labelColor: GacomColors.deepOrange,
+          unselectedLabelColor: GacomColors.textMuted,
+          labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13),
+          tabs: [
+            const Tab(text: 'All'),
+            Tab(text: 'Unread${_chats.where((c) => ((c['unread_count'] as int?) ?? 0) > 0).isNotEmpty ? ' (${_chats.where((c) => ((c['unread_count'] as int?) ?? 0) > 0).length})' : ''}'),
+            const Tab(text: 'Groups'),
+          ],
+        )),
 
         // Chat list
         Expanded(child: _loading
@@ -245,9 +275,11 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             : RefreshIndicator(
                 color: GacomColors.deepOrange, backgroundColor: GacomColors.cardDark,
                 onRefresh: () async { setState(() => _loading = true); await _load(); },
-                child: ListView.builder(
-                  itemCount: _chats.length,
-                  itemBuilder: (_, i) => _ChatTile(chat: _chats[i], onTap: () => context.go('/chat/${_chats[i]['id']}')).animate(delay: (i * 35).ms).fadeIn()))),
+                child: _visibleChats.isEmpty
+                  ? Center(child: Text('Nothing here yet', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontSize: 14)))
+                  : ListView.builder(
+                      itemCount: _visibleChats.length,
+                      itemBuilder: (_, i) => _ChatTile(chat: _visibleChats[i], onTap: () => context.go('/chat/${_visibleChats[i]['id']}')).animate(delay: (i * 35).ms).fadeIn()))),
       ])),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showNewChatSheet,

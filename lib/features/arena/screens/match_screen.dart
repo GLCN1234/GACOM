@@ -313,18 +313,18 @@ class _VoiceBar extends StatelessWidget {
             border: Border.all(color: enabled ? const Color(0xFF1D9E75) : GacomColors.borderColor(context)),
           ),
           child: Row(children: [
-            Icon(enabled ? Icons.mic_rounded : Icons.mic_off_rounded, size: 16, color: enabled ? const Color(0xFF0F6E56) : GacomColors.txtMuted(context)),
+            Icon(enabled ? Icons.mic_rounded : Icons.mic_off_rounded, size: 16, color: enabled ? GacomColors.success : GacomColors.txtMuted(context)),
             const SizedBox(width: 6),
-            Text(enabled ? 'Voice ON' : 'Join Voice', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: enabled ? const Color(0xFF0F6E56) : GacomColors.txtMuted(context))),
+            Text(enabled ? 'Voice ON' : 'Join Voice', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: enabled ? GacomColors.success : GacomColors.txtMuted(context))),
           ]),
         ),
       ),
       const SizedBox(width: 10),
       if (enabled) ...[
         if (opponentSpeaking) Row(children: [
-          Container(width: 7, height: 7, decoration: const BoxDecoration(color: Color(0xFF1D9E75), shape: BoxShape.circle)),
+          Container(width: 7, height: 7, decoration: const BoxDecoration(color: GacomColors.success, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Text('$opponentName is speaking...', style: const TextStyle(fontSize: 11, color: Color(0xFF0F6E56))),
+          Text('$opponentName is speaking...', style: const TextStyle(fontSize: 11, color: GacomColors.success)),
         ]) else Text('Voice connected', style: TextStyle(fontSize: 11, color: GacomColors.txtMuted(context))),
         const Spacer(),
         GestureDetector(

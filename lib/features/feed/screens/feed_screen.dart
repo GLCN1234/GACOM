@@ -70,13 +70,13 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
   Map<String, dynamic>? _myProfile;
 
   @override
-  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); _loadProfile(); }
+  void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProfile(); }
 
   Future<void> _loadProfile() async {
     final uid = SupabaseService.currentUserId;
     if (uid == null) return;
     try {
-      final p = await SupabaseService.client.from('profiles').select('display_name, avatar_url').eq('id', uid).single();
+      final p = await SupabaseService.client.from('profiles').select('display_name, avatar_url, wallet_balance').eq('id', uid).single();
       if (mounted) setState(() => _myProfile = p);
     } catch (_) {}
   }
@@ -89,19 +89,22 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final name = _myProfile?['display_name'] ?? 'Gamer';
+    final coins = _myProfile?['wallet_balance'] as int? ?? 0;
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(pinned: false, floating: true, snap: true, backgroundColor: Colors.transparent, elevation: 0, expandedHeight: 160,
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
-              background: _Header(greeting: _greeting, name: name, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
-          SliverToBoxAdapter(child: _TrendingStrip(tags: _demoTrending)),
-          SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, tabs: const [Tab(text: 'FOR YOU'), Tab(text: 'FOLLOWING')]))),
+              background: _Header(greeting: _greeting, name: name, coins: coins, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
+          SliverToBoxAdapter(child: _QuickAccessStrip(onCreate: () => context.go(AppConstants.createPostRoute))),
+          SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute))),
+          SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, isScrollable: false, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8), tabs: const [Tab(text: 'FOR YOU'), Tab(text: 'FOLLOWING'), Tab(text: 'TRENDING')]))),
         ],
         body: TabBarView(controller: _tab, children: [
           _PostList(key: const ValueKey('fy'), isFollowing: false),
           _PostList(key: const ValueKey('fl'), isFollowing: true),
+          _PostList(key: const ValueKey('tr'), isFollowing: false),
         ]),
       ),
     );
@@ -109,8 +112,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
 }
 
 class _Header extends StatelessWidget {
-  final String greeting, name; final String? avatarUrl; final VoidCallback onSearch, onNotifs;
-  const _Header({required this.greeting, required this.name, required this.avatarUrl, required this.onSearch, required this.onNotifs});
+  final String greeting, name; final int coins; final String? avatarUrl; final VoidCallback onSearch, onNotifs;
+  const _Header({required this.greeting, required this.name, required this.coins, required this.avatarUrl, required this.onSearch, required this.onNotifs});
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -126,6 +129,14 @@ class _Header extends StatelessWidget {
             Text(greeting, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 0.5)),
             Text(name, style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3)),
           ])),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 0.7)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.monetization_on_rounded, color: GacomColors.deepOrange, size: 15),
+              const SizedBox(width: 4),
+              Text('$coins', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13)),
+            ])),
+          const SizedBox(width: 8),
           _HeaderBtn(icon: Icons.search_rounded, onTap: onSearch), const SizedBox(width: 8), _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: true),
         ]),
         const SizedBox(height: 16),
@@ -135,6 +146,83 @@ class _Header extends StatelessWidget {
       ]),
     );
   }
+}
+
+// ── Quick access row: Create + jump-into communities ────────────────────────
+class _QuickAccessStrip extends StatelessWidget {
+  final VoidCallback onCreate;
+  const _QuickAccessStrip({required this.onCreate});
+  static const _items = [
+    {'label': 'PUBG Nigeria', 'icon': Icons.sports_esports_rounded, 'live': true},
+    {'label': 'CODM Squad', 'icon': Icons.groups_rounded, 'live': false},
+    {'label': 'Gacom Designers', 'icon': Icons.brush_rounded, 'live': false},
+    {'label': 'RPS Arena', 'icon': Icons.gavel_rounded, 'live': false},
+  ];
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 92,
+    child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
+      GestureDetector(onTap: onCreate, child: Padding(padding: const EdgeInsets.only(right: 14), child: Column(children: [
+        Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.orangeGradient),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 26)),
+        const SizedBox(height: 6),
+        const Text('Create', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 11, fontWeight: FontWeight.w600, color: GacomColors.textSecondary)),
+      ]))),
+      ..._items.map((it) => Padding(padding: const EdgeInsets.only(right: 14), child: Column(children: [
+        Stack(children: [
+          Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.cardDark, border: Border.all(color: GacomColors.border, width: 1)),
+            child: Icon(it['icon'] as IconData, color: GacomColors.deepOrange, size: 22)),
+          if (it['live'] as bool) Positioned(right: 0, bottom: 2, child: Container(width: 12, height: 12,
+            decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.obsidian, width: 2)))),
+        ]),
+        const SizedBox(height: 6),
+        SizedBox(width: 64, child: Text(it['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 11, fontWeight: FontWeight.w600, color: GacomColors.textSecondary))),
+      ]))),
+    ]),
+  );
+}
+
+// ── Live tournament promo banner ─────────────────────────────────────────────
+class _LiveTournamentBanner extends StatelessWidget {
+  final VoidCallback onJoin;
+  const _LiveTournamentBanner({required this.onJoin});
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+    child: Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(colors: [GacomColors.darkOrange.withOpacity(0.9), GacomColors.obsidian], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        border: Border.all(color: GacomColors.borderOrange, width: 1),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: GacomColors.error, borderRadius: BorderRadius.circular(4)),
+            child: const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, color: Colors.white, letterSpacing: 0.6))),
+        ]),
+        const SizedBox(height: 10),
+        const Text('GACOM CHAMPIONSHIP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: Colors.white, letterSpacing: 0.4)),
+        const Text('Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 13, color: GacomColors.textSecondary)),
+        const SizedBox(height: 12),
+        Row(children: [
+          const Icon(Icons.emoji_events_rounded, color: GacomColors.deepOrange, size: 16), const SizedBox(width: 6),
+          const Text('₦150,000 Prize Pool', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
+        ]),
+        const SizedBox(height: 14),
+        Row(children: [
+          const Icon(Icons.timer_outlined, color: GacomColors.textMuted, size: 14), const SizedBox(width: 6),
+          const Text('Starts in 05h : 45m : 12s', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: GacomColors.textMuted)),
+          const Spacer(),
+          GestureDetector(onTap: onJoin, child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(50)),
+            child: const Text('Join Now', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)))),
+        ]),
+      ]),
+    ),
+  );
 }
 
 class _HeaderBtn extends StatelessWidget {

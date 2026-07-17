@@ -115,6 +115,10 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
         title: const Text('COMMUNITIES'),
+        actions: [
+          IconButton(icon: const Icon(Icons.search_rounded), onPressed: () => context.go('/search')),
+          IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () => context.go('/notifications')),
+        ],
         bottom: TabBar(
           controller: _tab,
           indicatorColor: GacomColors.deepOrange,

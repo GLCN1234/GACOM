@@ -569,7 +569,7 @@ class _StatDiv extends StatelessWidget {
 class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final p = Paint()..color = const Color(0x09FF6600)..strokeWidth = 0.5;
+    final p = Paint()..color = GacomColors.deepOrange.withOpacity(0.035)..strokeWidth = 0.5;
     for (double x = 0; x < size.width; x += 30) canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
     for (double y = 0; y < size.height; y += 30) canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
   }
