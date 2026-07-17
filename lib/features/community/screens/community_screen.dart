@@ -330,8 +330,11 @@ class _CommunityList extends StatelessWidget {
         Text(emptyMessage, style: const TextStyle(color: GacomColors.textMuted, fontSize: 16)),
       ]));
     }
-    return ListView.builder(
+    return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.76,
+      ),
       itemCount: communities.length,
       itemBuilder: (_, i) => _CommunityCard(community: communities[i])
           .animate(delay: (i * 50).ms)
@@ -341,8 +344,7 @@ class _CommunityList extends StatelessWidget {
   }
 }
 
-// ── Community card ────────────────────────────────────────────────────────────
-
+// ── Community card (image-topped grid tile) ─────────────────────────────────
 class _CommunityCard extends StatelessWidget {
   final Map<String, dynamic> community;
   const _CommunityCard({required this.community});
@@ -351,74 +353,53 @@ class _CommunityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final members = community['members_count'] as int? ?? 0;
     final isSub = community['parent_id'] != null;
+    final memberLabel = members >= 1000 ? '${(members / 1000).toStringAsFixed(1)}K' : '$members';
 
     return GestureDetector(
       onTap: () => context.push('/communities/${community['id']}'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: GacomColors.cardDark,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: GacomColors.border, width: 0.5),
+          border: Border.all(color: GacomColors.border, width: 0.7),
         ),
-        child: Row(children: [
-          // Icon
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: GacomColors.orangeGradient,
-            ),
-            child: community['icon_url'] != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: community['icon_url'],
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => const Icon(Icons.groups_rounded, color: Colors.white),
-                    ),
-                  )
-                : const Icon(Icons.groups_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                  child: Text(community['name'] ?? '',
-                      style: const TextStyle(
-                          color: GacomColors.textPrimary,
-                          fontFamily: 'Rajdhani',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700)),
-                ),
-                if (isSub)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: GacomColors.info.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: GacomColors.info.withOpacity(0.3)),
-                    ),
-                    child: const Text('SUB',
-                        style: TextStyle(color: GacomColors.info, fontSize: 9, fontWeight: FontWeight.w700)),
-                  ),
-              ]),
-              const SizedBox(height: 2),
-              Text(community['game_name'] ?? '',
-                  style: const TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani')),
-              const SizedBox(height: 6),
-              Row(children: [
-                const Icon(Icons.people_rounded, size: 13, color: GacomColors.textMuted),
-                const SizedBox(width: 4),
-                Text('$members members',
-                    style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-              ]),
+        clipBehavior: Clip.antiAlias,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // Image header
+          AspectRatio(
+            aspectRatio: 1.5,
+            child: Stack(fit: StackFit.expand, children: [
+              community['icon_url'] != null
+                  ? CachedNetworkImage(imageUrl: community['icon_url'], fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(decoration: const BoxDecoration(gradient: GacomColors.orangeGradient)))
+                  : Container(decoration: const BoxDecoration(gradient: GacomColors.orangeGradient),
+                      child: const Center(child: Icon(Icons.groups_rounded, color: Colors.white, size: 32))),
+              if (isSub) Positioned(top: 8, right: 8, child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: GacomColors.obsidian.withOpacity(0.75), borderRadius: BorderRadius.circular(6)),
+                child: const Text('SUB', style: TextStyle(color: GacomColors.accentCyan, fontSize: 9, fontWeight: FontWeight.w700)))),
             ]),
           ),
-          const Icon(Icons.chevron_right_rounded, color: GacomColors.textMuted),
+          // Text block
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(community['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(community['game_name'] ?? 'Community', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
+                ]),
+                Row(children: [
+                  const Icon(Icons.people_rounded, size: 12, color: GacomColors.textMuted),
+                  const SizedBox(width: 4),
+                  Text('$memberLabel Members', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                ]),
+              ]),
+            ),
+          ),
         ]),
       ),
     );
