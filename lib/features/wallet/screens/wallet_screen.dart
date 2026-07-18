@@ -59,7 +59,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   /// The public key goes in the URL — NOT as a Bearer authorization header
   /// (which requires the SECRET key and causes the ERR_CONNECTION_TIMED_OUT).
   Future<void> _initiatePaystack(double amount, BuildContext sheetCtx) async {
-    final reference = 'GAC_\${const Uuid().v4().substring(0, 8).toUpperCase()}';
+    final reference = 'GAC_${const Uuid().v4().substring(0, 8).toUpperCase()}';
 
     try {
       final launched = await PaystackService.initializeAndPay(
