@@ -75,23 +75,10 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     final role = roleAsync.valueOrNull ?? 'user';
     final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
     final isExco = role == 'exco';
-    final competitionBadge = ref.watch(competitionNotifProvider).valueOrNull ?? 0;
 
     return Scaffold(
       extendBody: false,
-      body: Stack(children: [
-        widget.child,
-        Positioned(
-          left: 12,
-          bottom: 80 + (isPrivileged || isExco ? 28 : 0),
-          child: _CompetitionFab(badge: competitionBadge),
-        ),
-        Positioned(
-          right: 12,
-          bottom: 80 + (isPrivileged || isExco ? 28 : 0),
-          child: const _ReelsFab(),
-        ),
-      ]),
+      body: widget.child,
       bottomNavigationBar: _buildNav(context, isPrivileged, isExco, role),
     );
   }
@@ -119,8 +106,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
           child: SafeArea(
             top: false,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              if (isPrivileged) _AdminBar(role: role),
-              if (isExco) const _ExcoBar(),
               SizedBox(
                 height: 64,
                 child: Row(

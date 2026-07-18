@@ -413,6 +413,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   ]),
                 ).animate().fadeIn(delay: 100.ms),
 
+                if (_isOwn && ['admin', 'super_admin', 'moderator', 'exco'].contains(p['role'])) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () => context.go(p['role'] == 'exco' ? '/exco-dashboard' : AppConstants.adminRoute),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: GacomDecorations.glassCard(context, radius: 14),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(p['role'] == 'exco' ? Icons.badge_rounded : Icons.admin_panel_settings_rounded, color: GacomColors.electricBlue, size: 15),
+                        const SizedBox(width: 8),
+                        Text(p['role'] == 'exco' ? 'TEAM DASHBOARD' : '${(p['role'] as String).toUpperCase().replaceAll('_', ' ')} DASHBOARD',
+                          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: GacomColors.electricBlue, letterSpacing: 1)),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.arrow_forward_ios_rounded, color: GacomColors.electricBlue, size: 10),
+                      ]),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 16),
               ]),
             ),

@@ -577,17 +577,20 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
     final createdAt = DateTime.tryParse(post['created_at'] ?? '') ?? DateTime.now();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(0, 0, 0, 8), color: GacomColors.obsidian,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+      clipBehavior: Clip.antiAlias,
+      decoration: GacomDecorations.glassCard(context, radius: 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (widget.isDiscovery)
-          Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Row(children: [const Icon(Icons.auto_awesome_rounded, size: 12, color: GacomColors.deepOrange), const SizedBox(width: 4), const Text('Suggested for you', style: TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600))])),
+          Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), child: Row(children: [const Icon(Icons.auto_awesome_rounded, size: 12, color: GacomColors.deepOrange), const SizedBox(width: 4), const Text('Suggested for you', style: TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600))])),
 
         // Author
-        Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 10), child: Row(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 10), child: Row(children: [
           GestureDetector(onTap: () => context.go('/profile/${author['id'] ?? ''}'),
-            child: Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange.withOpacity(0.5), width: 1.5)),
-              child: CircleAvatar(radius: 20, backgroundColor: GacomColors.border, backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
-                child: avatarUrl == null ? Text(displayName[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)) : null))),
+            child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.violetBlueGradient),
+              child: CircleAvatar(radius: 19, backgroundColor: GacomColors.obsidian,
+                child: CircleAvatar(radius: 17, backgroundColor: GacomColors.border, backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
+                  child: avatarUrl == null ? Text(displayName[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)) : null)))),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [Text(displayName, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)), if (isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 13, color: GacomColors.deepOrange)]]),
@@ -654,7 +657,6 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
           const Spacer(),
           IconButton(onPressed: () {}, icon: const Icon(Icons.bookmark_border_rounded, color: GacomColors.textMuted, size: 20)),
         ])),
-        Container(height: 0.5, color: GacomColors.border),
       ]),
     );
   }
