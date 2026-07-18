@@ -41,7 +41,7 @@ serve(async (req) => {
         email,
         amount: Math.round(amount), // amount in kobo, must be integer
         reference,
-        callback_url: callback_url ?? 'https://gacom.netlify.app/store',
+        callback_url: callback_url ?? 'https://gamicom.net/#/store',
         channels: ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer'],
       }),
     })
