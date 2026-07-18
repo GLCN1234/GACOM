@@ -31,7 +31,7 @@ class PaystackService {
           'email': email,
           'amount': (amountNaira * 100).round(), // convert to kobo
           'reference': reference,
-          'callback_url': callbackUrl ?? 'https://gacom.netlify.app/store',
+          'callback_url': callbackUrl ?? 'https://gamicom.net/#/store',
         },
       );
 

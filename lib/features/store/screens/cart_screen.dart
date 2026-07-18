@@ -226,7 +226,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         context: context,
         amountNaira: _total,
         reference: reference,
-        callbackUrl: 'https://gacom.netlify.app/store',
+        callbackUrl: 'https://gamicom.net/#/store',
       );
       if (launched != null && mounted) {
         await _clearCart();

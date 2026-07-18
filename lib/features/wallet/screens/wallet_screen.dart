@@ -25,7 +25,51 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   void initState() {
     super.initState();
+    _checkForReturningPayment();
     _loadData();
+  }
+
+  /// If we just got redirected back from Paystack, the hash-URL will look
+  /// like https://gamicom.net/#/wallet?trxref=...&reference=... — this app
+  /// uses hash routing, so the query params live inside Uri.base.fragment,
+  /// not Uri.base.queryParameters (which only sees the pre-# path).
+  Future<void> _checkForReturningPayment() async {
+    final fragment = Uri.base.fragment; // e.g. "/wallet?trxref=X&reference=X"
+    if (!fragment.contains('?')) return;
+    final fragUri = Uri.parse(fragment.startsWith('/') ? fragment : '/$fragment');
+    final reference = fragUri.queryParameters['reference'] ?? fragUri.queryParameters['trxref'];
+    if (reference == null || reference.isEmpty) return;
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)),
+      );
+    }
+
+    try {
+      final res = await SupabaseService.client.functions.invoke(
+        'paystack-verify',
+        body: {'reference': reference},
+      );
+      if (mounted) Navigator.of(context, rootNavigator: true).pop(); // close loading dialog
+
+      final success = res.data?['success'] == true;
+      if (success) await _loadData(); // refresh balance now that it's credited
+      if (mounted) {
+        GacomSnackbar.show(
+          context,
+          success ? 'Payment confirmed — wallet updated' : (res.data?['error']?.toString() ?? 'Payment could not be confirmed'),
+          isError: !success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        GacomSnackbar.show(context, 'Could not confirm payment: $e', isError: true);
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -66,7 +110,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         context: context,
         amountNaira: amount,
         reference: reference,
-        callbackUrl: 'https://gacom.netlify.app/wallet',
+        callbackUrl: 'https://gamicom.net/#/wallet',
       );
 
       if (launched != null) {
