@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -68,9 +69,22 @@ class FeedScreen extends ConsumerStatefulWidget {
 class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProviderStateMixin {
   late TabController _tab;
   Map<String, dynamic>? _myProfile;
+  bool _tournamentDismissed = false;
+  static const _tournamentDismissKey = 'dismissed_tournament_gacom_championship_s1';
 
   @override
-  void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProfile(); }
+  void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProfile(); _loadDismissState(); }
+
+  Future<void> _loadDismissState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) setState(() => _tournamentDismissed = prefs.getBool(_tournamentDismissKey) ?? false);
+  }
+
+  Future<void> _dismissTournamentBanner() async {
+    setState(() => _tournamentDismissed = true);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_tournamentDismissKey, true);
+  }
 
   Future<void> _loadProfile() async {
     final uid = SupabaseService.currentUserId;
@@ -98,7 +112,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
               background: _Header(greeting: _greeting, name: name, coins: coins, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
           SliverToBoxAdapter(child: const _QuickActionsRow()),
-          SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute))),
+          if (!_tournamentDismissed)
+            SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute), onDismiss: _dismissTournamentBanner)),
           SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, isScrollable: false, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8), tabs: const [Tab(text: 'FOR YOU'), Tab(text: 'FOLLOWING'), Tab(text: 'TRENDING')]))),
         ],
         body: TabBarView(controller: _tab, children: [
@@ -196,7 +211,8 @@ class _QuickActionsRow extends StatelessWidget {
 //    live badge + CTA only (not the card fill) ───────────────────────────────
 class _LiveTournamentBanner extends StatelessWidget {
   final VoidCallback onJoin;
-  const _LiveTournamentBanner({required this.onJoin});
+  final VoidCallback onDismiss;
+  const _LiveTournamentBanner({required this.onJoin, required this.onDismiss});
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
@@ -207,7 +223,9 @@ class _LiveTournamentBanner extends StatelessWidget {
         Row(children: [
           const Icon(Icons.emoji_events_rounded, size: 14, color: GacomColors.deepOrange),
           const SizedBox(width: 6),
-          const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.deepOrange, letterSpacing: 1)),
+          const Expanded(child: Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.deepOrange, letterSpacing: 1))),
+          GestureDetector(onTap: onDismiss, behavior: HitTestBehavior.opaque,
+            child: Padding(padding: const EdgeInsets.all(4), child: Icon(Icons.close_rounded, size: 16, color: GacomColors.textMuted))),
         ]),
         const SizedBox(height: 6),
         const Text('Gacom Championship · Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w600, color: GacomColors.textPrimary)),

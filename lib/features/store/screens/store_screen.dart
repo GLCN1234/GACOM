@@ -224,6 +224,43 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
     return list;
   }
 
+  // ── Admin: delete a product (soft delete — matches the is_active filter
+  //    already used by _load(), so order/review history referencing this
+  //    product isn't destroyed) ─────────────────────────────────────────────
+  Future<void> _confirmDeleteProduct(Map<String, dynamic> product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: GacomColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Remove product?', style: TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)),
+        content: Text('"${product['name'] ?? 'This product'}" will be removed from the marketplace. This can be undone from the database if needed.',
+          style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final id = product['id'];
+    // Optimistic local removal so it disappears immediately
+    setState(() => _allProducts.removeWhere((p) => p['id'] == id));
+    try {
+      await SupabaseService.client.from('products').update({'is_active': false}).eq('id', id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product removed'), backgroundColor: GacomColors.cardDark));
+      }
+    } catch (e) {
+      // Roll back on failure
+      if (mounted) {
+        setState(() => _allProducts.add(product));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove product: $e'), backgroundColor: GacomColors.error));
+      }
+    }
+  }
+
   // ── Bottom sheet shown when tapping a product card ─────────────────────────
   void _showProductSheet(Map<String, dynamic> product) {
     final isDemo = (product['id'] as String).startsWith('demo_');
@@ -828,6 +865,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
                             product: _filtered[i],
                             onTap: () =>
                                 _showProductSheet(_filtered[i]),
+                            isAdmin: _isAdmin,
+                            onDelete: () => _confirmDeleteProduct(_filtered[i]),
                           ),
                         ),
             ),
@@ -1267,7 +1306,9 @@ class _MyListingsTabState extends ConsumerState<_MyListingsTab> {
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
   final VoidCallback onTap;
-  const _ProductCard({required this.product, required this.onTap});
+  final bool isAdmin;
+  final VoidCallback? onDelete;
+  const _ProductCard({required this.product, required this.onTap, this.isAdmin = false, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -1288,6 +1329,7 @@ class _ProductCard extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // ✅ FIX: Show image with proper loading + error states
+          Stack(children: [
           ClipRRect(
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(18)),
@@ -1323,6 +1365,14 @@ class _ProductCard extends StatelessWidget {
                     ),
             ),
           ),
+          if (isAdmin)
+            Positioned(top: 6, right: 6, child: GestureDetector(
+              onTap: onDelete,
+              child: Container(padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
+                child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.white)),
+            )),
+          ]),
 
           Padding(
             padding: const EdgeInsets.all(10),
