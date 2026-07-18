@@ -199,37 +199,40 @@ class _LiveTournamentBanner extends StatelessWidget {
   const _LiveTournamentBanner({required this.onJoin});
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
     child: Container(
-      padding: const EdgeInsets.all(20),
-      decoration: GacomDecorations.heroGlass(radius: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: GacomDecorations.glassCard(context, radius: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(6)),
-            child: const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, color: Colors.black, letterSpacing: 0.6))),
-          const Spacer(),
-          Icon(Icons.auto_awesome_rounded, size: 16, color: GacomColors.violet.withOpacity(0.7)),
-        ]),
-        const SizedBox(height: 14),
-        const Text('GACOM CHAMPIONSHIP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white, letterSpacing: 0.3)),
-        const Text('Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 13, color: GacomColors.textSecondary)),
-        const SizedBox(height: 14),
-        Row(children: [
-          ShaderMask(shaderCallback: (r) => GacomColors.violetBlueGradient.createShader(r), child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16)),
+          const Icon(Icons.emoji_events_rounded, size: 14, color: GacomColors.deepOrange),
           const SizedBox(width: 6),
-          const Text('₦150,000 Prize Pool', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
-        ]),
-        const SizedBox(height: 16),
-        Row(children: [
-          const Icon(Icons.timer_outlined, color: GacomColors.textMuted, size: 14), const SizedBox(width: 6),
-          const Text('Starts in 05h : 45m : 12s', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: GacomColors.textMuted)),
+          const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.deepOrange, letterSpacing: 1)),
           const Spacer(),
-          GestureDetector(onTap: onJoin, child: Container(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-            decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(50),
-              boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 4))]),
-            child: const Text('Join Now', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black)))),
+          Text('Gacom Championship · Season 1', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 11, color: GacomColors.textMuted)),
         ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('PRIZE POOL', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 10, color: GacomColors.textMuted, letterSpacing: 0.6)),
+            const SizedBox(height: 2),
+            const Text('₦150,000', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary)),
+          ])),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('STARTS IN', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 10, color: GacomColors.textMuted, letterSpacing: 0.6)),
+            const SizedBox(height: 2),
+            const Text('05:45:12', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary)),
+          ])),
+          GestureDetector(onTap: onJoin, child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Join Match', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.deepOrange)),
+            const SizedBox(width: 3),
+            const Icon(Icons.arrow_forward_rounded, size: 14, color: GacomColors.deepOrange),
+          ])),
+        ]),
+        const SizedBox(height: 12),
+        ClipRRect(borderRadius: BorderRadius.circular(50), child: LinearProgressIndicator(
+          value: 0.78, minHeight: 4, backgroundColor: Colors.white.withOpacity(0.06),
+          valueColor: const AlwaysStoppedAnimation(GacomColors.deepOrange))),
       ]),
     ),
   );
