@@ -24,17 +24,17 @@ class ArenaService {
   // ── Wallet ─────────────────────────────────────────────────────────────────
   static Future<double> getWalletBalance() async {
     try {
-      final w = await _db.from('wallets').select('balance').eq('user_id', _uid!).single();
-      return (w['balance'] as num).toDouble();
+      final w = await _db.from('profiles').select('wallet_balance').eq('id', _uid!).single();
+      return (w['wallet_balance'] as num).toDouble();
     } catch (_) { return 0; }
   }
 
   static Future<bool> deductStake(int amount) async {
     try {
-      final w = await _db.from('wallets').select('balance').eq('user_id', _uid!).single();
-      final bal = (w['balance'] as num).toDouble();
+      final w = await _db.from('profiles').select('wallet_balance').eq('id', _uid!).single();
+      final bal = (w['wallet_balance'] as num).toDouble();
       if (bal < amount) return false;
-      await _db.from('wallets').update({'balance': bal - amount}).eq('user_id', _uid!);
+      await _db.from('profiles').update({'wallet_balance': bal - amount}).eq('id', _uid!);
       await _db.from('wallet_transactions').insert({'user_id': _uid, 'type': 'arena_entry', 'amount': -amount, 'reference': 'ARENA_ENTRY_${DateTime.now().millisecondsSinceEpoch}', 'status': 'completed', 'description': 'Arena match entry stake'});
       return true;
     } catch (_) { return false; }
@@ -42,9 +42,9 @@ class ArenaService {
 
   static Future<void> refundStake(String userId, int amount) async {
     try {
-      final w = await _db.from('wallets').select('balance').eq('user_id', userId).single();
-      final bal = (w['balance'] as num).toDouble();
-      await _db.from('wallets').update({'balance': bal + amount}).eq('user_id', userId);
+      final w = await _db.from('profiles').select('wallet_balance').eq('id', userId).single();
+      final bal = (w['wallet_balance'] as num).toDouble();
+      await _db.from('profiles').update({'wallet_balance': bal + amount}).eq('id', userId);
       await _db.from('wallet_transactions').insert({'user_id': userId, 'type': 'arena_refund', 'amount': amount, 'reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}', 'status': 'completed', 'description': 'Arena match stake refund'});
     } catch (_) {}
   }
