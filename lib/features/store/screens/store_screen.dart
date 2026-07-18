@@ -230,15 +230,16 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
   Future<void> _confirmDeleteProduct(Map<String, dynamic> product) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      useRootNavigator: true,
+      builder: (dialogCtx) => AlertDialog(
         backgroundColor: GacomColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Remove product?', style: TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)),
         content: Text('"${product['name'] ?? 'This product'}" will be removed from the marketplace. This can be undone from the database if needed.',
           style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
+          TextButton(onPressed: () => Navigator.of(dialogCtx, rootNavigator: true).pop(false), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted))),
+          TextButton(onPressed: () => Navigator.of(dialogCtx, rootNavigator: true).pop(true), child: const Text('Remove', style: TextStyle(color: GacomColors.error, fontWeight: FontWeight.w700))),
         ],
       ),
     );
@@ -1368,6 +1369,7 @@ class _ProductCard extends StatelessWidget {
           if (isAdmin)
             Positioned(top: 6, right: 6, child: GestureDetector(
               onTap: onDelete,
+              behavior: HitTestBehavior.opaque,
               child: Container(padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), shape: BoxShape.circle),
                 child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.white)),
