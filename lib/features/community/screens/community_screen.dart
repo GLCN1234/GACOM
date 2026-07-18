@@ -371,8 +371,9 @@ class _CommunityCard extends StatelessWidget {
             child: Stack(fit: StackFit.expand, children: [
               community['icon_url'] != null
                   ? CachedNetworkImage(imageUrl: community['icon_url'], fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(decoration: const BoxDecoration(gradient: GacomColors.orangeGradient)))
-                  : Container(decoration: const BoxDecoration(gradient: GacomColors.orangeGradient),
+                      errorWidget: (_, __, ___) => Container(decoration: const BoxDecoration(gradient: GacomColors.violetBlueGradient),
+                          child: const Center(child: Icon(Icons.groups_rounded, color: Colors.white70, size: 28))))
+                  : Container(decoration: const BoxDecoration(gradient: GacomColors.violetBlueGradient),
                       child: const Center(child: Icon(Icons.groups_rounded, color: Colors.white, size: 32))),
               if (isSub) Positioned(top: 8, right: 8, child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

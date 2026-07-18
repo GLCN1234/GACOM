@@ -232,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     : Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [GacomColors.darkOrange.withOpacity(0.5), GacomColors.obsidian],
+                            colors: [GacomColors.violetDeep.withOpacity(0.45), GacomColors.obsidian],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -273,10 +273,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           border: Border.all(color: GacomColors.obsidian, width: 3),
                         ),
                         child: Container(
+                          padding: const EdgeInsets.all(2.5),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: GacomColors.deepOrange, width: 2),
-                            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.3), blurRadius: 16)],
+                            gradient: GacomColors.violetBlueGradient,
+                            boxShadow: [BoxShadow(color: GacomColors.violet.withOpacity(0.28), blurRadius: 16)],
+                          ),
+                          child: Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: GacomColors.obsidian,
                           ),
                           child: CircleAvatar(
                             radius: 40,
@@ -295,7 +301,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                                   )
                                 : null,
                           ),
-                        ),
+                        )),
                       ),
                       if (_isOwn)
                         Positioned(
@@ -325,8 +331,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       onTap: () {},
                       child: Container(
                         width: 38, height: 38,
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.deepOrange, width: 1.2)),
-                        child: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: GacomColors.deepOrange),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(50), border: Border.all(color: Colors.white.withOpacity(0.14), width: 1.2)),
+                        child: const Icon(Icons.chat_bubble_outline_rounded, size: 16, color: GacomColors.textSecondary),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -379,9 +385,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 if (p['gamer_tag'] != null) ...[
                   const SizedBox(height: 5),
                   Row(children: [
-                    const Icon(Icons.sports_esports_rounded, size: 13, color: GacomColors.deepOrange),
+                    const Icon(Icons.sports_esports_rounded, size: 13, color: GacomColors.textMuted),
                     const SizedBox(width: 5),
-                    Text(p['gamer_tag'], style: const TextStyle(color: GacomColors.deepOrange, fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Rajdhani')),
+                    Text(p['gamer_tag'], style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'Rajdhani')),
                   ]),
                 ],
 

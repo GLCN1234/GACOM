@@ -311,7 +311,7 @@ class _FeaturedCard extends StatelessWidget {
                 : Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [GacomColors.darkOrange, GacomColors.obsidian],
+                        colors: [GacomColors.violetDeep, GacomColors.obsidian],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -397,7 +397,7 @@ class _ArticleCard extends StatelessWidget {
                 width: 110, height: 110,
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [GacomColors.darkOrange, GacomColors.surfaceDark],
+                    colors: [GacomColors.violetDeep, GacomColors.surfaceDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
