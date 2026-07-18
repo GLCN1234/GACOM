@@ -333,7 +333,7 @@ class _CommunityList extends StatelessWidget {
     return GridView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.76,
+        crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 1.05,
       ),
       itemCount: communities.length,
       itemBuilder: (_, i) => _CommunityCard(community: communities[i])
@@ -385,7 +385,7 @@ class _CommunityCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.start, children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(community['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w700)),
@@ -393,6 +393,7 @@ class _CommunityCard extends StatelessWidget {
                   Text(community['game_name'] ?? 'Community', maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
                 ]),
+                const SizedBox(height: 8),
                 Row(children: [
                   const Icon(Icons.people_rounded, size: 12, color: GacomColors.textMuted),
                   const SizedBox(width: 4),
