@@ -250,13 +250,13 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
     try {
       await SupabaseService.client.from('products').update({'is_active': false}).eq('id', id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Product removed'), backgroundColor: GacomColors.cardDark));
+        GacomSnackbar.show(context, 'Product removed', isSuccess: true);
       }
     } catch (e) {
       // Roll back on failure
       if (mounted) {
         setState(() => _allProducts.add(product));
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not remove product: $e'), backgroundColor: GacomColors.error));
+        GacomSnackbar.show(context, 'Could not remove product: $e', isError: true);
       }
     }
   }
