@@ -97,7 +97,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
           SliverAppBar(pinned: false, floating: true, snap: true, backgroundColor: Colors.transparent, elevation: 0, expandedHeight: 160,
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
               background: _Header(greeting: _greeting, name: name, coins: coins, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
-          SliverToBoxAdapter(child: _QuickAccessStrip(onCreate: () => context.go(AppConstants.createPostRoute))),
+          SliverToBoxAdapter(child: const _QuickActionsRow()),
           SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute))),
           SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, isScrollable: false, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8), tabs: const [Tab(text: 'FOR YOU'), Tab(text: 'FOLLOWING'), Tab(text: 'TRENDING')]))),
         ],
@@ -148,42 +148,51 @@ class _Header extends StatelessWidget {
   }
 }
 
-// ── Quick access row: Create + jump-into communities ────────────────────────
-class _QuickAccessStrip extends StatelessWidget {
-  final VoidCallback onCreate;
-  const _QuickAccessStrip({required this.onCreate});
-  static const _items = [
-    {'label': 'PUBG Nigeria', 'icon': Icons.sports_esports_rounded, 'live': true},
-    {'label': 'CODM Squad', 'icon': Icons.groups_rounded, 'live': false},
-    {'label': 'Gacom Designers', 'icon': Icons.brush_rounded, 'live': false},
-    {'label': 'RPS Arena', 'icon': Icons.gavel_rounded, 'live': false},
+// ── Quick actions: Gaming Command Center row ─────────────────────────────────
+class _QuickActionsRow extends StatelessWidget {
+  const _QuickActionsRow();
+  static const _actions = [
+    {'label': 'Arena', 'icon': Icons.stadium_rounded, 'route': AppConstants.arenaRoute},
+    {'label': 'Communities', 'icon': Icons.groups_rounded, 'route': AppConstants.communityRoute},
+    {'label': 'Marketplace', 'icon': Icons.storefront_rounded, 'route': AppConstants.storeRoute},
+    {'label': 'Messages', 'icon': Icons.chat_bubble_rounded, 'route': AppConstants.chatRoute},
+    {'label': 'Wallet', 'icon': Icons.account_balance_wallet_rounded, 'route': AppConstants.walletRoute},
+    {'label': 'Events', 'icon': Icons.emoji_events_rounded, 'route': AppConstants.competitionsRoute},
   ];
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 92,
-    child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-      GestureDetector(onTap: onCreate, child: Padding(padding: const EdgeInsets.only(right: 14), child: Column(children: [
-        Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.orangeGradient),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 26)),
-        const SizedBox(height: 6),
-        const Text('Create', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 11, fontWeight: FontWeight.w600, color: GacomColors.textSecondary)),
-      ]))),
-      ..._items.map((it) => Padding(padding: const EdgeInsets.only(right: 14), child: Column(children: [
-        Stack(children: [
-          Container(width: 54, height: 54, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.cardDark, border: Border.all(color: GacomColors.border, width: 1)),
-            child: Icon(it['icon'] as IconData, color: GacomColors.deepOrange, size: 22)),
-          if (it['live'] as bool) Positioned(right: 0, bottom: 2, child: Container(width: 12, height: 12,
-            decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.obsidian, width: 2)))),
-        ]),
-        const SizedBox(height: 6),
-        SizedBox(width: 64, child: Text(it['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 11, fontWeight: FontWeight.w600, color: GacomColors.textSecondary))),
-      ]))),
-    ]),
+    height: 88,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: _actions.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 12),
+      itemBuilder: (_, i) {
+        final a = _actions[i];
+        return GestureDetector(
+          onTap: () => context.go(a['route'] as String),
+          child: Container(
+            width: 76,
+            decoration: GacomDecorations.glassCard(context, radius: 20),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              ShaderMask(
+                shaderCallback: (r) => GacomColors.violetBlueGradient.createShader(r),
+                child: Icon(a['icon'] as IconData, color: Colors.white, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(a['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 10.5, fontWeight: FontWeight.w600, color: GacomColors.textSecondary)),
+            ]),
+          ),
+        );
+      },
+    ),
   );
 }
 
-// ── Live tournament promo banner ─────────────────────────────────────────────
+// ── Featured tournament — ambient glass card, orange reserved for the
+//    live badge + CTA only (not the card fill) ───────────────────────────────
 class _LiveTournamentBanner extends StatelessWidget {
   final VoidCallback onJoin;
   const _LiveTournamentBanner({required this.onJoin});
@@ -191,34 +200,34 @@ class _LiveTournamentBanner extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
     child: Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(colors: [GacomColors.darkOrange.withOpacity(0.9), GacomColors.obsidian], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        border: Border.all(color: GacomColors.borderOrange, width: 1),
-      ),
+      padding: const EdgeInsets.all(20),
+      decoration: GacomDecorations.heroGlass(radius: 28),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: GacomColors.error, borderRadius: BorderRadius.circular(4)),
-            child: const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, color: Colors.white, letterSpacing: 0.6))),
-        ]),
-        const SizedBox(height: 10),
-        const Text('GACOM CHAMPIONSHIP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: Colors.white, letterSpacing: 0.4)),
-        const Text('Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 13, color: GacomColors.textSecondary)),
-        const SizedBox(height: 12),
-        Row(children: [
-          const Icon(Icons.emoji_events_rounded, color: GacomColors.deepOrange, size: 16), const SizedBox(width: 6),
-          const Text('₦150,000 Prize Pool', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(6)),
+            child: const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, color: Colors.black, letterSpacing: 0.6))),
+          const Spacer(),
+          Icon(Icons.auto_awesome_rounded, size: 16, color: GacomColors.violet.withOpacity(0.7)),
         ]),
         const SizedBox(height: 14),
+        const Text('GACOM CHAMPIONSHIP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white, letterSpacing: 0.3)),
+        const Text('Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 13, color: GacomColors.textSecondary)),
+        const SizedBox(height: 14),
+        Row(children: [
+          ShaderMask(shaderCallback: (r) => GacomColors.violetBlueGradient.createShader(r), child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 16)),
+          const SizedBox(width: 6),
+          const Text('₦150,000 Prize Pool', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
+        ]),
+        const SizedBox(height: 16),
         Row(children: [
           const Icon(Icons.timer_outlined, color: GacomColors.textMuted, size: 14), const SizedBox(width: 6),
           const Text('Starts in 05h : 45m : 12s', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: GacomColors.textMuted)),
           const Spacer(),
-          GestureDetector(onTap: onJoin, child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(50)),
-            child: const Text('Join Now', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)))),
+          GestureDetector(onTap: onJoin, child: Container(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+            decoration: BoxDecoration(gradient: GacomColors.orangeGradient, borderRadius: BorderRadius.circular(50),
+              boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 4))]),
+            child: const Text('Join Now', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black)))),
         ]),
       ]),
     ),

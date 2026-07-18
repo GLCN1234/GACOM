@@ -6,23 +6,30 @@ import 'package:google_fonts/google_fonts.dart';
 // GACOM Color System
 // ─────────────────────────────────────────────────────────────────────────────
 class GacomColors {
-  // ── Brand (GACOM design system — same in both themes) ─────────────────────
-  static const deepOrange   = Color(0xFFF8A400);   // primary
-  static const burnOrange   = Color(0xFFF8A833);   // secondary
-  static const darkOrange   = Color(0xFFC98600);   // pressed/darker state
+  // ── Brand — orange is now a 5% ACCENT (buttons, active tabs, live badges,
+  //    highlights) — never a background or dominant surface color. ──────────
+  static const deepOrange   = Color(0xFFFF9500);   // primary accent (CTAs, active states)
+  static const burnOrange   = Color(0xFFFFB13D);   // lighter accent variant
+  static const darkOrange   = Color(0xFFCC7700);   // pressed state
   static const glowOrange   = Color(0xFFFFC24D);
-  static const softOrange   = Color(0xFFF8A400);
-  static const accentCyan   = Color(0xFF00E5FF);   // accent
+  static const softOrange   = Color(0xFFFF9500);
 
-  // ── Dark palette ──────────────────────────────────────────────────────────
-  static const obsidian     = Color(0xFF0B0B0F);   // dark 1
-  static const darkVoid     = Color(0xFF0B0B0F);
-  static const surfaceDark  = Color(0xFF121218);   // dark 2
-  static const cardDark     = Color(0xFF121218);
-  static const elevatedCard = Color(0xFF1A1A22);   // dark 3
-  static const border       = Color(0xFF232330);
-  static const borderBright = Color(0xFF2D2D3C);
-  static const borderOrange = Color(0x40F8A400);
+  // ── Secondary / ambient — purple + electric blue do the "premium glow"
+  //    work that orange used to do (headers, banners, ambient light). ───────
+  static const violet       = Color(0xFF8B6BFF);   // secondary
+  static const violetDeep   = Color(0xFF5B3FBF);
+  static const electricBlue = Color(0xFF3D8BFF);   // accent
+  static const accentCyan   = Color(0xFF3D8BFF);   // kept as alias so existing refs still compile
+
+  // ── Dark palette — true OLED black base, ~85% of the interface ────────────
+  static const obsidian     = Color(0xFF080808);   // page background (OLED black)
+  static const darkVoid     = Color(0xFF080808);
+  static const surfaceDark  = Color(0xFF0F0F12);   // raised surface
+  static const cardDark     = Color(0xFF141417);   // card interior — "very dark gray"
+  static const elevatedCard = Color(0xFF1B1B20);   // modal / sheet / elevated card
+  static const border       = Color(0x14FFFFFF);   // hairline — near-invisible, glass edge
+  static const borderBright = Color(0x24FFFFFF);
+  static const borderOrange = Color(0x40FF9500);
 
   static const textPrimary   = Color(0xFFF5F5F7);
   static const textSecondary = Color(0xFF9A9AA6);
@@ -40,15 +47,21 @@ class GacomColors {
   static const lightTextMuted = Color(0xFF64748B);   // hints — darkened for contrast
 
   // ── Semantic status (same both) ────────────────────────────────────────────
-  static const success = Color(0xFF00D68F);
-  static const error   = Color(0xFFFF3B3B);
+  static const success = Color(0xFF34D399);
+  static const error   = Color(0xFFFF453A);
   static const warning = Color(0xFFFFB020);
-  static const info    = Color(0xFF0095FF);
+  static const info    = electricBlue;
   static const gold    = Color(0xFFFFD700);
 
-  // ── Gradients ─────────────────────────────────────────────────────────────
+  // ── Gradients — ambient purple/blue lighting is the default; orange only
+  //    appears in gradients used specifically for CTAs/live badges. ─────────
   static const LinearGradient orangeGradient = LinearGradient(
     colors: [deepOrange, burnOrange],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient violetBlueGradient = LinearGradient(
+    colors: [violetDeep, electricBlue],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -58,12 +71,14 @@ class GacomColors {
     end: Alignment.bottomCenter,
   );
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF1C1C1C), Color(0xFF111111)],
+    colors: [Color(0xFF17171B), Color(0xFF0D0D10)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+  // Ambient ~10% purple/blue wash used behind headers instead of orange
   static LinearGradient headerGradient = LinearGradient(
-    colors: [darkOrange.withOpacity(0.35), obsidian],
+    colors: [violetDeep.withOpacity(0.16), electricBlue.withOpacity(0.05), obsidian],
+    stops: const [0.0, 0.35, 1.0],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -160,9 +175,11 @@ class GacomColors {
 // DECORATION HELPERS  (context-aware)
 // ─────────────────────────────────────────────────────────────────────────────
 class GacomDecorations {
+  /// Core "carved from glass" card — soft surface, near-invisible hairline
+  /// border, gentle ambient shadow. This is the default for ~90% of cards.
   static BoxDecoration glassCard(
     BuildContext context, {
-    double radius = 20,
+    double radius = 24,
     Color? borderColor,
     List<BoxShadow>? shadows,
     Color? color,
@@ -171,36 +188,49 @@ class GacomDecorations {
         color: color ?? GacomColors.card(context),
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
-          color: borderColor ?? GacomColors.borderColor(context),
-          width: borderColor != null ? 1.2 : 0.7,
+          color: borderColor ?? Colors.white.withOpacity(GacomColors.isDark(context) ? 0.06 : 0.5),
+          width: borderColor != null ? 1.2 : 1,
         ),
-        boxShadow: shadows,
+        boxShadow: shadows ?? [
+          BoxShadow(color: Colors.black.withOpacity(GacomColors.isDark(context) ? 0.35 : 0.05), blurRadius: 24, offset: const Offset(0, 8)),
+        ],
       );
 
-  static BoxDecoration neonCard(BuildContext context, {double radius = 20}) =>
+  /// Reserve for the ~5% of cards that are an active/live/selected state —
+  /// this is the ONLY card variant that should glow orange.
+  static BoxDecoration accentCard(BuildContext context, {double radius = 24}) =>
       BoxDecoration(
         color: GacomColors.card(context),
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: GacomColors.borderOrange, width: 1.2),
         boxShadow: [
-          BoxShadow(
-            color: GacomColors.deepOrange.withOpacity(0.08),
-            blurRadius: 24,
-          ),
+          BoxShadow(color: GacomColors.deepOrange.withOpacity(0.10), blurRadius: 28),
         ],
       );
+  // Back-compat alias
+  static BoxDecoration neonCard(BuildContext context, {double radius = 20}) => accentCard(context, radius: radius);
 
-  static BoxDecoration heroCard({double radius = 24}) => BoxDecoration(
+  /// Ambient purple/blue "premium glow" card — used for featured/hero
+  /// surfaces (tournament banners, featured community) instead of a flat
+  /// orange fill. Orange only appears as a small highlight inside the
+  /// content (badge, CTA button), never as the card's own background.
+  static BoxDecoration heroGlass({double radius = 28}) => BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        gradient: GacomColors.orangeGradient,
+        gradient: LinearGradient(
+          colors: [GacomColors.elevatedCard, GacomColors.violetDeep.withOpacity(0.22), GacomColors.cardDark],
+          stops: const [0.0, 0.55, 1.0],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
         boxShadow: [
-          BoxShadow(
-            color: GacomColors.deepOrange.withOpacity(0.45),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-          ),
+          BoxShadow(color: GacomColors.violet.withOpacity(0.18), blurRadius: 40, offset: const Offset(0, 12)),
+          BoxShadow(color: GacomColors.electricBlue.withOpacity(0.08), blurRadius: 60, offset: const Offset(-10, -10)),
         ],
       );
+  // Back-compat alias — old call sites used a solid orange gradient card;
+  // now routed through the ambient glass treatment.
+  static BoxDecoration heroCard({double radius = 24}) => heroGlass(radius: radius);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -248,7 +278,7 @@ class GacomTheme {
         color: GacomColors.cardDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           side: const BorderSide(color: GacomColors.border, width: 0.7),
         ),
       ),
@@ -265,9 +295,9 @@ class GacomTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: GacomColors.cardDark,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.border, width: 0.7)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.border)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.border, width: 0.7)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
         labelStyle: const TextStyle(color: GacomColors.textMuted),
         hintStyle: const TextStyle(color: GacomColors.textMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -342,7 +372,7 @@ class GacomTheme {
         color: GacomColors.lightCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           side: const BorderSide(color: GacomColors.lightBorder, width: 0.8),
         ),
         shadowColor: const Color(0x10000000),
@@ -369,10 +399,10 @@ class GacomTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: GacomColors.lightSurface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.lightBorder)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.lightBorder, width: 0.8)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
-        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: GacomColors.error, width: 1.2)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.lightBorder)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.lightBorder, width: 0.8)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.deepOrange, width: 1.5)),
+        errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: GacomColors.error, width: 1.2)),
         labelStyle: const TextStyle(color: GacomColors.lightTextMuted),
         hintStyle: const TextStyle(color: GacomColors.lightTextMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -421,7 +451,7 @@ class GacomTheme {
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: GacomColors.lightSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.lightTextPrim),
         contentTextStyle: const TextStyle(color: GacomColors.lightTextSec, fontSize: 14),
       ),

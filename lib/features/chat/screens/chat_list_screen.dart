@@ -317,11 +317,22 @@ class _ChatTile extends StatelessWidget {
     final unread = (chat['unread_count'] as int?) ?? 0;
 
     return Material(color: Colors.transparent, child: InkWell(onTap: onTap, splashColor: GacomColors.deepOrange.withOpacity(0.04),
-      child: Padding(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10), child: Row(children: [
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: unread > 0 ? GacomColors.deepOrange.withOpacity(0.045) : Colors.transparent,
+          border: unread > 0 ? Border.all(color: GacomColors.borderOrange, width: 1) : null,
+        ),
+        child: Row(children: [
         Stack(children: [
-          CircleAvatar(radius: 28, backgroundColor: GacomColors.border,
-            backgroundImage: avatar != null ? CachedNetworkImageProvider(avatar) : null,
-            child: avatar == null ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 20)) : null),
+          Container(width: 56, height: 56, padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.violetBlueGradient),
+            child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.obsidian),
+              child: CircleAvatar(radius: 24, backgroundColor: GacomColors.border,
+                backgroundImage: avatar != null ? CachedNetworkImageProvider(avatar) : null,
+                child: avatar == null ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)) : null))),
           if (isOnline) Positioned(right: 1, bottom: 1, child: Container(width: 14, height: 14,
             decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.obsidian, width: 2.5)))),
         ]),
