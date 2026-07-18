@@ -199,7 +199,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
           const Expanded(child: Text('Messages', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 28, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
           IconButton(icon: const Icon(Icons.search_rounded, color: GacomColors.textSecondary, size: 24), onPressed: () => context.go('/search')),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz_rounded, color: GacomColors.textSecondary, size: 24),
+            icon: const Icon(Icons.edit_square, color: GacomColors.textSecondary, size: 22),
             color: GacomColors.cardDark,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             onSelected: (v) { if (v == 'new_chat') _showNewChatSheet(); },
@@ -207,23 +207,15 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
           ),
         ])),
 
-        // Story row
+        // Story row — only show if there are actually active people to display
+        if (_activeUsers.isNotEmpty) ...[
         const SizedBox(height: 16),
         SizedBox(height: 90, child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _activeUsers.length + 1,
+          itemCount: _activeUsers.length,
           itemBuilder: (_, i) {
-            if (i == 0) {
-              return GestureDetector(onTap: _showNewChatSheet, child: Container(width: 60, margin: const EdgeInsets.only(right: 14),
-                child: Column(children: [
-                  Container(width: 54, height: 54, decoration: BoxDecoration(color: GacomColors.surfaceDark, shape: BoxShape.circle, border: Border.all(color: GacomColors.border, width: 1.5)),
-                    child: const Icon(Icons.add_rounded, color: GacomColors.deepOrange, size: 26)),
-                  const SizedBox(height: 6),
-                  const Text('New', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
-                ])));
-            }
-            final u = _activeUsers[i - 1];
+            final u = _activeUsers[i];
             final isOnline = u['is_online'] == true;
             final name = (u['display_name'] as String? ?? '').split(' ').first;
             return GestureDetector(onTap: () => _startDm(u['id']), child: Container(width: 60, margin: const EdgeInsets.only(right: 14),
@@ -241,6 +233,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
               ])).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.2));
           },
         )),
+        ],
 
         // Search bar
         Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), child: GestureDetector(
@@ -281,14 +274,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
                       itemCount: _visibleChats.length,
                       itemBuilder: (_, i) => _ChatTile(chat: _visibleChats[i], onTap: () => context.go('/chat/${_visibleChats[i]['id']}')).animate(delay: (i * 35).ms).fadeIn()))),
       ])),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showNewChatSheet,
-        backgroundColor: GacomColors.deepOrange, elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New Chat', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15)),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
