@@ -47,3 +47,4 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 # Environment
 .env
 .env.*
+supabase/.temp/
