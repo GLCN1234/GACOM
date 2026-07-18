@@ -158,6 +158,7 @@ class _QuickActionsRow extends StatelessWidget {
     {'label': 'Messages', 'icon': Icons.chat_bubble_rounded, 'route': AppConstants.chatRoute},
     {'label': 'Wallet', 'icon': Icons.account_balance_wallet_rounded, 'route': AppConstants.walletRoute},
     {'label': 'Events', 'icon': Icons.emoji_events_rounded, 'route': AppConstants.competitionsRoute},
+    {'label': 'Reels', 'icon': Icons.play_circle_fill_rounded, 'route': '/reels'},
   ];
   @override
   Widget build(BuildContext context) => SizedBox(
