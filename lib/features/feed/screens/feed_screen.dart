@@ -208,9 +208,9 @@ class _LiveTournamentBanner extends StatelessWidget {
           const Icon(Icons.emoji_events_rounded, size: 14, color: GacomColors.deepOrange),
           const SizedBox(width: 6),
           const Text('LIVE TOURNAMENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.deepOrange, letterSpacing: 1)),
-          const Spacer(),
-          Text('Gacom Championship · Season 1', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 11, color: GacomColors.textMuted)),
         ]),
+        const SizedBox(height: 6),
+        const Text('Gacom Championship · Season 1', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w600, color: GacomColors.textPrimary)),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -223,11 +223,19 @@ class _LiveTournamentBanner extends StatelessWidget {
             const SizedBox(height: 2),
             const Text('05:45:12', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary)),
           ])),
-          GestureDetector(onTap: onJoin, child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Text('Join Match', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.deepOrange)),
-            const SizedBox(width: 3),
-            const Icon(Icons.arrow_forward_rounded, size: 14, color: GacomColors.deepOrange),
-          ])),
+          Material(color: Colors.transparent, child: InkWell(
+            onTap: onJoin,
+            borderRadius: BorderRadius.circular(50),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Join Match', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.deepOrange)),
+                const SizedBox(width: 3),
+                const Icon(Icons.arrow_forward_rounded, size: 14, color: GacomColors.deepOrange),
+              ]),
+            ),
+          )),
         ]),
         const SizedBox(height: 12),
         ClipRRect(borderRadius: BorderRadius.circular(50), child: LinearProgressIndicator(

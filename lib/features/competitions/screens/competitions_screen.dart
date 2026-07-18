@@ -45,7 +45,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
           .single();
       final role = profile['role'] as String? ?? 'user';
       bool hasPermission =
-          ['admin', 'super_admin'].contains(role);
+          ['admin', 'super_admin', 'moderator'].contains(role);
       if (!hasPermission) {
         // Check if user has create_competitions permission
         final perm = await SupabaseService.client
