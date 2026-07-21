@@ -119,6 +119,20 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final reference = 'GAC_${const Uuid().v4().substring(0, 8).toUpperCase()}';
 
     try {
+      // Record the pending transaction FIRST, before opening Paystack.
+      // Opening the checkout page (new tab / popup / navigation) can
+      // interrupt or discard anything scheduled to run *after* it — so any
+      // code that must survive the redirect has to run before, not after.
+      await SupabaseService.client.from('wallet_transactions').insert({
+        'user_id': SupabaseService.currentUserId,
+        'type': 'deposit',
+        'amount': amount,
+        'reference': reference,
+        'status': 'pending',
+        'description': 'Wallet funding via Paystack',
+      });
+      if (mounted) await _loadData();
+
       final launched = await PaystackService.initializeAndPay(
         context: context,
         amountNaira: amount,
@@ -126,17 +140,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
         callbackUrl: 'https://gamicom.net/#/wallet',
       );
 
-      if (launched != null) {
-        // Record pending transaction
-        await SupabaseService.client.from('wallet_transactions').insert({
-          'user_id': SupabaseService.currentUserId,
-          'type': 'deposit',
-          'amount': amount,
-          'reference': reference,
-          'status': 'pending',
-          'description': 'Wallet funding via Paystack',
-        });
-        if (mounted) await _loadData();
+      if (launched == null) {
+        // Paystack initialization failed after we already recorded the
+        // pending transaction — mark it failed so it doesn't sit as
+        // "pending" forever and confuse future verify attempts.
+        await SupabaseService.client.from('wallet_transactions')
+            .update({'status': 'failed'}).eq('reference', reference);
       }
     } catch (e) {
       if (mounted) {
