@@ -34,10 +34,21 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   /// uses hash routing, so the query params live inside Uri.base.fragment,
   /// not Uri.base.queryParameters (which only sees the pre-# path).
   Future<void> _checkForReturningPayment() async {
-    final fragment = Uri.base.fragment; // e.g. "/wallet?trxref=X&reference=X"
-    if (!fragment.contains('?')) return;
-    final fragUri = Uri.parse(fragment.startsWith('/') ? fragment : '/$fragment');
-    final reference = fragUri.queryParameters['reference'] ?? fragUri.queryParameters['trxref'];
+    // Paystack can return the reference in two different valid places
+    // depending on how it builds the redirect URL against a hash-routed
+    // app: either the standard pre-# query string (proper URL spec puts
+    // query before fragment: scheme://host/path?query#fragment), or
+    // embedded inside the fragment itself (common SPA convention). Check
+    // both so we're not dependent on which one it happens to use.
+    String? reference = Uri.base.queryParameters['reference'] ?? Uri.base.queryParameters['trxref'];
+
+    if (reference == null) {
+      final fragment = Uri.base.fragment; // e.g. "/wallet?trxref=X&reference=X"
+      if (fragment.contains('?')) {
+        final fragUri = Uri.parse(fragment.startsWith('/') ? fragment : '/$fragment');
+        reference = fragUri.queryParameters['reference'] ?? fragUri.queryParameters['trxref'];
+      }
+    }
     if (reference == null || reference.isEmpty) return;
 
     if (mounted) {
