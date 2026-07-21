@@ -25,8 +25,33 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   @override
   void initState() {
     super.initState();
+    _showDebugUriBanner(); // TEMPORARY — remove once payment detection is confirmed working
     _checkForReturningPayment();
     _loadData();
+  }
+
+  // TEMPORARY DIAGNOSTIC — shows exactly what the browser URL looks like to
+  // the app on load, since we can't otherwise tell whether this is a
+  // deployment/caching issue or a real logic bug. Safe to remove once
+  // payment detection is confirmed working end to end.
+  void _showDebugUriBanner() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          backgroundColor: GacomColors.cardDark,
+          title: const Text('DEBUG: URL seen on load', style: TextStyle(color: GacomColors.textPrimary, fontSize: 14)),
+          content: SelectableText(
+            'Uri.base: ${Uri.base}\n\n'
+            'query: ${Uri.base.queryParameters}\n\n'
+            'fragment: ${Uri.base.fragment}',
+            style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12, fontFamily: 'monospace'),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.of(dialogCtx, rootNavigator: true).pop(), child: const Text('OK'))],
+        ),
+      );
+    });
   }
 
   /// If we just got redirected back from Paystack, the hash-URL will look
