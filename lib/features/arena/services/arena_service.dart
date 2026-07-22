@@ -31,21 +31,22 @@ class ArenaService {
 
   static Future<bool> deductStake(int amount) async {
     try {
-      final w = await _db.from('profiles').select('wallet_balance').eq('id', _uid!).single();
-      final bal = (w['wallet_balance'] as num).toDouble();
-      if (bal < amount) return false;
-      await _db.from('profiles').update({'wallet_balance': bal - amount}).eq('id', _uid!);
-      await _db.from('wallet_transactions').insert({'user_id': _uid, 'type': 'arena_entry', 'amount': -amount, 'reference': 'ARENA_ENTRY_${DateTime.now().millisecondsSinceEpoch}', 'status': 'completed', 'description': 'Arena match entry stake'});
-      return true;
+      final res = await _db.rpc('deduct_arena_stake', params: {
+        'p_user_id': _uid,
+        'p_amount': amount,
+        'p_reference': 'ARENA_ENTRY_${DateTime.now().millisecondsSinceEpoch}',
+      });
+      return res?['success'] == true;
     } catch (_) { return false; }
   }
 
   static Future<void> refundStake(String userId, int amount) async {
     try {
-      final w = await _db.from('profiles').select('wallet_balance').eq('id', userId).single();
-      final bal = (w['wallet_balance'] as num).toDouble();
-      await _db.from('profiles').update({'wallet_balance': bal + amount}).eq('id', userId);
-      await _db.from('wallet_transactions').insert({'user_id': userId, 'type': 'arena_refund', 'amount': amount, 'reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}', 'status': 'completed', 'description': 'Arena match stake refund'});
+      await _db.rpc('refund_arena_stake', params: {
+        'p_user_id': userId,
+        'p_amount': amount,
+        'p_reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}',
+      });
     } catch (_) {}
   }
 
