@@ -29,15 +29,20 @@ class ArenaService {
     } catch (_) { return 0; }
   }
 
-  static Future<bool> deductStake(int amount) async {
+  /// Returns {'success': true} or {'success': false, 'error': <real reason>}
+  static Future<Map<String, dynamic>> deductStake(int amount) async {
     try {
       final res = await _db.rpc('deduct_arena_stake', params: {
         'p_user_id': _uid,
         'p_amount': amount,
         'p_reference': 'ARENA_ENTRY_${DateTime.now().millisecondsSinceEpoch}',
       });
-      return res?['success'] == true;
-    } catch (_) { return false; }
+      if (res?['success'] == true) return {'success': true};
+      return {'success': false, 'error': res?['error'] ?? 'RPC returned failure with no error message'};
+    } catch (e) {
+      debugPrint('deductStake RPC threw: $e');
+      return {'success': false, 'error': e.toString()};
+    }
   }
 
   static Future<void> refundStake(String userId, int amount) async {
@@ -56,8 +61,10 @@ class ArenaService {
   /// on failure — never silently swallows what actually went wrong, since
   /// that's exactly what let money-losing bugs hide undetected before.
   static Future<Map<String, dynamic>> createMatch({required String gameType, required int stakeAmount}) async {
-    final deducted = await deductStake(stakeAmount);
-    if (!deducted) return {'error': 'Could not deduct stake — insufficient balance or a wallet error occurred.'};
+    final deductResult = await deductStake(stakeAmount);
+    if (deductResult['success'] != true) {
+      return {'error': 'Could not deduct stake: ${deductResult['error']}'};
+    }
     try {
       final channelId = 'arena_${DateTime.now().millisecondsSinceEpoch}';
       final data = await _db.from('arena_matches').insert({
@@ -86,18 +93,29 @@ class ArenaService {
   }
 
   static Future<Map<String, dynamic>?> joinMatch(String matchId) async {
+    final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
+    final stakeAmount = match['stake_amount'] as int;
+    final deductResult = await deductStake(stakeAmount);
+    if (deductResult['success'] != true) {
+      debugPrint('joinMatch: deduct failed — ${deductResult['error']}');
+      return null;
+    }
     try {
-      final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
-      final stakeAmount = match['stake_amount'] as int;
-      final deducted = await deductStake(stakeAmount);
-      if (!deducted) return null;
       final updated = await _db.from('arena_matches').update({
         'opponent_id': _uid,
         'status': 'active',
         'started_at': DateTime.now().toIso8601String(),
       }).eq('id', matchId).eq('status', 'waiting').select().single();
       return updated;
-    } catch (_) { return null; }
+    } catch (e) {
+      debugPrint('joinMatch update failed, attempting refund: $e');
+      try {
+        await refundStake(_uid!, stakeAmount);
+      } catch (refundError) {
+        debugPrint('joinMatch REFUND ALSO FAILED: $refundError');
+      }
+      return null;
+    }
   }
 
   static Future<void> cancelMatch(String matchId) async {
