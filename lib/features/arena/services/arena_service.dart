@@ -41,19 +41,23 @@ class ArenaService {
   }
 
   static Future<void> refundStake(String userId, int amount) async {
-    try {
-      await _db.rpc('refund_arena_stake', params: {
-        'p_user_id': userId,
-        'p_amount': amount,
-        'p_reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}',
-      });
-    } catch (_) {}
+    final res = await _db.rpc('refund_arena_stake', params: {
+      'p_user_id': userId,
+      'p_amount': amount,
+      'p_reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}',
+    });
+    if (res?['success'] != true) {
+      throw Exception(res?['error'] ?? 'Refund RPC returned failure');
+    }
   }
 
   // ── Match CRUD ─────────────────────────────────────────────────────────────
-  static Future<Map<String, dynamic>?> createMatch({required String gameType, required int stakeAmount}) async {
+  /// Returns {'match': ...} on success, or {'error': ..., 'refunded': bool}
+  /// on failure — never silently swallows what actually went wrong, since
+  /// that's exactly what let money-losing bugs hide undetected before.
+  static Future<Map<String, dynamic>> createMatch({required String gameType, required int stakeAmount}) async {
     final deducted = await deductStake(stakeAmount);
-    if (!deducted) return null;
+    if (!deducted) return {'error': 'Could not deduct stake — insufficient balance or a wallet error occurred.'};
     try {
       final channelId = 'arena_${DateTime.now().millisecondsSinceEpoch}';
       final data = await _db.from('arena_matches').insert({
@@ -64,10 +68,20 @@ class ArenaService {
         'status': 'waiting',
         'current_turn': _uid,
       }).select().single();
-      return data;
+      return {'match': data};
     } catch (e) {
-      await refundStake(_uid!, stakeAmount);
-      return null;
+      debugPrint('createMatch failed, attempting refund: $e');
+      bool refundOk = true;
+      try {
+        await refundStake(_uid!, stakeAmount);
+      } catch (refundError) {
+        refundOk = false;
+        debugPrint('REFUND ALSO FAILED: $refundError');
+      }
+      return {
+        'error': 'Could not create match: $e',
+        'refunded': refundOk,
+      };
     }
   }
 

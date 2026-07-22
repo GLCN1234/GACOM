@@ -81,12 +81,16 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
       _showInsufficientFunds(); return;
     }
     setState(() => _creating = true);
-    final match = await ArenaService.createMatch(gameType: _selectedGame, stakeAmount: _selectedStake);
+    final result = await ArenaService.createMatch(gameType: _selectedGame, stakeAmount: _selectedStake);
     if (mounted) setState(() => _creating = false);
-    if (match != null && mounted) {
-      context.push('/arena/match/${match['id']}');
+    if (result['match'] != null && mounted) {
+      context.push('/arena/match/${result['match']['id']}');
     } else if (mounted) {
-      _showError('Could not create match. Please try again.');
+      final refunded = result['refunded'] as bool?;
+      final suffix = refunded == false
+          ? '\n\n⚠️ Your stake could NOT be refunded automatically — contact support with this error.'
+          : (refunded == true ? '\n\nYour stake has been refunded.' : '');
+      _showError('${result['error'] ?? 'Could not create match.'}$suffix');
     }
   }
 
