@@ -112,41 +112,22 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     }
   }
 
-  /// ✅ FIXED: Use url_launcher to open Paystack checkout page directly.
-  /// The public key goes in the URL — NOT as a Bearer authorization header
-  /// (which requires the SECRET key and causes the ERR_CONNECTION_TIMED_OUT).
+  /// The pending transaction record is now created server-side, inside the
+  /// paystack-init edge function, before it returns the checkout link —
+  /// this guarantees it exists regardless of what the browser does with
+  /// the redirect (new tab, popup, full navigation all interrupt anything
+  /// scheduled to run client-side after this call).
   Future<void> _initiatePaystack(double amount, BuildContext sheetCtx) async {
     final reference = 'GAC_${const Uuid().v4().substring(0, 8).toUpperCase()}';
 
     try {
-      // Record the pending transaction FIRST, before opening Paystack.
-      // Opening the checkout page (new tab / popup / navigation) can
-      // interrupt or discard anything scheduled to run *after* it — so any
-      // code that must survive the redirect has to run before, not after.
-      await SupabaseService.client.from('wallet_transactions').insert({
-        'user_id': SupabaseService.currentUserId,
-        'type': 'deposit',
-        'amount': amount,
-        'reference': reference,
-        'status': 'pending',
-        'description': 'Wallet funding via Paystack',
-      });
-      if (mounted) await _loadData();
-
       final launched = await PaystackService.initializeAndPay(
         context: context,
         amountNaira: amount,
         reference: reference,
         callbackUrl: 'https://gamicom.net/#/wallet',
       );
-
-      if (launched == null) {
-        // Paystack initialization failed after we already recorded the
-        // pending transaction — mark it failed so it doesn't sit as
-        // "pending" forever and confuse future verify attempts.
-        await SupabaseService.client.from('wallet_transactions')
-            .update({'status': 'failed'}).eq('reference', reference);
-      }
+      if (launched != null && mounted) await _loadData();
     } catch (e) {
       if (mounted) {
         GacomSnackbar.show(context, 'Network error. Check connection.', isError: true);
