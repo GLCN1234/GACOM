@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +21,29 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Identify the calling user from their auth token — never trust a
+    // client-supplied user_id, derive it from the verified session instead.
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    )
+    const { data: userData, error: userError } = await anonClient.auth.getUser()
+    if (userError || !userData?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Could not identify user from session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const userId = userData.user.id
 
     // Secret key is stored as a Supabase secret — never exposed to frontend
     const secretKey = Deno.env.get('PAYSTACK_SECRET_KEY')
@@ -52,6 +76,31 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: data.message ?? 'Paystack initialization failed' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Record the pending transaction HERE, server-side, before returning
+    // the checkout link. This guarantees the record exists no matter what
+    // the browser does next (new tab, popup, full navigation) — it no
+    // longer depends on any client-side code running after this point.
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    )
+    const { error: insertError } = await serviceClient.from('wallet_transactions').insert({
+      user_id: userId,
+      type: 'deposit',
+      amount: amount / 100, // amount arrived in kobo; store naira to match the rest of the app
+      reference,
+      status: 'pending',
+      description: 'Wallet funding via Paystack',
+    })
+    if (insertError) {
+      // Don't send the user to pay for a transaction we can't track —
+      // fail loudly here rather than silently losing the record.
+      return new Response(
+        JSON.stringify({ error: `Could not record pending transaction: ${insertError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
