@@ -40,6 +40,7 @@ import '../../features/arena/screens/match_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
 import '../../features/arena/screens/game_store_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
+import '../../features/arena/games/shooter/survival_shooter_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -177,6 +178,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'submit',
                     builder: (_, __) => const GameDeveloperApplicationScreen(),
+                  ),
+                  GoRoute(
+                    path: 'survival',
+                    builder: (_, __) => const SurvivalShooterScreen(),
                   ),
                 ],
               ),

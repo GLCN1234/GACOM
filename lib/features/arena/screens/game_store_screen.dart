@@ -11,6 +11,7 @@ class GameStoreScreen extends StatelessWidget {
     {'name': 'RPS Battle', 'desc': 'Best of 5, rock paper scissors', 'icon': Icons.front_hand_rounded},
     {'name': 'Trivia', 'desc': '10 questions, race the clock', 'icon': Icons.quiz_rounded},
     {'name': 'Reaction', 'desc': 'Tap fastest, pure reflexes', 'icon': Icons.bolt_rounded},
+    {'name': 'Survival Shooter', 'desc': 'Move, auto-fire, survive the waves', 'icon': Icons.gps_fixed_rounded, 'route': '/arena/store/survival', 'badge': 'NEW'},
   ];
 
   @override
@@ -23,7 +24,9 @@ class GameStoreScreen extends StatelessWidget {
         children: [
           const Text('GACOM GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textMuted, letterSpacing: 1)),
           const SizedBox(height: 12),
-          ..._gacomGames.map((g) => Container(
+          ..._gacomGames.map((g) => GestureDetector(
+            onTap: g['route'] != null ? () => context.push(g['route'] as String) : null,
+            child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
             decoration: GacomDecorations.glassCard(context, radius: 16),
@@ -36,10 +39,10 @@ class GameStoreScreen extends StatelessWidget {
                 Text(g['desc'] as String, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
               ])),
               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
-                child: const Text('LIVE', style: TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10))),
+                decoration: BoxDecoration(color: ((g['badge'] as String?) == 'NEW' ? GacomColors.electricBlue : GacomColors.success).withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
+                child: Text((g['badge'] as String?) ?? 'LIVE', style: TextStyle(color: (g['badge'] as String?) == 'NEW' ? GacomColors.electricBlue : GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10))),
             ]),
-          )),
+          ))),
 
           const SizedBox(height: 24),
           const Text('COMING FROM DEVELOPERS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textMuted, letterSpacing: 1)),
