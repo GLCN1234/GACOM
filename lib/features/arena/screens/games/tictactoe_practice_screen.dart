@@ -58,7 +58,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
       _gameOver = true;
       if (winner == 'draw') { _draws++; _resultText = "It's a draw!"; }
       else if (winner == 'X') { _wins++; _resultText = 'You win! 🎉'; }
-      else { _losses++; _resultText = 'AI wins this one.'; }
+      else { _losses++; _resultText = 'Ryan wins this one.'; }
     });
   }
 
@@ -114,7 +114,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
-        title: const Text('PRACTICE VS AI'),
+        title: const Text('PRACTICE VS RYAN'),
         actions: [
           Padding(padding: const EdgeInsets.only(right: 16), child: Center(
             child: Text('W $_wins · L $_losses · D $_draws', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: GacomColors.textMuted)))),
@@ -128,7 +128,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
             child: const Text('FREE PRACTICE — no stake, no wallet involved', style: TextStyle(color: GacomColors.info, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600))),
           const SizedBox(height: 16),
           Text(
-            _gameOver ? _resultText! : (_myTurn ? 'Your turn — tap a cell' : 'AI is thinking...'),
+            _gameOver ? _resultText! : (_myTurn ? 'Your turn — tap a cell' : 'Ryan is thinking...'),
             style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16,
               color: _gameOver ? GacomColors.warning : (_myTurn ? GacomColors.deepOrange : GacomColors.txtMuted(context))),
           ),
@@ -167,7 +167,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
             const SizedBox(width: 6), const Text('You', style: TextStyle(fontSize: 13, color: GacomColors.textSecondary)),
             const SizedBox(width: 24),
             Text('O', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.info)),
-            const SizedBox(width: 6), const Text('AI', style: TextStyle(fontSize: 13, color: GacomColors.textSecondary)),
+            const SizedBox(width: 6), const Text('Ryan', style: TextStyle(fontSize: 13, color: GacomColors.textSecondary)),
           ]),
           if (_gameOver) ...[
             const SizedBox(height: 16),

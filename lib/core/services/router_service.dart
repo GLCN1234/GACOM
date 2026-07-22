@@ -38,6 +38,8 @@ import '../../features/exco/screens/exco_dashboard_screen.dart';
 import '../../features/arena/screens/arena_screen.dart';
 import '../../features/arena/screens/match_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
+import '../../features/arena/screens/game_store_screen.dart';
+import '../../features/arena/screens/game_developer_application_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -167,6 +169,16 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'practice/tictactoe',
                 builder: (_, __) => const TicTacToePracticeScreen(),
+              ),
+              GoRoute(
+                path: 'store',
+                builder: (_, __) => const GameStoreScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'submit',
+                    builder: (_, __) => const GameDeveloperApplicationScreen(),
+                  ),
+                ],
               ),
             ],
           ),

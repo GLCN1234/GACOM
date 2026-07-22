@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_constants.dart';
@@ -7,6 +6,8 @@ import 'core/theme/app_theme.dart';
 import 'core/services/router_service.dart';
 import 'core/services/supabase_service.dart';
 import 'features/profile/screens/settings_screen.dart' show themeModeProvider;
+import 'core/utils/fatal_error_handler_stub.dart'
+    if (dart.library.html) 'core/utils/fatal_error_handler_web.dart' as fatal_error;
 
 void main() async {
   // Flutter's default release-mode behavior on any widget-build error is to
@@ -85,27 +86,7 @@ Future<void> _checkAndVerifyReturningPayment() async {
   }
 }
 
-void _showFatalErrorOnPage(String error, String stack) {
-  // Avoid stacking duplicate overlays if multiple errors fire
-  html.document.getElementById('gacom-fatal-error')?.remove();
-  final div = html.DivElement()
-    ..id = 'gacom-fatal-error'
-    ..style.position = 'fixed'
-    ..style.top = '0'
-    ..style.left = '0'
-    ..style.right = '0'
-    ..style.bottom = '0'
-    ..style.background = '#1a0000'
-    ..style.color = '#ffffff'
-    ..style.padding = '20px'
-    ..style.zIndex = '999999'
-    ..style.fontFamily = 'monospace'
-    ..style.fontSize = '12px'
-    ..style.overflow = 'auto'
-    ..style.whiteSpace = 'pre-wrap'
-    ..text = '⚠️ App crashed — screenshot this:\n\n$error\n\n$stack';
-  html.document.body?.append(div);
-}
+void _showFatalErrorOnPage(String error, String stack) => fatal_error.showFatalErrorOnPage(error, stack);
 
 class GacomApp extends ConsumerWidget {
   const GacomApp({super.key});

@@ -153,6 +153,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
       appBar: AppBar(
         title: const Text('GACOM ARENA'),
         actions: [
+          IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
           IconButton(icon: const Icon(Icons.history_rounded), onPressed: () => _tab.animateTo(3)),
         ],
@@ -315,7 +316,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
               onPressed: () => context.push('/arena/practice/tictactoe'),
               style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.info), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               icon: const Icon(Icons.smart_toy_outlined, color: GacomColors.info, size: 18),
-              label: const Text('PRACTICE VS AI (FREE)', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
+              label: const Text('PRACTICE VS RYAN (FREE)', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
             ),
           ),
           const SizedBox(height: 12),

@@ -39,8 +39,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _loading = true;
   String? _userRole;
 
-  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena'];
-  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded];
+  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena', 'Game Submissions'];
+  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded, Icons.videogame_asset_rounded];
 
   @override
   void initState() { super.initState(); _checkAccess(); _loadStats(); }
@@ -104,6 +104,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       case 6: return const _VerificationSection();
       case 7: return const _ExcoSection();
       case 8: return const ArenaAdminSection();
+      case 9: return const _GameSubmissionsSection();
       default: return Center(child: Text(_sections[_selectedSection], style: const TextStyle(color: GacomColors.textMuted, fontSize: 20)));
     }
   }
@@ -534,6 +535,85 @@ class _PaymentsSectionState extends State<_PaymentsSection> with SingleTickerPro
     ]);
   }
 }
+
+// ── Game Submissions — review developer game applications ───────────────────
+class _GameSubmissionsSection extends StatefulWidget {
+  const _GameSubmissionsSection();
+  @override State<_GameSubmissionsSection> createState() => _GameSubmissionsSectionState();
+}
+class _GameSubmissionsSectionState extends State<_GameSubmissionsSection> {
+  List<Map<String, dynamic>> _apps = [];
+  bool _loading = true;
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    try {
+      final data = await SupabaseService.client.from('game_developer_applications')
+          .select('*').order('created_at', ascending: false).limit(50);
+      if (mounted) setState(() { _apps = List<Map<String, dynamic>>.from(data); _loading = false; });
+    } catch (e) {
+      debugPrint('Game submissions load failed: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _review(String id, String status) async {
+    try {
+      await SupabaseService.client.from('game_developer_applications')
+          .update({'status': status, 'reviewed_at': DateTime.now().toIso8601String()}).eq('id', id);
+      if (mounted) GacomSnackbar.show(context, 'Marked as $status', isSuccess: true);
+      _load();
+    } catch (e) {
+      if (mounted) GacomSnackbar.show(context, 'Error: $e', isError: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = _apps.where((a) => a['status'] == 'pending').toList();
+    return Column(children: [
+      Padding(padding: const EdgeInsets.all(20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text('GAME SUBMISSIONS${pending.isNotEmpty ? ' (${pending.length} pending)' : ''}', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+        IconButton(icon: const Icon(Icons.refresh_rounded, color: GacomColors.textSecondary), onPressed: _load),
+      ])),
+      if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
+      else if (_apps.isEmpty) const Expanded(child: Center(child: Text('No submissions yet.', style: TextStyle(color: GacomColors.textMuted))))
+      else Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: _apps.length, itemBuilder: (_, i) {
+        final a = _apps[i];
+        final status = a['status'] as String? ?? 'pending';
+        final statusColor = status == 'approved' ? GacomColors.success : status == 'rejected' ? GacomColors.error : GacomColors.deepOrange;
+        return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(a['game_name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
+                Text('by ${a['developer_name'] ?? ''} · ${a['developer_email'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              ])),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
+                child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11))),
+            ]),
+            const SizedBox(height: 8),
+            Text(a['game_description'] ?? '', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+            if (a['genre'] != null) ...[const SizedBox(height: 4), Text('Genre: ${a['genre']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11))],
+            if (a['demo_link'] != null) ...[const SizedBox(height: 4), Text('Demo: ${a['demo_link']}', style: const TextStyle(color: GacomColors.info, fontSize: 11))],
+            if (status == 'pending') ...[
+              const SizedBox(height: 10),
+              Row(children: [
+                TextButton(onPressed: () => _review(a['id'], 'rejected'), child: const Text('REJECT', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+                const SizedBox(width: 4),
+                ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: GacomColors.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                  onPressed: () => _review(a['id'], 'approved'), child: const Text('APPROVE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+              ]),
+            ],
+          ]));
+      })),
+    ]);
+  }
+}
+
 class _VerificationSection extends ConsumerStatefulWidget {
   const _VerificationSection();
   @override ConsumerState<_VerificationSection> createState() => _VerificationSectionState();
