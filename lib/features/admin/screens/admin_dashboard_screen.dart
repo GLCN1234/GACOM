@@ -100,6 +100,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       case 2: return const _CompetitionsAdminSection();
       case 3: return const _CommunitiesAdminSection();
       case 4: return const _BlogAdminSection();
+      case 5: return const _PaymentsSection();
       case 6: return const _VerificationSection();
       case 7: return const _ExcoSection();
       case 8: return const ArenaAdminSection();
@@ -402,7 +403,137 @@ class _BlogAdminState extends ConsumerState<_BlogAdminSection> {
   }
 }
 
-// ── Verification Section ──────────────────────────────────────────────────────
+// ── Payments — withdrawals to approve/reject, site-wide transaction history ──
+class _PaymentsSection extends StatefulWidget {
+  const _PaymentsSection();
+  @override State<_PaymentsSection> createState() => _PaymentsSectionState();
+}
+class _PaymentsSectionState extends State<_PaymentsSection> with SingleTickerProviderStateMixin {
+  late final TabController _tab = TabController(length: 2, vsync: this);
+  List<Map<String, dynamic>> _withdrawals = [];
+  List<Map<String, dynamic>> _transactions = [];
+  bool _loading = true;
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    try {
+      final w = await SupabaseService.client.from('withdrawal_requests')
+          .select('*, user:profiles!user_id(display_name, username)')
+          .order('created_at', ascending: false).limit(50);
+      final t = await SupabaseService.client.from('wallet_transactions')
+          .select('*, user:profiles!user_id(display_name, username)')
+          .order('created_at', ascending: false).limit(50);
+      if (mounted) setState(() {
+        _withdrawals = List<Map<String, dynamic>>.from(w);
+        _transactions = List<Map<String, dynamic>>.from(t);
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('Payments admin load failed: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _approve(String id) async {
+    try {
+      final res = await SupabaseService.client.rpc('approve_withdrawal', params: {'p_request_id': id});
+      if (res?['success'] == true) {
+        if (mounted) GacomSnackbar.show(context, 'Withdrawal approved ✅', isSuccess: true);
+        _load();
+      } else {
+        if (mounted) GacomSnackbar.show(context, res?['error']?.toString() ?? 'Approval failed', isError: true);
+      }
+    } catch (e) {
+      if (mounted) GacomSnackbar.show(context, 'Error: $e', isError: true);
+    }
+  }
+
+  Future<void> _reject(String id) async {
+    try {
+      final res = await SupabaseService.client.rpc('reject_withdrawal', params: {'p_request_id': id});
+      if (res?['success'] == true) {
+        if (mounted) GacomSnackbar.show(context, 'Withdrawal rejected', isSuccess: true);
+        _load();
+      } else {
+        if (mounted) GacomSnackbar.show(context, res?['error']?.toString() ?? 'Rejection failed', isError: true);
+      }
+    } catch (e) {
+      if (mounted) GacomSnackbar.show(context, 'Error: $e', isError: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingWithdrawals = _withdrawals.where((w) => w['status'] == 'pending').toList();
+    return Column(children: [
+      Padding(padding: const EdgeInsets.all(20), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        const Text('PAYMENTS', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+        IconButton(icon: const Icon(Icons.refresh_rounded, color: GacomColors.textSecondary), onPressed: _load),
+      ])),
+      TabBar(controller: _tab, isScrollable: true, indicatorColor: GacomColors.deepOrange, labelColor: GacomColors.deepOrange, unselectedLabelColor: GacomColors.textMuted,
+        labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700), tabs: [
+        Tab(text: 'WITHDRAWALS${pendingWithdrawals.isNotEmpty ? ' (${pendingWithdrawals.length})' : ''}'),
+        const Tab(text: 'ALL TRANSACTIONS'),
+      ]),
+      const SizedBox(height: 8),
+      if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
+      else Expanded(child: TabBarView(controller: _tab, children: [
+        // Withdrawals tab
+        _withdrawals.isEmpty
+          ? const Center(child: Text('No withdrawal requests yet.', style: TextStyle(color: GacomColors.textMuted)))
+          : ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: _withdrawals.length, itemBuilder: (_, i) {
+              final w = _withdrawals[i]; final user = w['user'] as Map? ?? {};
+              final status = w['status'] as String? ?? 'pending';
+              final statusColor = status == 'approved' ? GacomColors.success : status == 'rejected' ? GacomColors.error : GacomColors.deepOrange;
+              return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(user['display_name'] ?? 'Unknown user', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                      Text('${w['bank_name'] ?? ''} · ${w['account_number'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                    ])),
+                    Text('₦${w['amount']}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.textPrimary)),
+                  ]),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(50), border: Border.all(color: statusColor.withOpacity(0.4))),
+                      child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11))),
+                    const Spacer(),
+                    if (status == 'pending') ...[
+                      TextButton(onPressed: () => _reject(w['id']), child: const Text('REJECT', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+                      const SizedBox(width: 4),
+                      ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: GacomColors.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        onPressed: () => _approve(w['id']), child: const Text('APPROVE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+                    ],
+                  ]),
+                ]));
+            }),
+        // All transactions tab
+        _transactions.isEmpty
+          ? const Center(child: Text('No transactions yet.', style: TextStyle(color: GacomColors.textMuted)))
+          : ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: _transactions.length, itemBuilder: (_, i) {
+              final t = _transactions[i]; final user = t['user'] as Map? ?? {};
+              final amount = (t['amount'] as num?)?.toDouble() ?? 0;
+              final isCredit = amount >= 0;
+              return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+                child: Row(children: [
+                  Icon(isCredit ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, color: isCredit ? GacomColors.success : GacomColors.error, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${user['display_name'] ?? 'Unknown'} · ${t['type'] ?? ''}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
+                    Text(t['description'] ?? '', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                  ])),
+                  Text('${isCredit ? '+' : ''}₦$amount', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: isCredit ? GacomColors.success : GacomColors.error)),
+                ]));
+            }),
+      ])),
+    ]);
+  }
+}
 class _VerificationSection extends ConsumerStatefulWidget {
   const _VerificationSection();
   @override ConsumerState<_VerificationSection> createState() => _VerificationSectionState();
