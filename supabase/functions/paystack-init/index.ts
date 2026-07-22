@@ -87,10 +87,30 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
+
+    // wallet_transactions requires balance_before/balance_after on every
+    // row. For a still-pending deposit nothing has moved yet, so both
+    // equal the current balance — credit_wallet_from_reference updates
+    // balance_after to the real post-credit figure once payment clears.
+    const { data: profileData, error: profileError } = await serviceClient
+      .from('profiles')
+      .select('wallet_balance')
+      .eq('id', userId)
+      .single()
+    if (profileError || profileData == null) {
+      return new Response(
+        JSON.stringify({ error: `Could not read wallet balance: ${profileError?.message ?? 'profile not found'}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const currentBalance = profileData.wallet_balance ?? 0
+
     const { error: insertError } = await serviceClient.from('wallet_transactions').insert({
       user_id: userId,
       type: 'deposit',
       amount: amount / 100, // amount arrived in kobo; store naira to match the rest of the app
+      balance_before: currentBalance,
+      balance_after: currentBalance,
       reference,
       status: 'pending',
       description: 'Wallet funding via Paystack',
