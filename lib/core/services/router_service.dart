@@ -37,6 +37,7 @@ import '../../features/support/screens/agent_chat_screen.dart';
 import '../../features/exco/screens/exco_dashboard_screen.dart';
 import '../../features/arena/screens/arena_screen.dart';
 import '../../features/arena/screens/match_screen.dart';
+import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -162,6 +163,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'match/:id',
                 builder: (_, s) => MatchScreen(matchId: s.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'practice/tictactoe',
+                builder: (_, __) => const TicTacToePracticeScreen(),
               ),
             ],
           ),

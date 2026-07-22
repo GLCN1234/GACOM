@@ -305,6 +305,21 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
           ),
         ),
         const SizedBox(height: 30),
+
+        if (_selectedGame == 'tictactoe') ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/arena/practice/tictactoe'),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.info), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              icon: const Icon(Icons.smart_toy_outlined, color: GacomColors.info, size: 18),
+              label: const Text('PRACTICE VS AI (FREE)', style: TextStyle(color: GacomColors.info, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
       ]),
     ),
   );
