@@ -42,11 +42,47 @@ void main() async {
     };
 
     await SupabaseService.initialize();
+
+    // Check for a returning Paystack payment reference at the earliest
+    // possible point — before any routing or screen widget exists. We'd
+    // previously relied on WalletScreen's own initState to catch this, but
+    // that depends on the router actually landing on /wallet with the
+    // right timing, which proved unreliable. This runs unconditionally on
+    // every app boot regardless of which screen ends up rendering.
+    await _checkAndVerifyReturningPayment();
+
     runApp(const ProviderScope(child: GacomApp()));
   }, (error, stack) {
     debugPrint('ZONE ERROR: $error\n$stack');
     _showFatalErrorOnPage(error.toString(), stack.toString());
   });
+}
+
+Future<void> _checkAndVerifyReturningPayment() async {
+  try {
+    String? reference = Uri.base.queryParameters['reference'] ?? Uri.base.queryParameters['trxref'];
+    if (reference == null) {
+      final fragment = Uri.base.fragment;
+      if (fragment.contains('?')) {
+        final fragUri = Uri.parse(fragment.startsWith('/') ? fragment : '/$fragment');
+        reference = fragUri.queryParameters['reference'] ?? fragUri.queryParameters['trxref'];
+      }
+    }
+    if (reference == null || reference.isEmpty) return;
+    if (SupabaseService.currentUserId == null) return; // not logged in yet, nothing to credit
+
+    debugPrint('Detected returning payment reference: $reference — verifying...');
+    final res = await SupabaseService.client.functions.invoke(
+      'paystack-verify',
+      body: {'reference': reference},
+    ).timeout(const Duration(seconds: 20));
+    debugPrint('paystack-verify result: ${res.data}');
+  } catch (e) {
+    debugPrint('paystack-verify check failed: $e');
+    // Deliberately not fatal — a failed verify check shouldn't block the
+    // app from loading. The transaction stays 'pending' and can be
+    // reconciled later; it doesn't disappear.
+  }
 }
 
 void _showFatalErrorOnPage(String error, String stack) {
