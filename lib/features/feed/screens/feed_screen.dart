@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
+import '../../../shared/widgets/glass_container.dart';
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
 final _demoPosts = [
@@ -105,8 +106,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
     final name = _myProfile?['display_name'] ?? 'Gamer';
     final coins = _myProfile?['wallet_balance'] as int? ?? 0;
     return Scaffold(
-      backgroundColor: GacomColors.obsidian,
-      body: NestedScrollView(
+      backgroundColor: Colors.transparent,
+      body: AmbientGlowBackground(child: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(pinned: false, floating: true, snap: true, backgroundColor: Colors.transparent, elevation: 0, expandedHeight: 160,
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
@@ -121,7 +122,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
           _PostList(key: const ValueKey('fl'), isFollowing: true),
           _PostList(key: const ValueKey('tr'), isFollowing: false),
         ]),
-      ),
+      )),
     );
   }
 }
@@ -187,11 +188,11 @@ class _QuickActionsRow extends StatelessWidget {
         final a = _actions[i];
         return GestureDetector(
           onTap: () => context.go(a['route'] as String),
-          child: Container(
-            width: 76,
-            decoration: GacomDecorations.glassCard(context, radius: 20),
+          child: GlassContainer(
+            radius: 20,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            fillOpacity: 0.07,
+            child: SizedBox(width: 60, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               ShaderMask(
                 shaderCallback: (r) => GacomColors.violetBlueGradient.createShader(r),
                 child: Icon(a['icon'] as IconData, color: Colors.white, size: 22),
@@ -199,7 +200,7 @@ class _QuickActionsRow extends StatelessWidget {
               const SizedBox(height: 8),
               Text(a['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 10.5, fontWeight: FontWeight.w600, color: GacomColors.textSecondary)),
-            ]),
+            ])),
           ),
         );
       },
@@ -216,9 +217,10 @@ class _LiveTournamentBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-    child: Container(
+    child: GlassContainer(
+      radius: 20,
+      accentGlow: GacomColors.violet,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: GacomDecorations.glassCard(context, radius: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.emoji_events_rounded, size: 14, color: GacomColors.deepOrange),
