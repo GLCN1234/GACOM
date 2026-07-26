@@ -8,8 +8,7 @@ import '../services/arena_service.dart';
 import 'games/tictactoe_game.dart';
 import 'games/rps_game.dart';
 import 'games/trivia_game.dart';
-import 'games/reaction_game.dart';
-import 'games/chess_game.dart';
+import 'games/reaction_game.dart'; // contains ChessGame + ReactionGame
 
 class MatchScreen extends StatefulWidget {
   final String matchId;

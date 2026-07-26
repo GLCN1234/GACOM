@@ -299,9 +299,5 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   }
 }
 
-// keep the old export working
-class ChessGame extends StatelessWidget {
-  final String matchId;
-  const ChessGame({super.key, required this.matchId});
-  @override Widget build(BuildContext context)=>const ChessPracticeScreen();
-}
+// ChessPracticeScreen is the AI practice mode.
+// The multiplayer ChessGame used by match_screen.dart lives in reaction_game.dart.
