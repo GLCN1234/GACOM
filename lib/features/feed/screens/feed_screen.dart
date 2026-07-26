@@ -143,7 +143,19 @@ class _Header extends StatelessWidget {
           Consumer(builder: (ctx, ref, _) {
             final edu = ref.watch(eduModeProvider);
             return GestureDetector(
-              onTap: () => ref.read(eduModeProvider.notifier).state = !edu,
+              onTap: () async {
+                if (!edu) {
+                  // Show popup ONLY when turning ON — off is instant
+                  final accepted = await showDialog<bool>(
+                    context: ctx,
+                    barrierDismissible: false,
+                    builder: (_) => const _EduModeDialog(),
+                  );
+                  if (accepted == true) ref.read(eduModeProvider.notifier).state = true;
+                } else {
+                  ref.read(eduModeProvider.notifier).state = false;
+                }
+              },
               child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(color: edu ? GacomColors.accentCyan.withOpacity(0.12) : GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: edu ? GacomColors.accentCyan.withOpacity(0.4) : GacomColors.border)),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -965,6 +977,108 @@ class _OptionTile extends StatelessWidget {
           style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 15, color: color)),
       onTap: onTap,
       dense: true,
+    );
+  }
+}
+
+// ── Edu Mode onboarding dialog ────────────────────────────────────────────────
+// Shows once when the user first switches to Edu Gaming. Explains the feature,
+// shows the key differences from normal Gaming mode, then asks for terms accept.
+class _EduModeDialog extends StatefulWidget {
+  const _EduModeDialog();
+  @override State<_EduModeDialog> createState() => _EduModeDialogState();
+}
+
+class _EduModeDialogState extends State<_EduModeDialog> {
+  bool _termsAccepted = false;
+  int _page = 0;
+
+  static const _pages = [
+    {
+      'icon': '🎓',
+      'title': 'Welcome to Edu Gaming',
+      'subtitle': 'A smarter way to learn',
+      'body': 'Edu Gaming transforms GACOM into a full learning platform. Play educational games across 12 subjects, track your skills, earn Edu Points, and compete on leaderboards with students around the world.',
+    },
+    {
+      'icon': '📚',
+      'title': 'What\'s Different',
+      'subtitle': 'Edu mode vs Gaming mode',
+      'body': '• All social posts and gaming challenges are hidden\n• Navigation changes to subject-focused screens\n• Chats are limited to students only\n• Competitions are academic quizzes, not Arena stakes\n• No real-money wagering in Edu mode\n• You can switch back to Gaming mode any time',
+    },
+    {
+      'icon': '👨‍👩‍👧',
+      'title': 'Parents & Teachers',
+      'subtitle': 'Built-in progress tracking',
+      'body': 'Parents and teachers can be assigned to see your progress reports, subject accuracy, streaks, and weekly certificates. Schools can assign you to class groups and monitor your learning journey.',
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final page = _pages[_page];
+    final isLast = _page == _pages.length - 1;
+
+    return Dialog(
+      backgroundColor: GacomColors.cardDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Page indicator dots
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(_pages.length, (i) =>
+            AnimatedContainer(duration: const Duration(milliseconds: 200), width: i == _page ? 20 : 8, height: 8, margin: const EdgeInsets.only(right: 6),
+              decoration: BoxDecoration(color: i == _page ? GacomColors.deepOrange : GacomColors.border, borderRadius: BorderRadius.circular(4))))),
+          const SizedBox(height: 20),
+
+          // Icon
+          Text(page['icon']!, style: const TextStyle(fontSize: 52)),
+          const SizedBox(height: 16),
+
+          // Title + subtitle
+          Text(page['title']!, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary), textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          Text(page['subtitle']!, style: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 16),
+
+          // Body
+          Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
+            child: Text(page['body']!, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5))),
+          const SizedBox(height: 20),
+
+          // Terms on last page
+          if (isLast) ...[
+            GestureDetector(
+              onTap: () => setState(() => _termsAccepted = !_termsAccepted),
+              child: Row(children: [
+                AnimatedContainer(duration: const Duration(milliseconds: 150), width: 22, height: 22,
+                  decoration: BoxDecoration(color: _termsAccepted ? GacomColors.deepOrange : Colors.transparent, borderRadius: BorderRadius.circular(6), border: Border.all(color: _termsAccepted ? GacomColors.deepOrange : GacomColors.textMuted, width: 1.5)),
+                  child: _termsAccepted ? const Icon(Icons.check_rounded, color: Colors.white, size: 14) : null),
+                const SizedBox(width: 10),
+                const Expanded(child: Text('I understand Edu Gaming is a focused learning environment and agree to GACOM\'s terms.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
+              ]),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Navigation buttons
+          Row(children: [
+            if (_page > 0) OutlinedButton(
+              onPressed: () => setState(() => _page--),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('Back', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+            if (_page > 0) const SizedBox(width: 12),
+            Expanded(child: ElevatedButton(
+              onPressed: isLast ? (_termsAccepted ? () => Navigator.pop(context, true) : null) : () => setState(() => _page++),
+              style: ElevatedButton.styleFrom(backgroundColor: isLast && !_termsAccepted ? GacomColors.elevatedCard : GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: Text(isLast ? 'Switch to Edu Gaming' : 'Next →', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: isLast && !_termsAccepted ? GacomColors.textMuted : Colors.white)))),
+          ]),
+          if (!isLast) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
+          ],
+        ]),
+      ),
     );
   }
 }

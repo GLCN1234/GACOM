@@ -163,7 +163,20 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
               Icon(Icons.sports_esports_outlined, size: 16, color: eduMode ? GacomColors.textMuted : GacomColors.deepOrange),
               Transform.scale(scale: 0.75, child: Switch(
                 value: eduMode,
-                onChanged: (v) => ref.read(eduModeProvider.notifier).state = v,
+                onChanged: (v) async {
+                  if (v) {
+                    // Edu ON — show the same onboarding popup
+                    // Import the dialog from feed_screen
+                    final accepted = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => _EduModeArenaDialog(),
+                    );
+                    if (accepted == true) ref.read(eduModeProvider.notifier).state = true;
+                  } else {
+                    ref.read(eduModeProvider.notifier).state = false;
+                  }
+                },
                 activeColor: GacomColors.accentCyan,
                 inactiveThumbColor: GacomColors.deepOrange,
                 trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
@@ -593,5 +606,42 @@ class _EduGamingScreen extends StatelessWidget {
             ]))),
         ])),
     ]),
+  );
+}
+
+// Minimal inline edu dialog for the Arena toggle — mirrors the one in feed_screen
+class _EduModeArenaDialog extends StatefulWidget {
+  @override State<_EduModeArenaDialog> createState() => _EduModeArenaDialogState();
+}
+class _EduModeArenaDialogState extends State<_EduModeArenaDialog> {
+  bool _accepted = false;
+  @override Widget build(BuildContext ctx) => Dialog(
+    backgroundColor: GacomColors.cardDark,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+    child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Text('🎓', style: TextStyle(fontSize: 48)),
+      const SizedBox(height: 12),
+      const Text('Switch to Edu Gaming?', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary), textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      const Text('Edu Gaming replaces the Arena with an educational learning environment — 12 subjects, skill tracking, student competitions, and parent reports. No real-money stakes in Edu mode.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5), textAlign: TextAlign.center),
+      const SizedBox(height: 16),
+      GestureDetector(onTap: () => setState(() => _accepted = !_accepted),
+        child: Row(children: [
+          AnimatedContainer(duration: const Duration(milliseconds: 150), width: 22, height: 22,
+            decoration: BoxDecoration(color: _accepted ? GacomColors.deepOrange : Colors.transparent, borderRadius: BorderRadius.circular(6), border: Border.all(color: _accepted ? GacomColors.deepOrange : GacomColors.textMuted, width: 1.5)),
+            child: _accepted ? const Icon(Icons.check_rounded, color: Colors.white, size: 14) : null),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('I understand and agree to the Edu Gaming terms.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12))),
+        ])),
+      const SizedBox(height: 16),
+      Row(children: [
+        Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx, false), style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)))),
+        const SizedBox(width: 12),
+        Expanded(child: ElevatedButton(onPressed: _accepted ? () => Navigator.pop(ctx, true) : null,
+          style: ElevatedButton.styleFrom(backgroundColor: _accepted ? GacomColors.deepOrange : GacomColors.elevatedCard, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          child: Text('Switch', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: _accepted ? Colors.white : GacomColors.textMuted)))),
+      ]),
+    ])),
   );
 }

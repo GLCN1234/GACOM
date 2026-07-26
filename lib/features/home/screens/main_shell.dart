@@ -97,13 +97,12 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   Widget _buildEduNav(BuildContext context) {
     const items = [
-      {'icon': Icons.home_rounded,         'label': 'Home'},
-      {'icon': Icons.menu_book_rounded,    'label': 'Subjects'},
-      {'icon': Icons.emoji_events_rounded, 'label': 'Ranks'},
-      {'icon': Icons.sports_esports_rounded,'label': 'Games'},
-      {'icon': Icons.person_rounded,       'label': 'Profile'},
+      {'icon': Icons.home_rounded,          'label': 'Home'},
+      {'icon': Icons.menu_book_rounded,     'label': 'Subjects'},
+      {'icon': Icons.chat_bubble_rounded,   'label': 'Chat'},
+      {'icon': Icons.emoji_events_rounded,  'label': 'Compete'},
+      {'icon': Icons.person_rounded,        'label': 'Profile'},
     ];
-    final routes = ['/edu/home', '/edu/subjects', '/edu/profile', '/edu/subjects', '/edu/profile'];
     return Container(
       height: 64,
       decoration: BoxDecoration(color: GacomColors.cardDark, border: Border(top: BorderSide(color: GacomColors.border, width: 1))),
@@ -111,9 +110,11 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
         final sel = i == 0;
         return Expanded(child: GestureDetector(
           onTap: () {
-            if (i == 0) {} // already on home
-            else if (i == 1 || i == 3) context.push('/edu/subjects');
-            else if (i == 2 || i == 4) context.push('/edu/profile');
+            if (i == 0) {}
+            else if (i == 1) context.push('/edu/subjects');
+            else if (i == 2) context.push('/edu/chat');
+            else if (i == 3) context.push('/edu/compete');
+            else if (i == 4) context.push('/edu/profile');
           },
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(items[i]['icon'] as IconData, size: 24, color: sel ? GacomColors.deepOrange : GacomColors.textMuted),

@@ -185,7 +185,7 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
                 Text('No progress yet', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
                 SizedBox(height: 4),
                 Text('Play a game below to start tracking your skill!', style: TextStyle(color: GacomColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
-              ])),
+              ]))),  // ← closing the Container
             const SizedBox(height: 16),
             const Text('TOP SKILLS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
             const SizedBox(height: 10),
@@ -203,7 +203,8 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
             const SizedBox(height: 20),
             Text('GAMES IN ${(data['name'] as String).toUpperCase()}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
             const SizedBox(height: 10),
-            ...games.map((g) => _GameRow(name: g['name'] as String, desc: g['desc'] as String, players: g['players'] as String, tag: g['tag'] as String, route: g['route'] as String, color: color)),
+            // Games list — using Column instead of spread to avoid list-context issues
+            Column(children: games.map<Widget>((g) => _GameRow(name: g['name'] as String, desc: g['desc'] as String, players: g['players'] as String, tag: g['tag'] as String, route: g['route'] as String, color: color)).toList()),
             const SizedBox(height: 12),
             GestureDetector(onTap: () {},
               child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 14),
