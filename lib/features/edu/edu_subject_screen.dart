@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/supabase_service.dart';
 
 class EduSubjectScreen extends StatefulWidget {
   final String subjectId;
@@ -84,7 +85,31 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
     ],
   };
 
-  @override void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); }
+  double _realSkill = 0.0;
+  int _realLevel = 1;
+  int _realXp = 0;
+  bool _dataLoaded = false;
+
+  @override void initState() {
+    super.initState();
+    _tab = TabController(length: 3, vsync: this);
+    _loadRealProgress();
+  }
+
+  Future<void> _loadRealProgress() async {
+    try {
+      final uid = SupabaseService.currentUserId;
+      if (uid == null) return;
+      final row = await SupabaseService.client.from('edu_progress')
+          .select('xp,level,accuracy').eq('user_id', uid).eq('subject', widget.subjectId).maybeSingle();
+      if (row != null && mounted) setState(() {
+        _realSkill = (row['accuracy'] as int? ?? 0) / 100.0;
+        _realLevel = row['level'] as int? ?? 1;
+        _realXp = row['xp'] as int? ?? 0;
+        _dataLoaded = true;
+      });
+    } catch (_) {}
+  }
   @override void dispose() { _tab.dispose(); super.dispose(); }
 
   @override
@@ -93,8 +118,10 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
     final color = Color(data['color'] as int);
     final skills = data['skills'] as List;
     final games = _gamesBySubject[widget.subjectId] ?? _gamesBySubject['math']!;
-    final skill = data['skill'] as double;
-    final level = data['level'] as int;
+    // Use real data when loaded, otherwise show 0 / prompt to play first
+    final skill = _dataLoaded ? _realSkill : 0.0;
+    final level = _dataLoaded ? _realLevel : 0;
+    final xp    = _dataLoaded ? _realXp : 0;
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
@@ -139,11 +166,11 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
             ]),
             const SizedBox(height: 10),
             Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: _dataLoaded ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Text('Level $level', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary)),
                   const SizedBox(width: 8),
-                  const Text('Advanced', style: TextStyle(color: GacomColors.success, fontSize: 12)),
+                  Text(level >= 10 ? 'Expert' : level >= 5 ? 'Intermediate' : 'Beginner', style: const TextStyle(color: GacomColors.success, fontSize: 12)),
                   const Spacer(),
                   Text('${(skill * 100).round()}%', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)),
                 ]),
@@ -151,7 +178,13 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
                 const SizedBox(height: 8),
                 ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: skill, backgroundColor: GacomColors.elevatedCard, valueColor: AlwaysStoppedAnimation(color), minHeight: 6)),
                 const SizedBox(height: 4),
-                Text('3,400 / 4,000 XP', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                Text('$xp XP earned', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              ]) : const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Column(children: [
+                Text('🎮', style: TextStyle(fontSize: 36)),
+                SizedBox(height: 8),
+                Text('No progress yet', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
+                SizedBox(height: 4),
+                Text('Play a game below to start tracking your skill!', style: TextStyle(color: GacomColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
               ])),
             const SizedBox(height: 16),
             const Text('TOP SKILLS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/providers/edu_mode_provider.dart';
 import '../services/arena_service.dart';
 
 import 'match_screen.dart';
@@ -21,7 +22,6 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
   List<Map<String, dynamic>> _openMatches = [];
   List<Map<String, dynamic>> _leaderboard = [];
   bool _loading = true;
-  bool _eduMode = false; // toggle between Gaming Arena and Edu Gaming
   String _selectedGame = 'chess';
   int _selectedStake = 1000;
   bool _creating = false;
@@ -149,33 +149,35 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final arenaEnabled = _settings['arena_enabled'] as bool? ?? true;
+    // Use the global provider so Arena toggle and Home toggle are the same feature
+    final eduMode = ref.watch(eduModeProvider);
     return Scaffold(
       backgroundColor: GacomColors.bg(context),
       appBar: AppBar(
-        title: Text(_eduMode ? 'EDU GAMING' : 'GACOM ARENA'),
+        title: Text(eduMode ? 'EDU GAMING' : 'GACOM ARENA'),
         actions: [
-          // Edu mode toggle switch — flips between Gaming Arena and Edu Gaming
+          // Single global toggle — same state as the one in the Home header
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.sports_esports_outlined, size: 16, color: _eduMode ? GacomColors.textMuted : GacomColors.deepOrange),
+              Icon(Icons.sports_esports_outlined, size: 16, color: eduMode ? GacomColors.textMuted : GacomColors.deepOrange),
               Transform.scale(scale: 0.75, child: Switch(
-                value: _eduMode,
-                onChanged: (v) => setState(() => _eduMode = v),
+                value: eduMode,
+                onChanged: (v) => ref.read(eduModeProvider.notifier).state = v,
                 activeColor: GacomColors.accentCyan,
                 inactiveThumbColor: GacomColors.deepOrange,
                 trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
               )),
-              Icon(Icons.school_outlined, size: 16, color: _eduMode ? GacomColors.accentCyan : GacomColors.textMuted),
+              Icon(Icons.school_outlined, size: 16, color: eduMode ? GacomColors.accentCyan : GacomColors.textMuted),
             ]),
           ),
-          if (!_eduMode) ...[
+          if (!eduMode) ...[
             IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
             IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
           ],
         ],
       ),
-      body: _eduMode ? _EduGamingScreen() : (_loading
+      body: eduMode ? _EduGamingScreen() : (_loading
           ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
           : !arenaEnabled
               ? _ArenaDisabled()
