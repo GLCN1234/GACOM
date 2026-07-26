@@ -38,6 +38,8 @@ import '../../features/exco/screens/exco_dashboard_screen.dart';
 import '../../features/arena/screens/arena_screen.dart';
 import '../../features/arena/screens/match_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
+import '../../features/arena/screens/games/chess_game.dart';
+import '../../features/arena/screens/games/extra_games.dart';
 import '../../features/arena/screens/game_store_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
@@ -167,10 +169,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'match/:id',
                 builder: (_, s) => MatchScreen(matchId: s.pathParameters['id']!),
               ),
-              GoRoute(
-                path: 'practice/tictactoe',
-                builder: (_, __) => const TicTacToePracticeScreen(),
-              ),
+              GoRoute(path: 'practice/tictactoe', builder: (_, __) => const TicTacToePracticeScreen()),
+              GoRoute(path: 'practice/chess', builder: (_, __) => const ChessPracticeScreen()),
+              GoRoute(path: 'practice/connect4', builder: (_, __) => const ConnectFourGame()),
+              GoRoute(path: 'practice/reversi', builder: (_, __) => const ReversiGame()),
+              GoRoute(path: 'practice/memory', builder: (_, __) => const MemoryMatchGame()),
+              GoRoute(path: 'practice/wordscramble', builder: (_, __) => const WordScrambleGame()),
+              GoRoute(path: 'practice/2048', builder: (_, __) => const Game2048()),
+              GoRoute(path: 'practice/hangman', builder: (_, __) => const HangmanGame()),
+              GoRoute(path: 'practice/speedmath', builder: (_, __) => const SpeedMathGame()),
+              GoRoute(path: 'practice/simon', builder: (_, __) => const SimonSaysGame()),
+              GoRoute(path: 'practice/minesweeper', builder: (_, __) => const MinesweeperGame()),
+              GoRoute(path: 'practice/blackjack', builder: (_, __) => const BlackjackGame()),
+              GoRoute(path: 'practice/dotsboxes', builder: (_, __) => const DotsAndBoxesGame()),
+              GoRoute(path: 'practice/numberduel', builder: (_, __) => const NumberQuizGame()),
+              GoRoute(path: 'practice/snake', builder: (_, __) => const SnakeGame()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),

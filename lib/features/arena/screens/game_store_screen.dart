@@ -6,12 +6,26 @@ class GameStoreScreen extends StatelessWidget {
   const GameStoreScreen({super.key});
 
   static const _gacomGames = [
-    {'name': 'Chess', 'desc': 'Pure strategy, 1v1', 'icon': Icons.extension_rounded},
-    {'name': 'Tic-Tac-Toe', 'desc': 'Quick and simple — now with a Ryan practice mode', 'icon': Icons.grid_3x3_rounded},
-    {'name': 'RPS Battle', 'desc': 'Best of 5, rock paper scissors', 'icon': Icons.front_hand_rounded},
-    {'name': 'Trivia', 'desc': '10 questions, race the clock', 'icon': Icons.quiz_rounded},
-    {'name': 'Reaction', 'desc': 'Tap fastest, pure reflexes', 'icon': Icons.bolt_rounded},
-    {'name': 'Survival Shooter', 'desc': 'Move, auto-fire, survive the waves', 'icon': Icons.gps_fixed_rounded, 'route': '/arena/store/survival', 'badge': 'NEW'},
+    {'name': 'Chess',          'desc': 'Alpha-beta AI engine, full rules', 'icon': Icons.extension_rounded,       'route': '/arena/practice/chess',        'badge': 'NEW'},
+    {'name': 'Tic-Tac-Toe',   'desc': 'Unbeatable minimax AI (Ryan)',       'icon': Icons.grid_3x3_rounded,        'route': '/arena/practice/tictactoe',    'badge': 'LIVE'},
+    {'name': 'RPS Battle',     'desc': 'Best of 5 — Rock Paper Scissors',   'icon': Icons.front_hand_rounded,      'route': null,                            'badge': 'LIVE'},
+    {'name': 'Trivia',         'desc': '10 questions, race the clock',       'icon': Icons.quiz_rounded,            'route': null,                            'badge': 'LIVE'},
+    {'name': 'Reaction',       'desc': 'Tap fastest, pure reflexes',         'icon': Icons.bolt_rounded,            'route': null,                            'badge': 'LIVE'},
+    {'name': 'Connect Four',   'desc': '4 in a row vs AI',                   'icon': Icons.circle_rounded,         'route': '/arena/practice/connect4',     'badge': 'NEW'},
+    {'name': 'Reversi',        'desc': 'Flip tiles, own the board',          'icon': Icons.radio_button_checked_rounded,'route': '/arena/practice/reversi',  'badge': 'NEW'},
+    {'name': 'Memory Match',   'desc': 'Flip and match all pairs',           'icon': Icons.grid_view_rounded,       'route': '/arena/practice/memory',       'badge': 'NEW'},
+    {'name': 'Word Scramble',  'desc': 'Unscramble the hidden word',         'icon': Icons.abc_rounded,             'route': '/arena/practice/wordscramble', 'badge': 'NEW'},
+    {'name': '2048',           'desc': 'Slide tiles, reach 2048',            'icon': Icons.dashboard_rounded,       'route': '/arena/practice/2048',         'badge': 'NEW'},
+    {'name': 'Hangman',        'desc': 'Guess the word before time runs out','icon': Icons.text_fields_rounded,     'route': '/arena/practice/hangman',      'badge': 'NEW'},
+    {'name': 'Speed Math',     'desc': 'Solve equations before the timer',   'icon': Icons.calculate_rounded,       'route': '/arena/practice/speedmath',    'badge': 'NEW'},
+    {'name': 'Simon Says',     'desc': 'Watch and repeat the sequence',      'icon': Icons.colorize_rounded,        'route': '/arena/practice/simon',        'badge': 'NEW'},
+    {'name': 'Minesweeper',    'desc': 'Clear the field, avoid the mines',   'icon': Icons.landslide_rounded,       'route': '/arena/practice/minesweeper',  'badge': 'NEW'},
+    {'name': 'Blackjack',      'desc': 'Beat the dealer to 21',              'icon': Icons.style_rounded,           'route': '/arena/practice/blackjack',    'badge': 'NEW'},
+    {'name': 'Dots & Boxes',   'desc': 'Claim the most boxes vs AI',         'icon': Icons.border_all_rounded,      'route': '/arena/practice/dotsboxes',    'badge': 'NEW'},
+    {'name': 'Number Duel',    'desc': 'Race the AI — solve maths first',    'icon': Icons.timer_rounded,           'route': '/arena/practice/numberduel',   'badge': 'NEW'},
+    {'name': 'Snake',          'desc': 'Classic snake — grow as long as you can','icon': Icons.linear_scale_rounded,'route': '/arena/practice/snake',        'badge': 'NEW'},
+    {'name': 'Survival Shooter','desc': 'Move, auto-fire, survive the waves','icon': Icons.gps_fixed_rounded,       'route': '/arena/store/survival',        'badge': 'NEW'},
+    {'name': 'More Coming',    'desc': 'Submit your own game below!',        'icon': Icons.add_circle_outline_rounded,'route': null,                         'badge': 'SOON'},
   ];
 
   @override
