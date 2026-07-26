@@ -153,7 +153,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 await _loadData();
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                 children: [
                   // Balance card
                   Container(

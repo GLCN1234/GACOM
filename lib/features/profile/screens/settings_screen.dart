@@ -215,7 +215,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildProfileCard(String email) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: GacomDecorations.neonCard(context, radius: 20),
+      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border, width: 1)),
       child: Row(children: [
         Container(
           width: 52,
@@ -263,13 +263,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             border:
                 Border.all(color: GacomColors.success.withOpacity(0.3)),
           ),
-          child: const Text('ACTIVE',
+          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(width: 6, height: 6, child: DecoratedBox(decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle))),
+            SizedBox(width: 5),
+            Text('Active',
               style: TextStyle(
                   fontFamily: 'Rajdhani',
                   fontWeight: FontWeight.w700,
-                  fontSize: 10,
+                  fontSize: 11,
                   color: GacomColors.success,
-                  letterSpacing: 0.8)),
+                  letterSpacing: 0.5)),
+          ]),
         ),
       ]),
     );
@@ -928,7 +932,7 @@ class _HelpCenterScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: GacomDecorations.neonCard(context, radius: 20),
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border, width: 1)),
             child: const Column(children: [
               Icon(Icons.help_outline_rounded,
                   color: GacomColors.deepOrange, size: 40),
@@ -1108,8 +1112,8 @@ class _SettingsGroup extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
             color: GacomColors.cardDark,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: GacomColors.border, width: 0.5)),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: GacomColors.border, width: 1)),
         child: Column(
           children: children
               .asMap()
@@ -1147,7 +1151,7 @@ class _Tile extends StatelessWidget {
         title: Text(label,
             style: TextStyle(
                 color: color ?? GacomColors.textPrimary,
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500)),
         subtitle: subtitle != null
             ? Text(subtitle!,

@@ -114,7 +114,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         expand: false,
         initialChildSize: 0.7,
         builder: (_, scroll) => Column(children: [
-          Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 8), child: Column(children: [
+          Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Column(children: [
             Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 14),
             const Row(children: [

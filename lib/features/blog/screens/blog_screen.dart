@@ -167,7 +167,7 @@ class _BlogScreenState extends ConsumerState<BlogScreen> with SingleTickerProvid
         child: Column(children: [
           // ── Header ─────────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(children: [
               const Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -219,7 +219,7 @@ class _BlogScreenState extends ConsumerState<BlogScreen> with SingleTickerProvid
                               _FeaturedCarousel(posts: _featured),
                               const SizedBox(height: 20),
                               const Padding(
-                                padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                                 child: Text('LATEST ARTICLES', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 13, fontWeight: FontWeight.w700, color: GacomColors.textMuted, letterSpacing: 2)),
                               ),
                             ] else
@@ -301,45 +301,42 @@ class _FeaturedCard extends StatelessWidget {
       onTap: () => context.go('/blog/${post['id']}'),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           child: Stack(fit: StackFit.expand, children: [
             // Background image
             post['cover_image_url'] != null
                 ? CachedNetworkImage(imageUrl: post['cover_image_url'], fit: BoxFit.cover)
-                : Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [GacomColors.violetDeep, GacomColors.obsidian],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-            // Gradient overlay
-            DecoratedBox(
+                : Container(color: GacomColors.elevatedCard,
+                    child: const Center(child: Icon(Icons.article_rounded, color: GacomColors.textMuted, size: 40))),
+            // Gradient overlay — transparent until ~40%, then to page black
+            const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.85)],
+                  stops: [0.4, 1.0],
+                  colors: [Colors.transparent, Color(0xFF0B0B0F)],
                 ),
               ),
             ),
+            // Category badge — top-left, dark pill with orange text (per spec)
+            if (post['category'] != null)
+              Positioned(
+                top: 12, left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: GacomColors.obsidian.withOpacity(0.75), borderRadius: BorderRadius.circular(50)),
+                  child: Text(post['category'].toString().toUpperCase(), style: const TextStyle(color: GacomColors.deepOrange, fontSize: 10, fontWeight: FontWeight.w800, fontFamily: 'Rajdhani', letterSpacing: 1)),
+                ),
+              ),
             // Content
             Positioned(
               left: 16, right: 16, bottom: 16,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (post['category'] != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(50)),
-                    child: Text(post['category'].toString().toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Rajdhani', letterSpacing: 1)),
-                  ),
-                const SizedBox(height: 6),
-                Text(post['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 6),
+                Text(post['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 8),
                 Row(children: [
                   CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: author['avatar_url'] != null ? CachedNetworkImageProvider(author['avatar_url']) : null, child: author['avatar_url'] == null ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
                   const SizedBox(width: 6),
@@ -366,53 +363,36 @@ class _ArticleCard extends StatelessWidget {
     final author = post['author'] as Map<String, dynamic>? ?? {};
     final publishedAt = DateTime.tryParse(post['published_at'] ?? '') ?? DateTime.now();
     final readTime = post['read_time_minutes'] ?? 5;
-    final views = post['views_count'] ?? 0;
+
     final isVerified = author['verification_status'] == 'verified';
 
     return GestureDetector(
       onTap: () => context.go('/blog/${post['id']}'),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: GacomColors.cardDark,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: GacomColors.border, width: 0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: GacomColors.border, width: 1),
         ),
-        child: Row(children: [
-          // Thumbnail
-          if (post['cover_image_url'] != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-              child: CachedNetworkImage(
-                imageUrl: post['cover_image_url'],
-                width: 110,
-                height: 110,
-                fit: BoxFit.cover,
-              ),
-            )
-          else
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)),
-              child: Container(
-                width: 110, height: 110,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [GacomColors.violetDeep, GacomColors.surfaceDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Icon(Icons.article_rounded, color: Colors.white30, size: 40),
-              ),
-            ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // 80×80 thumbnail (per spec)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(width: 80, height: 80,
+              child: post['cover_image_url'] != null
+                  ? CachedNetworkImage(imageUrl: post['cover_image_url'], fit: BoxFit.cover)
+                  : Container(color: GacomColors.elevatedCard,
+                      child: const Icon(Icons.article_rounded, color: GacomColors.textMuted, size: 28))),
+          ),
 
+          const SizedBox(width: 12),
           // Content
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 if (post['category'] != null)
-                  Text(post['category'].toString().toUpperCase(), style: const TextStyle(color: GacomColors.deepOrange, fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'Rajdhani', letterSpacing: 1)),
+                  Text(post['category'].toString().toUpperCase(), style: const TextStyle(color: GacomColors.deepOrange, fontSize: 10, fontWeight: FontWeight.w800, fontFamily: 'Rajdhani', letterSpacing: 1)),
                 const SizedBox(height: 4),
                 Text(post['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 15, fontWeight: FontWeight.w700, color: GacomColors.textPrimary, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
@@ -421,31 +401,18 @@ class _ArticleCard extends StatelessWidget {
                   const SizedBox(width: 5),
                   Flexible(child: Text(author['display_name'] ?? '', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11), overflow: TextOverflow.ellipsis)),
                   if (isVerified) ...[const SizedBox(width: 2), const Icon(Icons.verified_rounded, size: 10, color: GacomColors.deepOrange)],
-                ]),
-                const SizedBox(height: 6),
-                Row(children: [
+                  const Spacer(),
                   const Icon(Icons.schedule_rounded, size: 11, color: GacomColors.textMuted),
                   const SizedBox(width: 3),
                   Text('$readTime min', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
                   const SizedBox(width: 8),
-                  const Icon(Icons.visibility_outlined, size: 11, color: GacomColors.textMuted),
-                  const SizedBox(width: 3),
-                  Text(_fmt(views), style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-                  const Spacer(),
                   Text(timeago.format(publishedAt), style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
                 ]),
-              ]),
-            ),
+            ]),
           ),
         ]),
       ),
     );
-  }
-
-  String _fmt(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
   }
 }
 

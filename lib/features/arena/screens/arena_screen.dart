@@ -203,7 +203,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
         // Game selector
         _SectionLabel('Choose a game'),
         SizedBox(
-          height: 120,
+          height: 124,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: _games.length,
@@ -215,25 +215,25 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                 onTap: gEnabled ? () { setState(() => _selectedGame = g['id'] as String); HapticFeedback.selectionClick(); } : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: 100,
+                  width: 96,
                   margin: const EdgeInsets.only(right: 10),
-                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: GacomColors.card(context),
+                    color: GacomColors.elevatedCard,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.borderColor(context), width: sel ? 1.5 : 0.5),
-                    boxShadow: sel ? [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.15), blurRadius: 12)] : null,
+                    border: Border.all(color: sel ? GacomColors.deepOrange : Colors.white.withOpacity(0.08), width: sel ? 1.5 : 1),
                   ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    if ((g['tag'] as String).isNotEmpty) ...[
-                      Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(8)), child: Text(g['tag'] as String, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: GacomColors.deepOrange))),
-                      const SizedBox(height: 4),
-                    ],
-                    Container(width: 36, height: 36, decoration: BoxDecoration(color: g['bg'] as Color, borderRadius: BorderRadius.circular(10)), child: Center(child: Text(g['icon'] as String, style: const TextStyle(fontSize: 18)))),
-                    const SizedBox(height: 8),
-                    Text(g['name'] as String, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: sel ? GacomColors.deepOrange : GacomColors.txtPrimary(context))),
-                    Text(g['meta'] as String, style: TextStyle(fontSize: 10, color: GacomColors.txtMuted(context))),
-                    if (!gEnabled) Text('Disabled', style: const TextStyle(fontSize: 9, color: GacomColors.textMuted)),
+                  child: Stack(children: [
+                    if ((g['tag'] as String).isNotEmpty)
+                      Positioned(top: 6, left: 6, child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
+                        child: Text(g['tag'] as String, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: GacomColors.deepOrange)))),
+                    Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(g['icon'] as String, style: const TextStyle(fontSize: 32)),
+                      const SizedBox(height: 8),
+                      Text(g['name'] as String, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: sel ? GacomColors.deepOrange : GacomColors.txtPrimary(context))),
+                      Text(gEnabled ? g['meta'] as String : 'Disabled', style: const TextStyle(fontSize: 11, color: GacomColors.textMuted)),
+                    ])),
                   ]),
                 ),
               );
@@ -253,13 +253,13 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
               onTap: () { setState(() => _selectedStake = s); HapticFeedback.selectionClick(); },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                 decoration: BoxDecoration(
-                  color: sel ? GacomColors.deepOrange.withOpacity(0.1) : GacomColors.card(context),
+                  color: sel ? GacomColors.deepOrange : GacomColors.elevatedCard,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.borderColor(context), width: sel ? 1.5 : 0.5),
+                  border: sel ? null : Border.all(color: Colors.white.withOpacity(0.08), width: 1),
                 ),
-                child: Text('₦${s.toStringAsFixed(0)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: sel ? GacomColors.deepOrange : GacomColors.txtPrimary(context))),
+                child: Text('₦${s.toStringAsFixed(0)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: sel ? Colors.white : GacomColors.txtPrimary(context))),
               ),
             );
           }).toList(),
@@ -451,16 +451,16 @@ class _WalletBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    decoration: BoxDecoration(color: GacomColors.surface(context), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.borderColor(context), width: 0.5)),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border, width: 1)),
     child: Row(children: [
-      const Icon(Icons.account_balance_wallet_rounded, color: GacomColors.deepOrange, size: 18),
-      const SizedBox(width: 10),
+      const Icon(Icons.account_balance_wallet_rounded, color: GacomColors.deepOrange, size: 20),
+      const SizedBox(width: 12),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('ARENA WALLET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: GacomColors.txtMuted(context), letterSpacing: 1)),
-        Text('₦${balance.toStringAsFixed(2)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.txtPrimary(context))),
+        const Text('ARENA WALLET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: GacomColors.textMuted, letterSpacing: 1)),
+        Text('₦${balance.toStringAsFixed(2)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: GacomColors.txtPrimary(context))),
       ])),
-      TextButton(onPressed: () => GoRouter.of(context).push('/wallet'), style: TextButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8)), child: const Text('TOP UP', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12))),
+      TextButton(onPressed: () => GoRouter.of(context).push('/wallet'), style: TextButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)), padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10)), child: const Text('TOP UP', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13))),
     ]),
   );
 }

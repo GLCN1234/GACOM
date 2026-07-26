@@ -434,7 +434,7 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
               decoration: BoxDecoration(color: GacomColors.borderBright, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 4),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(children: [
               CircleAvatar(radius: 18, backgroundColor: GacomColors.border,
                 backgroundImage: (author['avatar_url'] as String?) != null
@@ -514,7 +514,7 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
                     backgroundColor: GacomColors.cardDark,
                     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                     builder: (ctx) => Padding(
-                      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+                      padding: EdgeInsets.fromLTRB(16, 20, 16, MediaQuery.of(ctx).viewInsets.bottom + 24),
                       child: Column(mainAxisSize: MainAxisSize.min, children: [
                         Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
                         const SizedBox(height: 16),
@@ -741,7 +741,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     return DraggableScrollableSheet(expand: false, initialChildSize: 0.7, maxChildSize: 0.95,
       builder: (_, scroll) => Column(children: [
         Center(child: Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2)))),
-        const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 12), child: Text('Comments', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 18, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
+        const Padding(padding: EdgeInsets.fromLTRB(16, 0, 16, 12), child: Text('Comments', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 18, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
         Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
           : _comments.isEmpty

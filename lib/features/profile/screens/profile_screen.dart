@@ -201,7 +201,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           // ── Banner (fixed height, no expand) ───────────────────────────
           SliverAppBar(
             pinned: true,
-            expandedHeight: 180,
+            expandedHeight: 200,
             backgroundColor: GacomColors.obsidian,
             leading: IconButton(
               icon: Container(
@@ -232,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     : Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [GacomColors.violetDeep.withOpacity(0.45), GacomColors.obsidian],
+                            colors: [GacomColors.deepOrange.withOpacity(0.22), GacomColors.obsidian],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -259,7 +259,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           SliverToBoxAdapter(
             child: Container(
               color: GacomColors.obsidian,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 // ✅ FIXED: Avatar is BELOW the banner in normal flow — no negative positioning
                 Row(crossAxisAlignment: CrossAxisAlignment.center, children: [

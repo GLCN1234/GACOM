@@ -123,7 +123,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         initialChildSize: 0.7,
         builder: (_, scroll) => Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Column(children: [
               Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 14),
@@ -305,7 +305,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   Widget _buildCheckoutPanel() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       decoration: const BoxDecoration(
         color: GacomColors.cardDark,
         border: Border(top: BorderSide(color: GacomColors.border, width: 0.7)),

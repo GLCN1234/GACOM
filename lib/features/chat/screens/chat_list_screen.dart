@@ -245,7 +245,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
         )),
 
         // Search bar
-        Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), child: GestureDetector(
+        Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: GestureDetector(
           onTap: () => context.go('/search'),
           child: Container(height: 44,
             decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 0.7)),
@@ -410,7 +410,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
               const SizedBox(height: 10),
               Container(width: 36, height: 4, decoration: BoxDecoration(color: GacomColors.border, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 18),
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: Row(children: [
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Row(children: [
                 const Text('New Chat', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
                 const Spacer(),
                 GestureDetector(onTap: () => Navigator.pop(context), child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: GacomColors.surfaceDark, shape: BoxShape.circle), child: const Icon(Icons.close_rounded, color: GacomColors.textMuted, size: 18))),
@@ -430,7 +430,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                       final u = _users[i];
                       final isOnline = u['is_online'] == true;
                       return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                         leading: Stack(children: [
                           CircleAvatar(radius: 24, backgroundColor: GacomColors.border, backgroundImage: u['avatar_url'] != null ? CachedNetworkImageProvider(u['avatar_url']) : null, child: u['avatar_url'] == null ? Text((u['display_name'] ?? 'G')[0], style: const TextStyle(color: GacomColors.textPrimary)) : null),
                           if (isOnline) Positioned(right: 0, bottom: 0, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.cardDark, width: 2)))),

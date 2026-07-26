@@ -286,7 +286,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
         maxChildSize: 0.95,
         builder: (_, scroll) => ListView(
           controller: scroll,
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
           children: [
             Center(
                 child: Container(
@@ -1851,7 +1851,7 @@ class _DeliveryZonesSheetState
       maxChildSize: 0.97,
       builder: (_, scroll) => Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
           child: Column(children: [
             Center(
                 child: Container(
