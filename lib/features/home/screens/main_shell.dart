@@ -138,16 +138,22 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
                             ),
                             if (tab.label.isNotEmpty) ...[
                               const SizedBox(height: 2),
-                              AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 200),
-                                style: TextStyle(
-                                  fontFamily: 'Rajdhani',
-                                  fontSize: 11,
-                                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                                  color: sel ? GacomColors.deepOrange : GacomColors.txtMuted(context),
-                                  letterSpacing: 0.3,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 200),
+                                    style: TextStyle(
+                                      fontFamily: 'Rajdhani',
+                                      fontSize: 11,
+                                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                                      color: sel ? GacomColors.deepOrange : GacomColors.txtMuted(context),
+                                      letterSpacing: 0.3,
+                                    ),
+                                    child: Text(tab.label, maxLines: 1, softWrap: false),
+                                  ),
                                 ),
-                                child: Text(tab.label),
                               ),
                             ],
                           ]),
