@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/providers/edu_mode_provider.dart';
+import '../../edu/edu_home_screen.dart';
 
 final userRoleProvider = FutureProvider<String>((ref) async {
   final uid = SupabaseService.currentUserId;
@@ -74,11 +76,50 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     final role = roleAsync.valueOrNull ?? 'user';
     final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
     final isExco = role == 'exco';
+    final eduMode = ref.watch(eduModeProvider);
+
+    // When edu mode is on, completely replace the shell with the Edu Home
+    // and a simplified edu nav. Users switch back via the toggle at top.
+    if (eduMode) {
+      return Scaffold(
+        extendBody: false,
+        body: const EduHomeScreen(),
+        bottomNavigationBar: _buildEduNav(context),
+      );
+    }
 
     return Scaffold(
       extendBody: false,
       body: widget.child,
       bottomNavigationBar: _buildNav(context, isPrivileged, isExco, role),
+    );
+  }
+
+  Widget _buildEduNav(BuildContext context) {
+    const items = [
+      {'icon': Icons.home_rounded,         'label': 'Home'},
+      {'icon': Icons.menu_book_rounded,    'label': 'Subjects'},
+      {'icon': Icons.emoji_events_rounded, 'label': 'Ranks'},
+      {'icon': Icons.sports_esports_rounded,'label': 'Games'},
+      {'icon': Icons.person_rounded,       'label': 'Profile'},
+    ];
+    final routes = ['/edu/home', '/edu/subjects', '/edu/profile', '/edu/subjects', '/edu/profile'];
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(color: GacomColors.cardDark, border: Border(top: BorderSide(color: GacomColors.border, width: 1))),
+      child: Row(children: List.generate(items.length, (i) {
+        final sel = i == 0;
+        return Expanded(child: GestureDetector(
+          onTap: () {
+            if (i == 0) {} // already on home
+            else if (i == 1 || i == 3) context.push('/edu/subjects');
+            else if (i == 2 || i == 4) context.push('/edu/profile');
+          },
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(items[i]['icon'] as IconData, size: 24, color: sel ? GacomColors.deepOrange : GacomColors.textMuted),
+          ]),
+        ));
+      })),
     );
   }
 

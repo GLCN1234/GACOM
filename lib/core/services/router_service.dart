@@ -43,6 +43,11 @@ import '../../features/arena/screens/games/extra_games.dart';
 import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
 import '../../features/arena/screens/games/reaction_solo.dart';
+import '../../features/edu/edu_home_screen.dart';
+import '../../features/edu/edu_subject_screen.dart';
+import '../../features/edu/edu_subjects_screen.dart';
+import '../../features/edu/edu_profile_screen.dart';
+import '../../features/edu/edu_parent_screen.dart';
 import '../../features/arena/screens/game_store_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
@@ -164,6 +169,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppConstants.agentChatRoute, builder: (_, __) => const AgentChatScreen()),
           GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
           GoRoute(path: '/exco-dashboard', builder: (_, __) => const ExcoDashboardScreen()),
+          // ── Edu Gaming routes ──────────────────────────────────────────
+          GoRoute(path: '/edu/home',     builder: (_, __) => const EduHomeScreen()),
+          GoRoute(path: '/edu/subjects', builder: (_, __) => const EduSubjectsScreen()),
+          GoRoute(path: '/edu/profile',  builder: (_, __) => const EduProfileScreen()),
+          GoRoute(path: '/edu/parent',   builder: (_, __) => const EduParentScreen()),
+          GoRoute(path: '/edu/subject/:id', builder: (_, s) => EduSubjectScreen(subjectId: s.pathParameters['id']!)),
           GoRoute(
             path: AppConstants.arenaRoute,
             builder: (_, __) => const ArenaScreen(),

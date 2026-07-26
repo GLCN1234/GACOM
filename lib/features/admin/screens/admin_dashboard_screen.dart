@@ -39,8 +39,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _loading = true;
   String? _userRole;
 
-  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena', 'Game Submissions'];
-  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded, Icons.videogame_asset_rounded];
+  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena', 'Game Submissions', 'Edu Gaming'];
+  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded, Icons.videogame_asset_rounded, Icons.school_rounded];
 
   @override
   void initState() { super.initState(); _checkAccess(); _loadStats(); }
@@ -105,6 +105,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       case 7: return const _ExcoSection();
       case 8: return const ArenaAdminSection();
       case 9: return const _GameSubmissionsSection();
+      case 10: return const _EduAdminSection();
       default: return Center(child: Text(_sections[_selectedSection], style: const TextStyle(color: GacomColors.textMuted, fontSize: 20)));
     }
   }
@@ -813,4 +814,104 @@ class _AdminField extends StatelessWidget {
   final TextEditingController ctrl; final String label; final TextInputType? type; final int maxLines;
   const _AdminField(this.ctrl, this.label, {this.type, this.maxLines = 1});
   @override Widget build(BuildContext context) => TextField(controller: ctrl, keyboardType: type, maxLines: maxLines, style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Outfit'), decoration: InputDecoration(labelText: label, labelStyle: const TextStyle(color: GacomColors.textSecondary), filled: true, fillColor: GacomColors.surfaceDark, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: GacomColors.border)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: GacomColors.border)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: GacomColors.deepOrange))));
+}
+
+// ── Edu Gaming Admin — assign students to parents/institutions ───────────────
+class _EduAdminSection extends StatefulWidget {
+  const _EduAdminSection();
+  @override State<_EduAdminSection> createState() => _EduAdminState();
+}
+class _EduAdminState extends State<_EduAdminSection> {
+  List<Map<String,dynamic>> _links = [];
+  List<Map<String,dynamic>> _users = [];
+  bool _loading = true;
+  String _search = '';
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    try {
+      final links = await SupabaseService.client.from('student_parent_links')
+          .select('*, student:profiles!student_id(display_name), parent:profiles!parent_id(display_name)')
+          .order('created_at', ascending: false).limit(50);
+      final users = await SupabaseService.client.from('profiles')
+          .select('id, display_name, role').eq('role', 'user').limit(100);
+      if (mounted) setState(() {
+        _links = List<Map<String,dynamic>>.from(links);
+        _users = List<Map<String,dynamic>>.from(users);
+        _loading = false;
+      });
+    } catch (e) { if (mounted) setState(() => _loading = false); }
+  }
+
+  Future<void> _approve(String id) async {
+    try {
+      await SupabaseService.client.from('student_parent_links').update({'approved': true, 'approved_at': DateTime.now().toIso8601String()}).eq('id', id);
+      GacomSnackbar.show(context, 'Link approved', isSuccess: true); _load();
+    } catch (e) { GacomSnackbar.show(context, 'Error: $e', isError: true); }
+  }
+
+  Future<void> _createLink(String studentId, String institution) async {
+    try {
+      await SupabaseService.client.from('student_parent_links').insert({
+        'student_id': studentId, 'institution_id': institution,
+        'institution_admin': SupabaseService.currentUserId, 'approved': true,
+      });
+      GacomSnackbar.show(context, 'Student assigned to institution', isSuccess: true); _load();
+    } catch (e) { GacomSnackbar.show(context, 'Error: $e', isError: true); }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+      const Text('EDU GAMING', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+      const Spacer(),
+      IconButton(icon: const Icon(Icons.refresh_rounded, color: GacomColors.textSecondary), onPressed: _load),
+    ])),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child:
+      Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+        child: Row(children: [
+          const Icon(Icons.search_rounded, color: GacomColors.textMuted, size: 16),
+          const SizedBox(width: 8),
+          Expanded(child: TextField(onChanged: (v) => setState(() => _search = v),
+            style: const TextStyle(color: GacomColors.textPrimary, fontSize: 13),
+            decoration: const InputDecoration(hintText: 'Search students...', hintStyle: TextStyle(color: GacomColors.textMuted), border: InputBorder.none, isCollapsed: true))),
+        ]))),
+    const SizedBox(height: 8),
+    if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
+    else Expanded(child: ListView(padding: const EdgeInsets.all(16), children: [
+      const Text('STUDENT-PARENT LINKS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
+      const SizedBox(height: 8),
+      if (_links.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: Text('No links yet. Assign students below.', style: TextStyle(color: GacomColors.textMuted)))),
+      ..._links.where((l) => _search.isEmpty || (l['student']?['display_name'] ?? '').toString().toLowerCase().contains(_search.toLowerCase())).map((l) {
+        final pending = !(l['approved'] as bool? ?? false);
+        return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Student: ${l['student']?['display_name'] ?? 'Unknown'}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
+              if (l['parent'] != null) Text('Parent: ${l['parent']?['display_name'] ?? '—'}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              if (l['institution_id'] != null) Text('Institution: ${l['institution_id']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+            ])),
+            if (pending) ElevatedButton(onPressed: () => _approve(l['id']),
+              style: ElevatedButton.styleFrom(backgroundColor: GacomColors.success, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+              child: const Text('APPROVE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11)))
+            else Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+              child: const Text('ACTIVE', style: TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10))),
+          ]));
+      }),
+      const SizedBox(height: 20),
+      const Text('ASSIGN STUDENT TO INSTITUTION', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
+      const SizedBox(height: 8),
+      ..._users.take(20).map((u) => Container(margin: const EdgeInsets.only(bottom: 6), padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+        child: Row(children: [
+          Expanded(child: Text(u['display_name'] ?? 'Unknown', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13))),
+          TextButton(onPressed: () => _createLink(u['id'], 'GACOM Academy'),
+            style: TextButton.styleFrom(foregroundColor: GacomColors.deepOrange),
+            child: const Text('ASSIGN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11))),
+        ]))),
+    ])),
+  ]);
 }

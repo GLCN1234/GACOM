@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
+import '../../../core/providers/edu_mode_provider.dart';
 
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
@@ -134,10 +135,25 @@ class _Header extends StatelessWidget {
       color: GacomColors.obsidian,
       padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Row 1: GACOM wordmark + refresh + bell (per image)
+        // Row 1: GACOM wordmark + edu toggle + refresh + bell (per image)
         Row(children: [
           const Text('GACOM', style: TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5)),
           const Spacer(),
+          // Edu mode toggle — switches the entire app to Edu Gaming mode
+          Consumer(builder: (ctx, ref, _) {
+            final edu = ref.watch(eduModeProvider);
+            return GestureDetector(
+              onTap: () => ref.read(eduModeProvider.notifier).state = !edu,
+              child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: edu ? GacomColors.accentCyan.withOpacity(0.12) : GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: edu ? GacomColors.accentCyan.withOpacity(0.4) : GacomColors.border)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(edu ? Icons.school_rounded : Icons.school_outlined, color: edu ? GacomColors.accentCyan : GacomColors.textMuted, size: 14),
+                  const SizedBox(width: 5),
+                  Text(edu ? 'Edu ON' : 'Edu', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: edu ? GacomColors.accentCyan : GacomColors.textMuted)),
+                ])),
+            );
+          }),
+          const SizedBox(width: 8),
           _HeaderBtn(icon: Icons.refresh_rounded, onTap: onSearch),
           const SizedBox(width: 8),
           _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: true),
