@@ -1071,7 +1071,7 @@ class _EduModeDialogState extends State<_EduModeDialog> {
             Expanded(child: ElevatedButton(
               onPressed: isLast ? (_termsAccepted ? () => Navigator.pop(context, true) : null) : () => setState(() => _page++),
               style: ElevatedButton.styleFrom(backgroundColor: isLast && !_termsAccepted ? GacomColors.elevatedCard : GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 14)),
-              child: Text(isLast ? 'Switch to Edu Gaming' : 'Next →', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: isLast && !_termsAccepted ? GacomColors.textMuted : Colors.white)))),
+              child: Text(isLast ? 'Enter Edu Gaming →' : 'Next →', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: isLast && !_termsAccepted ? GacomColors.textMuted : Colors.white)))),
           ]),
           if (!isLast) ...[
             const SizedBox(height: 8),

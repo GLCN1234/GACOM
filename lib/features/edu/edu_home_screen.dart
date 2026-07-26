@@ -93,16 +93,22 @@ class _EduHomeState extends ConsumerState<EduHomeScreen> {
                 child: const Text('EDU', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1))),
             ]),
             actions: [
-              // Switch back to normal mode
-              Consumer(builder: (ctx, ref, _) => GestureDetector(
-                onTap: () => ref.read(eduModeProvider.notifier).state = false,
-                child: Container(margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.sports_esports_rounded, size: 13, color: GacomColors.textMuted),
-                    SizedBox(width: 5),
-                    Text('Gaming', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted)),
-                  ])),
+              // Switch back to gaming — icon only to prevent AppBar overflow on small screens
+              Consumer(builder: (ctx, ref, _) => Tooltip(
+                message: 'Switch to Gaming Mode',
+                child: GestureDetector(
+                  onTap: () => ref.read(eduModeProvider.notifier).state = false,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.sports_esports_rounded, size: 15, color: GacomColors.textMuted),
+                      SizedBox(width: 4),
+                      Text('Exit', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10, color: GacomColors.textMuted)),
+                    ]),
+                  ),
+                ),
               )),
               Stack(children: [
                 IconButton(icon: const Icon(Icons.notifications_outlined, color: GacomColors.textSecondary), onPressed: () {}),
