@@ -8,9 +8,9 @@ class GameStoreScreen extends StatelessWidget {
   static const _gacomGames = [
     {'name': 'Chess',          'desc': 'Alpha-beta AI engine, full rules', 'icon': Icons.extension_rounded,       'route': '/arena/practice/chess',        'badge': 'NEW'},
     {'name': 'Tic-Tac-Toe',   'desc': 'Unbeatable minimax AI (Ryan)',       'icon': Icons.grid_3x3_rounded,        'route': '/arena/practice/tictactoe',    'badge': 'LIVE'},
-    {'name': 'RPS Battle',     'desc': 'Best of 5 — Rock Paper Scissors',   'icon': Icons.front_hand_rounded,      'route': null,                            'badge': 'LIVE'},
-    {'name': 'Trivia',         'desc': '10 questions, race the clock',       'icon': Icons.quiz_rounded,            'route': null,                            'badge': 'LIVE'},
-    {'name': 'Reaction',       'desc': 'Tap fastest, pure reflexes',         'icon': Icons.bolt_rounded,            'route': null,                            'badge': 'LIVE'},
+    {'name': 'RPS Battle',     'desc': 'Best of 5 — Rock Paper Scissors',   'icon': Icons.front_hand_rounded,      'route': '/arena/practice/rps',          'badge': 'LIVE'},
+    {'name': 'Trivia',         'desc': '10 questions, race the clock',       'icon': Icons.quiz_rounded,            'route': '/arena/practice/trivia',       'badge': 'LIVE'},
+    {'name': 'Reaction',       'desc': 'Tap fastest, pure reflexes',         'icon': Icons.bolt_rounded,            'route': '/arena/practice/reaction',     'badge': 'LIVE'},
     {'name': 'Connect Four',   'desc': '4 in a row vs AI',                   'icon': Icons.circle_rounded,         'route': '/arena/practice/connect4',     'badge': 'NEW'},
     {'name': 'Reversi',        'desc': 'Flip tiles, own the board',          'icon': Icons.radio_button_checked_rounded,'route': '/arena/practice/reversi',  'badge': 'NEW'},
     {'name': 'Memory Match',   'desc': 'Flip and match all pairs',           'icon': Icons.grid_view_rounded,       'route': '/arena/practice/memory',       'badge': 'NEW'},

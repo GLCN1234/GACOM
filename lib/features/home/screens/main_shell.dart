@@ -40,13 +40,12 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
   late Animation<double> _glowAnim;
 
   final _tabs = const [
-    _Tab(icon: Icons.home_rounded,    label: 'Home',      route: AppConstants.homeRoute),
-    _Tab(icon: Icons.article_rounded, label: 'Blog',      route: AppConstants.blogRoute),
-    _Tab(icon: Icons.add_rounded,     label: '',          route: AppConstants.createPostRoute, isFab: true),
-    _Tab(icon: Icons.chat_rounded,    label: 'Chat',      route: AppConstants.chatRoute),
-    _Tab(icon: Icons.groups_rounded,  label: 'Community', route: AppConstants.communityRoute),
-    _Tab(icon: Icons.sports_esports_rounded, label: 'Arena', route: AppConstants.arenaRoute),
-    _Tab(icon: Icons.person_rounded,  label: 'Profile',   route: '', isProfile: true),
+    _Tab(icon: Icons.home_rounded,           label: 'Home',      route: AppConstants.homeRoute),
+    _Tab(icon: Icons.article_rounded,        label: 'Blog',      route: AppConstants.blogRoute),
+    _Tab(icon: Icons.chat_rounded,           label: 'Chat',      route: AppConstants.chatRoute),
+    _Tab(icon: Icons.groups_rounded,         label: 'Community', route: AppConstants.communityRoute),
+    _Tab(icon: Icons.sports_esports_rounded, label: 'Arena',     route: AppConstants.arenaRoute),
+    _Tab(icon: Icons.person_rounded,         label: 'Profile',   route: '', isProfile: true),
   ];
 
   @override
@@ -136,26 +135,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
                                 color: sel ? GacomColors.deepOrange : GacomColors.txtMuted(context),
                               ),
                             ),
-                            if (tab.label.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 2),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 200),
-                                    style: TextStyle(
-                                      fontFamily: 'Rajdhani',
-                                      fontSize: 11,
-                                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                                      color: sel ? GacomColors.deepOrange : GacomColors.txtMuted(context),
-                                      letterSpacing: 0.3,
-                                    ),
-                                    child: Text(tab.label, maxLines: 1, softWrap: false),
-                                  ),
-                                ),
-                              ),
-                            ],
                           ]),
                         ),
                       ),

@@ -40,6 +40,9 @@ import '../../features/arena/screens/match_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
 import '../../features/arena/screens/games/chess_game.dart';
 import '../../features/arena/screens/games/extra_games.dart';
+import '../../features/arena/screens/games/rps_solo.dart';
+import '../../features/arena/screens/games/trivia_solo.dart';
+import '../../features/arena/screens/games/reaction_solo.dart';
 import '../../features/arena/screens/game_store_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
@@ -171,6 +174,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
               GoRoute(path: 'practice/tictactoe', builder: (_, __) => const TicTacToePracticeScreen()),
               GoRoute(path: 'practice/chess', builder: (_, __) => const ChessPracticeScreen()),
+              GoRoute(path: 'practice/rps', builder: (_, __) => const RpsSoloScreen()),
+              GoRoute(path: 'practice/trivia', builder: (_, __) => const TriviaSoloScreen()),
+              GoRoute(path: 'practice/reaction', builder: (_, __) => const ReactionSoloScreen()),
               GoRoute(path: 'practice/connect4', builder: (_, __) => const ConnectFourGame()),
               GoRoute(path: 'practice/reversi', builder: (_, __) => const ReversiGame()),
               GoRoute(path: 'practice/memory', builder: (_, __) => const MemoryMatchGame()),

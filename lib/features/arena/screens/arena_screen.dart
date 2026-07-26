@@ -21,6 +21,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
   List<Map<String, dynamic>> _openMatches = [];
   List<Map<String, dynamic>> _leaderboard = [];
   bool _loading = true;
+  bool _eduMode = false; // toggle between Gaming Arena and Edu Gaming
   String _selectedGame = 'chess';
   int _selectedStake = 1000;
   bool _creating = false;
@@ -151,14 +152,30 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
     return Scaffold(
       backgroundColor: GacomColors.bg(context),
       appBar: AppBar(
-        title: const Text('GACOM ARENA'),
+        title: Text(_eduMode ? 'EDU GAMING' : 'GACOM ARENA'),
         actions: [
-          IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-          IconButton(icon: const Icon(Icons.history_rounded), onPressed: () => _tab.animateTo(3)),
+          // Edu mode toggle switch — flips between Gaming Arena and Edu Gaming
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.sports_esports_outlined, size: 16, color: _eduMode ? GacomColors.textMuted : GacomColors.deepOrange),
+              Transform.scale(scale: 0.75, child: Switch(
+                value: _eduMode,
+                onChanged: (v) => setState(() => _eduMode = v),
+                activeColor: GacomColors.accentCyan,
+                inactiveThumbColor: GacomColors.deepOrange,
+                trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
+              )),
+              Icon(Icons.school_outlined, size: 16, color: _eduMode ? GacomColors.accentCyan : GacomColors.textMuted),
+            ]),
+          ),
+          if (!_eduMode) ...[
+            IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
+            IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
+          ],
         ],
       ),
-      body: _loading
+      body: _eduMode ? _EduGamingScreen() : (_loading
           ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
           : !arenaEnabled
               ? _ArenaDisabled()
@@ -178,10 +195,9 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                     _buildLeaderboard(),
                     _buildHistory(),
                   ])),
-                ]),
+                ])),
     );
   }
-
   Widget _buildBrowse() => RefreshIndicator(
     color: GacomColors.deepOrange,
     onRefresh: _load,
@@ -499,4 +515,81 @@ class _ArenaDisabled extends StatelessWidget {
     const SizedBox(height: 8),
     Text('Check back soon!', style: TextStyle(color: GacomColors.txtMuted(context))),
   ]));
+}
+
+// ── Edu Gaming Screen ─────────────────────────────────────────────────────────
+class _EduGamingScreen extends StatelessWidget {
+  static const _categories = [
+    {'icon': '🧮', 'title': 'Mathematics', 'desc': 'Speed Math, Sudoku, Number Puzzles', 'color': 0xFFFF6A00, 'route': '/arena/practice/speedmath'},
+    {'icon': '🔬', 'title': 'Science', 'desc': 'Physics, Chemistry, Biology quizzes', 'color': 0xFF00C2A8, 'route': '/arena/practice/trivia'},
+    {'icon': '📖', 'title': 'English', 'desc': 'Word Scramble, Hangman, Vocabulary', 'color': 0xFF3D8BFF, 'route': '/arena/practice/wordscramble'},
+    {'icon': '🌍', 'title': 'Geography', 'desc': 'World Map, Capitals, Countries', 'color': 0xFF8B5CF6, 'route': '/arena/practice/trivia'},
+    {'icon': '📚', 'title': 'Literature', 'desc': 'Story Detective, Poetry, Novel Quest', 'color': 0xFFE85B8A, 'route': '/arena/practice/trivia'},
+    {'icon': '🏛', 'title': 'History', 'desc': 'Timeline Builder, African History', 'color': 0xFFFF8A33, 'route': '/arena/practice/trivia'},
+    {'icon': '💻', 'title': 'Computer Science', 'desc': 'Logic Puzzles, Algorithm Builder', 'color': 0xFF00E5FF, 'route': '/arena/practice/numberduel'},
+    {'icon': '🧠', 'title': 'IQ & Logic', 'desc': 'Chess, Memory Match, Pattern Puzzles', 'color': 0xFFFF6A00, 'route': '/arena/practice/chess'},
+    {'icon': '💰', 'title': 'Business & Finance', 'desc': 'Tycoon, Stock Market, Budgeting', 'color': 0xFF34D399, 'route': '/arena/practice/trivia'},
+    {'icon': '🎨', 'title': 'Creative Skills', 'desc': 'Music, Art, Animation challenges', 'color': 0xFFE85B8A, 'route': '/arena/practice/simon'},
+    {'icon': '🌐', 'title': 'Languages', 'desc': 'Yoruba, Hausa, Igbo, French & more', 'color': 0xFF8B5CF6, 'route': '/arena/practice/wordscramble'},
+    {'icon': '⚙', 'title': 'Engineering', 'desc': 'Bridge Builder, Circuit Design', 'color': 0xFF3D8BFF, 'route': '/arena/practice/2048'},
+  ];
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.all(16),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(width: double.infinity, padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.25))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [const Text('🎓', style: TextStyle(fontSize: 24)), const SizedBox(width: 10),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('EDU GAMING', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.accentCyan, letterSpacing: 1)),
+              const Text('Learn Through Play', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+            ])]),
+          const SizedBox(height: 8),
+          const Text('Play educational games across 12 subjects. Build real academic skills while competing on leaderboards.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
+        ])),
+      const SizedBox(height: 20),
+      const Text('SUBJECTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1.2)),
+      const SizedBox(height: 12),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.5),
+        itemCount: _categories.length,
+        itemBuilder: (_, i) {
+          final c = _categories[i];
+          final color = Color(c['color'] as int);
+          return GestureDetector(
+            onTap: () => context.push(c['route'] as String),
+            child: Container(padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.2))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c['icon'] as String, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 6),
+                Text(c['title'] as String, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: color)),
+                const SizedBox(height: 2),
+                Text(c['desc'] as String, style: const TextStyle(color: GacomColors.textMuted, fontSize: 10), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ])),
+          );
+        }),
+      const SizedBox(height: 20),
+      Container(width: double.infinity, padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('🏆 DAILY CHALLENGES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+          const SizedBox(height: 8),
+          const Text('Complete daily learning challenges to earn Gacom Coins and unlock exclusive badges.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, height: 1.4)),
+          const SizedBox(height: 12),
+          ...[['🧮 Daily Math Challenge', 'Speed'], ['📖 Daily Vocabulary', 'Words'], ['🧠 Daily Logic Puzzle', 'Logic']].map((d) =>
+            Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
+              Text(d[0], style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+              const Spacer(),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
+                child: Text(d[1], style: const TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+            ]))),
+        ])),
+    ]),
+  );
 }
