@@ -6,34 +6,33 @@ import 'package:google_fonts/google_fonts.dart';
 // GACOM Color System
 // ─────────────────────────────────────────────────────────────────────────────
 class GacomColors {
-  // ── Brand — orange is now a 5% ACCENT (buttons, active tabs, live badges,
-  //    highlights) — never a background or dominant surface color. ──────────
-  static const deepOrange   = Color(0xFFFF9500);   // primary accent (CTAs, active states)
-  static const burnOrange   = Color(0xFFFFB13D);   // lighter accent variant
-  static const darkOrange   = Color(0xFFCC7700);   // pressed state
-  static const glowOrange   = Color(0xFFFFC24D);
-  static const softOrange   = Color(0xFFFF9500);
+  // ── Brand — orange appears ONLY on: active nav, CTAs, live badges,
+  //    tab underlines, wordmark, notification dots. Never card fills. ───────
+  static const deepOrange   = Color(0xFFFF6A00);   // primary (exact spec)
+  static const burnOrange   = Color(0xFFFF8A33);   // secondary orange
+  static const darkOrange   = Color(0xFFCC5500);   // pressed state
+  static const glowOrange   = Color(0xFFFFA05C);
+  static const softOrange   = Color(0xFFFF6A00);
 
-  // ── Secondary / ambient — purple + electric blue do the "premium glow"
-  //    work that orange used to do (headers, banners, ambient light). ───────
-  static const violet       = Color(0xFF8B6BFF);   // secondary
-  static const violetDeep   = Color(0xFF5B3FBF);
-  static const electricBlue = Color(0xFF3D8BFF);   // accent
-  static const accentCyan   = Color(0xFF3D8BFF);   // kept as alias so existing refs still compile
+  // ── Accent — cyan for XP bars, skill indicators, live pulse ──────────────
+  static const accentCyan   = Color(0xFF00E5FF);   // accent (exact spec)
+  static const electricBlue = Color(0xFF00E5FF);   // alias — existing refs
+  static const violet       = Color(0xFF8B6BFF);   // legacy alias, de-emphasized
+  static const violetDeep   = Color(0xFF5B3FBF);   // legacy alias, de-emphasized
 
-  // ── Dark palette — true OLED black base, ~85% of the interface ────────────
-  static const obsidian     = Color(0xFF080808);   // page background (OLED black)
-  static const darkVoid     = Color(0xFF080808);
-  static const surfaceDark  = Color(0xFF0F0F12);   // raised surface
-  static const cardDark     = Color(0xFF141417);   // card interior — "very dark gray"
-  static const elevatedCard = Color(0xFF1B1B20);   // modal / sheet / elevated card
-  static const border       = Color(0x14FFFFFF);   // hairline — near-invisible, glass edge
-  static const borderBright = Color(0x24FFFFFF);
-  static const borderOrange = Color(0x40FF9500);
+  // ── Dark palette — exact spec scale ───────────────────────────────────────
+  static const obsidian     = Color(0xFF0B0B0F);   // Dark 1 — page scaffold
+  static const darkVoid     = Color(0xFF0B0B0F);
+  static const surfaceDark  = Color(0xFF121218);   // Dark 2 — card surfaces, nav
+  static const cardDark     = Color(0xFF121218);
+  static const elevatedCard = Color(0xFF1A1A22);   // Dark 3 — modals, elevated
+  static const border       = Color(0x0FFFFFFF);   // rgba(255,255,255,0.06)
+  static const borderBright = Color(0x1FFFFFFF);
+  static const borderOrange = Color(0x40FF6A00);
 
-  static const textPrimary   = Color(0xFFF5F5F7);
+  static const textPrimary   = Color(0xFFFFFFFF);
   static const textSecondary = Color(0xFF9A9AA6);
-  static const textMuted     = Color(0xFF5C5C68);
+  static const textMuted     = Color(0xFF6B6B80);  // exact spec muted
 
   // ── Light palette ─────────────────────────────────────────────────────────
   static const lightBg        = Color(0xFFEEF1F5);   // main scaffold

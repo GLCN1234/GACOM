@@ -207,15 +207,25 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
           ),
         ])),
 
-        // Story row — only show if there are actually active people to display
-        if (_activeUsers.isNotEmpty) ...[
+        // Contact bubble row — leading "New" bubble per the reference image,
+        // then active users (if any)
         const SizedBox(height: 16),
         SizedBox(height: 90, child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _activeUsers.length,
+          itemCount: _activeUsers.length + 1,
           itemBuilder: (_, i) {
-            final u = _activeUsers[i];
+            if (i == 0) {
+              return GestureDetector(onTap: _showNewChatSheet, child: Container(width: 60, margin: const EdgeInsets.only(right: 14),
+                child: Column(children: [
+                  Container(width: 54, height: 54,
+                    decoration: BoxDecoration(color: GacomColors.elevatedCard, shape: BoxShape.circle, border: Border.all(color: GacomColors.border, width: 1)),
+                    child: const Icon(Icons.add_rounded, color: GacomColors.deepOrange, size: 24)),
+                  const SizedBox(height: 6),
+                  const Text('New', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
+                ])));
+            }
+            final u = _activeUsers[i - 1];
             final isOnline = u['is_online'] == true;
             final name = (u['display_name'] as String? ?? '').split(' ').first;
             return GestureDetector(onTap: () => _startDm(u['id']), child: Container(width: 60, margin: const EdgeInsets.only(right: 14),
@@ -233,7 +243,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
               ])).animate(delay: (i * 40).ms).fadeIn().slideX(begin: 0.2));
           },
         )),
-        ],
 
         // Search bar
         Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 0), child: GestureDetector(
@@ -312,12 +321,18 @@ class _ChatTile extends StatelessWidget {
         ),
         child: Row(children: [
         Stack(children: [
-          Container(width: 56, height: 56, padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.violetBlueGradient),
-            child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.obsidian),
-              child: CircleAvatar(radius: 24, backgroundColor: GacomColors.border,
+          Builder(builder: (context) {
+            // Deterministic per-person ring color, like the reference image's
+            // varied blue/purple/teal rings — hash the name so each contact
+            // keeps a stable color across sessions.
+            const ringColors = [Color(0xFF5B6CFF), Color(0xFF8B5CF6), Color(0xFF00C2A8), Color(0xFF3D8BFF), Color(0xFFE85B8A)];
+            final ring = ringColors[name.isEmpty ? 0 : name.codeUnits.fold<int>(0, (a, b) => a + b) % ringColors.length];
+            return Container(width: 56, height: 56, padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
+              child: CircleAvatar(radius: 24, backgroundColor: GacomColors.elevatedCard,
                 backgroundImage: avatar != null ? CachedNetworkImageProvider(avatar) : null,
-                child: avatar == null ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)) : null))),
+                child: avatar == null ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)) : null));
+          }),
           if (isOnline) Positioned(right: 1, bottom: 1, child: Container(width: 14, height: 14,
             decoration: BoxDecoration(color: GacomColors.success, shape: BoxShape.circle, border: Border.all(color: GacomColors.obsidian, width: 2.5)))),
         ]),

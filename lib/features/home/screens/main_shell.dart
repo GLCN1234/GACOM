@@ -142,7 +142,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
                                 duration: const Duration(milliseconds: 200),
                                 style: TextStyle(
                                   fontFamily: 'Rajdhani',
-                                  fontSize: 8,
+                                  fontSize: 11,
                                   fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                                   color: sel ? GacomColors.deepOrange : GacomColors.txtMuted(context),
                                   letterSpacing: 0.3,
@@ -276,13 +276,13 @@ class _FabButton extends StatelessWidget {
     child: SizedBox(width: 56, child: Center(child: AnimatedBuilder(
       animation: anim,
       builder: (_, __) => Container(
-        width: 46, height: 46,
+        width: 52, height: 52,
         decoration: BoxDecoration(
-          gradient: GacomColors.orangeGradient,
+          color: GacomColors.deepOrange,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.55 * anim.value), blurRadius: 20 * anim.value)],
+          boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.45 * anim.value), blurRadius: 18 * anim.value)],
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
       ),
     ))),
   );

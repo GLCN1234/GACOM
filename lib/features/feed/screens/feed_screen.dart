@@ -13,7 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
-import '../../../shared/widgets/glass_container.dart';
+
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
 final _demoPosts = [
@@ -104,112 +104,101 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final name = _myProfile?['display_name'] ?? 'Gamer';
-    final coins = _myProfile?['wallet_balance'] as int? ?? 0;
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AmbientGlowBackground(child: NestedScrollView(
+      backgroundColor: GacomColors.obsidian,
+      body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
-          SliverAppBar(pinned: false, floating: true, snap: true, backgroundColor: Colors.transparent, elevation: 0, expandedHeight: 160,
+          SliverAppBar(pinned: false, floating: true, snap: true, backgroundColor: GacomColors.obsidian, elevation: 0, expandedHeight: 210,
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
-              background: _Header(greeting: _greeting, name: name, coins: coins, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
-          SliverToBoxAdapter(child: const _QuickActionsRow()),
+              background: _Header(greeting: _greeting, name: name, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
+          SliverToBoxAdapter(child: _TrendingTagsRow()),
           if (!_tournamentDismissed)
             SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute), onDismiss: _dismissTournamentBanner)),
-          SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, isScrollable: false, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 0.8), tabs: const [Tab(text: 'FOR YOU'), Tab(text: 'FOLLOWING'), Tab(text: 'TRENDING')]))),
+          SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, indicatorSize: TabBarIndicatorSize.label, isScrollable: false, labelColor: GacomColors.textPrimary, unselectedLabelColor: GacomColors.textMuted, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13), tabs: const [Tab(text: 'For You'), Tab(text: 'Following')]))),
         ],
         body: TabBarView(controller: _tab, children: [
           _PostList(key: const ValueKey('fy'), isFollowing: false),
           _PostList(key: const ValueKey('fl'), isFollowing: true),
-          _PostList(key: const ValueKey('tr'), isFollowing: false),
         ]),
-      )),
+      ),
     );
   }
 }
 
 class _Header extends StatelessWidget {
-  final String greeting, name; final int coins; final String? avatarUrl; final VoidCallback onSearch, onNotifs;
-  const _Header({required this.greeting, required this.name, required this.coins, required this.avatarUrl, required this.onSearch, required this.onNotifs});
+  final String greeting, name; final String? avatarUrl; final VoidCallback onSearch, onNotifs;
+  const _Header({required this.greeting, required this.name, required this.avatarUrl, required this.onSearch, required this.onNotifs});
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 12, 20, 16),
-      decoration: BoxDecoration(gradient: LinearGradient(colors: [GacomColors.darkOrange.withOpacity(0.28), GacomColors.obsidian], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+      color: GacomColors.obsidian,
+      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Row 1: GACOM wordmark + refresh + bell (per image)
         Row(children: [
-          Container(width: 42, height: 42, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange, width: 2)),
-            child: CircleAvatar(backgroundColor: GacomColors.border, backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
-              child: avatarUrl == null ? Text(name[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 18)) : null)),
+          const Text('GACOM', style: TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5)),
+          const Spacer(),
+          _HeaderBtn(icon: Icons.refresh_rounded, onTap: onSearch),
+          const SizedBox(width: 8),
+          _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: true),
+        ]),
+        const SizedBox(height: 14),
+        // Row 2: avatar + greeting + name + create-post shortcut
+        Row(children: [
+          Container(width: 40, height: 40, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange, width: 2)),
+            child: CircleAvatar(backgroundColor: GacomColors.elevatedCard, backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl!) : null,
+              child: avatarUrl == null ? Text(name[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16)) : null)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(greeting, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 0.5)),
+            Text('$greeting 👋', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 0.5)),
             Text(name, style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3)),
           ])),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 0.7)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.monetization_on_rounded, color: GacomColors.deepOrange, size: 15),
-              const SizedBox(width: 4),
-              Text('$coins', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13)),
-            ])),
-          const SizedBox(width: 8),
-          _HeaderBtn(icon: Icons.search_rounded, onTap: onSearch), const SizedBox(width: 8), _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: true),
+          GestureDetector(onTap: () => context.go(AppConstants.createPostRoute),
+            child: Container(width: 36, height: 36,
+              decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(10), border: Border.all(color: GacomColors.border)),
+              child: const Icon(Icons.edit_square, color: GacomColors.textSecondary, size: 16))),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
+        // Row 3: search bar (per image)
         GestureDetector(onTap: onSearch, child: Container(height: 44,
-          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 0.7)),
+          decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border, width: 1)),
           child: const Row(children: [SizedBox(width: 16), Icon(Icons.search_rounded, color: GacomColors.textMuted, size: 18), SizedBox(width: 10), Text('Search players, games, communities...', style: TextStyle(color: GacomColors.textMuted, fontSize: 13, fontFamily: 'Rajdhani'))]))),
       ]),
     );
   }
 }
 
-// ── Quick actions: Gaming Command Center row ─────────────────────────────────
-class _QuickActionsRow extends StatelessWidget {
-  const _QuickActionsRow();
-  static const _actions = [
-    {'label': 'Arena', 'icon': Icons.stadium_rounded, 'route': AppConstants.arenaRoute},
-    {'label': 'Communities', 'icon': Icons.groups_rounded, 'route': AppConstants.communityRoute},
-    {'label': 'Marketplace', 'icon': Icons.storefront_rounded, 'route': AppConstants.storeRoute},
-    {'label': 'Messages', 'icon': Icons.chat_bubble_rounded, 'route': AppConstants.chatRoute},
-    {'label': 'Wallet', 'icon': Icons.account_balance_wallet_rounded, 'route': AppConstants.walletRoute},
-    {'label': 'Events', 'icon': Icons.emoji_events_rounded, 'route': AppConstants.competitionsRoute},
-    {'label': 'Reels', 'icon': Icons.play_circle_fill_rounded, 'route': '/reels'},
+// ── Trending hashtags row (per image: #PUBGNigeria 12.4K · #FC25Ultimate 8.9K) ─
+class _TrendingTagsRow extends StatelessWidget {
+  static const _tags = [
+    {'tag': '#PUBGNigeria', 'count': '12.4K'},
+    {'tag': '#FC25Ultimate', 'count': '8.9K'},
+    {'tag': '#GacomChampionship', 'count': '5.2K'},
+    {'tag': '#CODMSquad', 'count': '3.1K'},
   ];
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 88,
+    height: 44,
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _actions.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
-      itemBuilder: (_, i) {
-        final a = _actions[i];
-        return GestureDetector(
-          onTap: () => context.go(a['route'] as String),
-          child: GlassContainer(
-            radius: 20,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            fillOpacity: 0.07,
-            child: SizedBox(width: 60, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              ShaderMask(
-                shaderCallback: (r) => GacomColors.violetBlueGradient.createShader(r),
-                child: Icon(a['icon'] as IconData, color: Colors.white, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(a['label'] as String, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 10.5, fontWeight: FontWeight.w600, color: GacomColors.textSecondary)),
-            ])),
-          ),
-        );
-      },
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      itemCount: _tags.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (_, i) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
+        child: Row(children: [
+          Text(_tags[i]['tag']!, style: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12)),
+          const SizedBox(width: 6),
+          Text(_tags[i]['count']!, style: const TextStyle(color: GacomColors.textSecondary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 12)),
+        ]),
+      ),
     ),
   );
 }
 
-// ── Featured tournament — ambient glass card, orange reserved for the
-//    live badge + CTA only (not the card fill) ───────────────────────────────
+// ── Featured tournament — flat spec card per reference image, orange
+//    reserved for the badge + CTA only (not the card fill) ─────────────────
 class _LiveTournamentBanner extends StatelessWidget {
   final VoidCallback onJoin;
   final VoidCallback onDismiss;
@@ -217,10 +206,13 @@ class _LiveTournamentBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-    child: GlassContainer(
-      radius: 20,
-      accentGlow: GacomColors.violet,
+    child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: GacomColors.cardDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: GacomColors.border, width: 1),
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           const Icon(Icons.emoji_events_rounded, size: 14, color: GacomColors.deepOrange),
@@ -619,7 +611,7 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
         // Author
         Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 10), child: Row(children: [
           GestureDetector(onTap: () => context.go('/profile/${author['id'] ?? ''}'),
-            child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, gradient: GacomColors.violetBlueGradient),
+            child: Container(padding: const EdgeInsets.all(2), decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange.withOpacity(0.6), width: 1.5)),
               child: CircleAvatar(radius: 19, backgroundColor: GacomColors.obsidian,
                 child: CircleAvatar(radius: 17, backgroundColor: GacomColors.border, backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
                   child: avatarUrl == null ? Text(displayName[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)) : null)))),

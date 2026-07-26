@@ -276,8 +276,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           padding: const EdgeInsets.all(2.5),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: GacomColors.violetBlueGradient,
-                            boxShadow: [BoxShadow(color: GacomColors.violet.withOpacity(0.28), blurRadius: 16)],
+                            color: Colors.transparent, border: Border.all(color: GacomColors.deepOrange, width: 3),
+                            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.25), blurRadius: 16)],
                           ),
                           child: Container(
                           decoration: const BoxDecoration(
