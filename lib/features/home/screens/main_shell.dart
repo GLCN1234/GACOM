@@ -65,20 +65,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
     final isExco = role == 'exco';
 
-    // Listen to edu mode changes and navigate imperatively — never embed
-    // EduHomeScreen as a widget inside build(), that causes an infinite
-    // rebuild loop because EduHomeScreen also watches eduModeProvider.
-    ref.listen<bool>(eduModeProvider, (prev, next) {
-      if (!mounted) return;
-      if (next && prev != true) {
-        context.go('/edu/home');
-      } else if (!next && prev == true) {
-        context.go(AppConstants.homeRoute);
-      }
-    });
-
-    // Determine which nav to show from the current route — no provider
-    // watching needed, just check the URL path.
     final location = GoRouterState.of(context).uri.path;
     final isEduRoute = location.startsWith('/edu/');
 

@@ -13,7 +13,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
-import '../../../core/providers/edu_mode_provider.dart';
 
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
@@ -139,35 +138,27 @@ class _Header extends StatelessWidget {
         Row(children: [
           const Text('GACOM', style: TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5)),
           const Spacer(),
-          // Edu mode toggle — switches the entire app to Edu Gaming mode
-          Consumer(builder: (ctx, ref, _) {
-            // Use read-only access to current state for display — never watch
-            // eduModeProvider here since that would cause rebuild loops when
-            // the mode changes and navigation fires simultaneously.
-            final edu = ref.read(eduModeProvider);
-            return GestureDetector(
-              onTap: () async {
-                if (!edu) {
-                  // Show popup ONLY when turning ON — off is instant
-                  final accepted = await showDialog<bool>(
-                    context: ctx,
-                    barrierDismissible: false,
-                    builder: (_) => const _EduModeDialog(),
-                  );
-                  if (accepted == true) ref.read(eduModeProvider.notifier).state = true;
-                } else {
-                  ref.read(eduModeProvider.notifier).state = false;
-                }
-              },
-              child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: edu ? GacomColors.accentCyan.withOpacity(0.12) : GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: edu ? GacomColors.accentCyan.withOpacity(0.4) : GacomColors.border)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(edu ? Icons.school_rounded : Icons.school_outlined, color: edu ? GacomColors.accentCyan : GacomColors.textMuted, size: 14),
-                  const SizedBox(width: 5),
-                  Text(edu ? 'Edu ON' : 'Edu', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: edu ? GacomColors.accentCyan : GacomColors.textMuted)),
-                ])),
-            );
-          }),
+          // Edu mode toggle — navigates directly to edu home route
+          GestureDetector(
+            onTap: () async {
+              final accepted = await showDialog<bool>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const _EduModeDialog(),
+              );
+              if (accepted == true && context.mounted) {
+                context.go('/edu/home');
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.school_outlined, color: GacomColors.textMuted, size: 14),
+                SizedBox(width: 5),
+                Text('Edu', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted)),
+              ])),
+          ),
           const SizedBox(width: 8),
           _HeaderBtn(icon: Icons.refresh_rounded, onTap: onSearch),
           const SizedBox(width: 8),

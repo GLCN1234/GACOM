@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/providers/edu_mode_provider.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/services/supabase_service.dart';
 
 class EduHomeScreen extends StatefulWidget {
@@ -93,14 +92,10 @@ class _EduHomeState extends State<EduHomeScreen> {
                 child: const Text('EDU', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1))),
             ]),
             actions: [
-              // Exit edu mode — write directly to container, no Consumer needed
               Tooltip(
                 message: 'Switch to Gaming Mode',
                 child: GestureDetector(
-                  onTap: () {
-                    ProviderScope.containerOf(context)
-                        .read(eduModeProvider.notifier).state = false;
-                  },
+                  onTap: () => context.go(AppConstants.homeRoute),
                   child: Container(
                     margin: const EdgeInsets.only(right: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

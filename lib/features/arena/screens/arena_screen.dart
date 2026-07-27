@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../../core/providers/edu_mode_provider.dart';
+
 import '../services/arena_service.dart';
 
 import 'match_screen.dart';
@@ -151,47 +151,41 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
     final arenaEnabled = _settings['arena_enabled'] as bool? ?? true;
     // Use the global provider so Arena toggle and Home toggle are the same feature
     // Read (not watch) — watching causes rebuild loops when mode changes
-    final eduMode = ref.read(eduModeProvider);
     return Scaffold(
       backgroundColor: GacomColors.bg(context),
       appBar: AppBar(
-        title: Text(eduMode ? 'EDU GAMING' : 'GACOM ARENA'),
+        title: const Text('GACOM ARENA'),
         actions: [
-          // Single global toggle — same state as the one in the Home header
           Padding(
             padding: const EdgeInsets.only(right: 4),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.sports_esports_outlined, size: 16, color: eduMode ? GacomColors.textMuted : GacomColors.deepOrange),
-              Transform.scale(scale: 0.75, child: Switch(
-                value: eduMode,
-                onChanged: (v) async {
-                  if (v) {
-                    // Edu ON — show the same onboarding popup
-                    // Import the dialog from feed_screen
-                    final accepted = await showDialog<bool>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => _EduModeArenaDialog(),
-                    );
-                    if (accepted == true) ref.read(eduModeProvider.notifier).state = true;
-                  } else {
-                    ref.read(eduModeProvider.notifier).state = false;
-                  }
-                },
-                activeColor: GacomColors.accentCyan,
-                inactiveThumbColor: GacomColors.deepOrange,
-                trackOutlineColor: MaterialStateProperty.all(Colors.transparent),
-              )),
-              Icon(Icons.school_outlined, size: 16, color: eduMode ? GacomColors.accentCyan : GacomColors.textMuted),
-            ]),
+            child: GestureDetector(
+              onTap: () async {
+                final accepted = await showDialog<bool>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => _EduModeArenaDialog(),
+                );
+                if (accepted == true && context.mounted) {
+                  context.go('/edu/home');
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.school_outlined, size: 14, color: GacomColors.textMuted),
+                  SizedBox(width: 5),
+                  Text('Edu', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted)),
+                ]),
+              ),
+            ),
           ),
-          if (!eduMode) ...[
-            IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
-            IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-          ],
+          IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
+          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
         ],
       ),
-      body: eduMode ? _EduGamingScreen() : (_loading
+      body: (_loading
           ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
           : !arenaEnabled
               ? _ArenaDisabled()
