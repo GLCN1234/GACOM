@@ -39,8 +39,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   bool _loading = true;
   String? _userRole;
 
-  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena', 'Game Submissions', 'Edu Gaming'];
-  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded, Icons.videogame_asset_rounded, Icons.school_rounded];
+  final _sections = ['Dashboard', 'Users', 'Competitions', 'Communities', 'Blog', 'Payments', 'Verification', 'Exco & Roles', 'Arena', 'Game Submissions', 'Edu Gaming', 'Institutions'];
+  final _sectionIcons = [Icons.dashboard_rounded, Icons.people_rounded, Icons.sports_esports_rounded, Icons.groups_rounded, Icons.article_rounded, Icons.account_balance_wallet_rounded, Icons.verified_rounded, Icons.admin_panel_settings_rounded, Icons.stadium_rounded, Icons.videogame_asset_rounded, Icons.school_rounded, Icons.account_balance_rounded];
 
   @override
   void initState() { super.initState(); _checkAccess(); _loadStats(); }
@@ -106,6 +106,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       case 8: return const ArenaAdminSection();
       case 9: return const _GameSubmissionsSection();
       case 10: return const _EduAdminSection();
+      case 11: return const _InstitutionsAdminSection();
       default: return Center(child: Text(_sections[_selectedSection], style: const TextStyle(color: GacomColors.textMuted, fontSize: 20)));
     }
   }
@@ -913,5 +914,111 @@ class _EduAdminState extends State<_EduAdminSection> {
             child: const Text('ASSIGN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11))),
         ]))),
     ])),
+  ]);
+}
+
+// ── Institutions Admin — add institutions, generate login codes ──────────────
+class _InstitutionsAdminSection extends StatefulWidget {
+  const _InstitutionsAdminSection();
+  @override State<_InstitutionsAdminSection> createState() => _InstitutionsAdminState();
+}
+class _InstitutionsAdminState extends State<_InstitutionsAdminSection> {
+  List<Map<String,dynamic>> _institutions = [];
+  bool _loading = true;
+  bool _adding = false;
+  final _nameCtrl = TextEditingController();
+  final _stateCtrl = TextEditingController();
+  String _type = 'secondary';
+
+  @override void initState() { super.initState(); _load(); }
+  @override void dispose() { _nameCtrl.dispose(); _stateCtrl.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    try {
+      final rows = await SupabaseService.client.from('institutions').select('*').order('name');
+      if (mounted) setState(() { _institutions = List<Map<String,dynamic>>.from(rows as List); _loading = false; });
+    } catch (e) { if (mounted) setState(() => _loading = false); }
+  }
+
+  String _generateCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = DateTime.now().millisecondsSinceEpoch;
+    return List.generate(8, (i) => chars[(rand >> i) % chars.length]).join();
+  }
+
+  Future<void> _addInstitution() async {
+    if (_nameCtrl.text.trim().isEmpty) { GacomSnackbar.show(context, 'Please enter institution name', isError: true); return; }
+    setState(() => _adding = true);
+    try {
+      final code = _generateCode();
+      final email = '${_nameCtrl.text.trim().toLowerCase().replaceAll(' ', '.')}@gacom.edu.ng';
+      await SupabaseService.client.from('institutions').insert({
+        'name': _nameCtrl.text.trim(),
+        'type': _type,
+        'state': _stateCtrl.text.trim().isEmpty ? null : _stateCtrl.text.trim(),
+        'login_code': code,
+        'login_email': email,
+        'created_by': SupabaseService.currentUserId,
+      });
+      if (mounted) {
+        GacomSnackbar.show(context, 'Institution added! Login: $email / Code: $code', isSuccess: true);
+        _nameCtrl.clear(); _stateCtrl.clear();
+        setState(() => _adding = false);
+        _load();
+      }
+    } catch (e) { if (mounted) { setState(() => _adding = false); GacomSnackbar.show(context, 'Error: $e', isError: true); } }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+      const Text('INSTITUTIONS', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+      const Spacer(),
+      IconButton(icon: const Icon(Icons.refresh_rounded, color: GacomColors.textSecondary), onPressed: _load),
+    ])),
+    // Add new institution form
+    Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 16), padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('ADD INSTITUTION', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textMuted, letterSpacing: 1)),
+        const SizedBox(height: 12),
+        TextField(controller: _nameCtrl, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 13),
+          decoration: const InputDecoration(labelText: 'Institution Name', labelStyle: TextStyle(color: GacomColors.textMuted, fontSize: 12), filled: true, fillColor: GacomColors.elevatedCard, border: OutlineInputBorder(), isDense: true)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: TextField(controller: _stateCtrl, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 13),
+            decoration: const InputDecoration(labelText: 'State (optional)', labelStyle: TextStyle(color: GacomColors.textMuted, fontSize: 12), filled: true, fillColor: GacomColors.elevatedCard, border: OutlineInputBorder(), isDense: true))),
+          const SizedBox(width: 8),
+          DropdownButton<String>(value: _type, dropdownColor: GacomColors.elevatedCard,
+            style: const TextStyle(color: GacomColors.textPrimary, fontSize: 12),
+            onChanged: (v) => setState(() => _type = v!),
+            items: ['primary','secondary','university','other'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList()),
+        ]),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _adding ? null : _addInstitution,
+          style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          child: _adding ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2) : const Text('ADD & GENERATE LOGIN', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
+      ])),
+    // Institution list
+    if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
+    else Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: _institutions.length, itemBuilder: (_, i) {
+      final inst = _institutions[i];
+      return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.account_balance_outlined, color: GacomColors.accentCyan, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(inst['name'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary))),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+              child: Text((inst['type'] as String? ?? '').toUpperCase(), style: const TextStyle(color: GacomColors.success, fontSize: 9, fontWeight: FontWeight.w800))),
+          ]),
+          const SizedBox(height: 8),
+          Text('Login: ${inst['login_email'] ?? '—'}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Courier')),
+          Text('Code: ${inst['login_code'] ?? '—'}', style: const TextStyle(color: GacomColors.deepOrange, fontSize: 11, fontFamily: 'Courier', fontWeight: FontWeight.w700)),
+          if (inst['state'] != null) Text('State: ${inst['state']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+        ]));
+    })),
   ]);
 }

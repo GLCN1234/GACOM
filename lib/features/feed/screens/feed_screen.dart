@@ -148,8 +148,9 @@ class _Header extends StatelessWidget {
                 builder: (_) => const _EduModeDialog(),
               );
               if (accepted == true && context.mounted) {
-                edu_prefs.setEduMode(true);
-                context.go('/edu/home');
+                // Go to institution picker first — they choose their school,
+                // then get redirected to /edu/home by the picker on save.
+                context.go('/edu/setup');
               }
             },
             child: Container(
