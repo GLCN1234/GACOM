@@ -7,7 +7,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/edu_mode_provider.dart';
-import '../../edu/edu_home_screen.dart';
 
 final userRoleProvider = FutureProvider<String>((ref) async {
   final uid = SupabaseService.currentUserId;
@@ -59,6 +58,41 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   @override void dispose() { _glowCtrl.dispose(); super.dispose(); }
 
+  @override
+  Widget build(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
+    final roleAsync = ref.watch(userRoleProvider);
+    final role = roleAsync.valueOrNull ?? 'user';
+    final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
+    final isExco = role == 'exco';
+
+    // Listen to edu mode changes and navigate imperatively — never embed
+    // EduHomeScreen as a widget inside build(), that causes an infinite
+    // rebuild loop because EduHomeScreen also watches eduModeProvider.
+    ref.listen<bool>(eduModeProvider, (prev, next) {
+      if (!mounted) return;
+      if (next && prev != true) {
+        context.go('/edu/home');
+      } else if (!next && prev == true) {
+        context.go(AppConstants.homeRoute);
+      }
+    });
+
+    // Determine which nav to show from the current route — no provider
+    // watching needed, just check the URL path.
+    final location = GoRouterState.of(context).uri.path;
+    final isEduRoute = location.startsWith('/edu/');
+
+    return Scaffold(
+      extendBody: false,
+      body: widget.child,
+      bottomNavigationBar: isEduRoute
+          ? _buildEduNav(context)
+          : _buildNav(context, isPrivileged, isExco, role),
+    );
+  }
+
   void _onTap(int i) {
     HapticFeedback.selectionClick();
     final tab = _tabs[i];
@@ -68,31 +102,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     } else {
       context.go(tab.route);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final roleAsync = ref.watch(userRoleProvider);
-    final role = roleAsync.valueOrNull ?? 'user';
-    final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
-    final isExco = role == 'exco';
-    final eduMode = ref.watch(eduModeProvider);
-
-    // When edu mode is on, completely replace the shell with the Edu Home
-    // and a simplified edu nav. Users switch back via the toggle at top.
-    if (eduMode) {
-      return Scaffold(
-        extendBody: false,
-        body: const EduHomeScreen(),
-        bottomNavigationBar: _buildEduNav(context),
-      );
-    }
-
-    return Scaffold(
-      extendBody: false,
-      body: widget.child,
-      bottomNavigationBar: _buildNav(context, isPrivileged, isExco, role),
-    );
   }
 
   Widget _buildEduNav(BuildContext context) {
@@ -107,17 +116,16 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
       height: 64,
       decoration: BoxDecoration(color: GacomColors.cardDark, border: Border(top: BorderSide(color: GacomColors.border, width: 1))),
       child: Row(children: List.generate(items.length, (i) {
-        final sel = i == 0;
         return Expanded(child: GestureDetector(
           onTap: () {
-            if (i == 0) {}
+            if (i == 0) context.go('/edu/home');
             else if (i == 1) context.push('/edu/subjects');
             else if (i == 2) context.push('/edu/chat');
             else if (i == 3) context.push('/edu/compete');
             else if (i == 4) context.push('/edu/profile');
           },
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(items[i]['icon'] as IconData, size: 24, color: sel ? GacomColors.deepOrange : GacomColors.textMuted),
+            Icon(items[i]['icon'] as IconData, size: 24, color: i == 0 ? GacomColors.deepOrange : GacomColors.textMuted),
           ]),
         ));
       })),
