@@ -29,9 +29,9 @@ class _EduProfileState extends State<EduProfileScreen> {
   static const _allBadges = [
     {'icon': Icons.emoji_events_rounded, 'name': 'Math Master',    'key': 'math',    'threshold': 80},
     {'icon': Icons.local_fire_department_rounded, 'name': '7-Day Streak',   'key': 'streak',  'threshold': 7},
-    {'icon': '⚡', 'name': 'Speed Solver',   'key': 'speed',   'threshold': 0},
+    {'icon': Icons.bolt_rounded, 'name': 'Speed Solver',   'key': 'speed',   'threshold': 0},
     {'icon': Icons.science_outlined, 'name': 'Science Expert', 'key': 'science', 'threshold': 70},
-    {'icon': '♟',  'name': 'Puzzle King',    'key': 'logic',   'threshold': 80},
+    {'icon': Icons.extension_rounded, 'name': 'Puzzle King',    'key': 'logic',   'threshold': 80},
     {'icon': Icons.psychology_outlined, 'name': 'Brain Champion', 'key': 'brain',   'threshold': 0},
     {'icon': Icons.public_outlined, 'name': 'Globe Trotter',  'key': 'geo',     'threshold': 0},
     {'icon': Icons.code_outlined, 'name': 'Code Wizard',    'key': 'coding',  'threshold': 60},
