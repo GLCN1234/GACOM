@@ -141,7 +141,10 @@ class _Header extends StatelessWidget {
           const Spacer(),
           // Edu mode toggle — switches the entire app to Edu Gaming mode
           Consumer(builder: (ctx, ref, _) {
-            final edu = ref.watch(eduModeProvider);
+            // Use read-only access to current state for display — never watch
+            // eduModeProvider here since that would cause rebuild loops when
+            // the mode changes and navigation fires simultaneously.
+            final edu = ref.read(eduModeProvider);
             return GestureDetector(
               onTap: () async {
                 if (!edu) {

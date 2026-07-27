@@ -150,7 +150,8 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     final arenaEnabled = _settings['arena_enabled'] as bool? ?? true;
     // Use the global provider so Arena toggle and Home toggle are the same feature
-    final eduMode = ref.watch(eduModeProvider);
+    // Read (not watch) — watching causes rebuild loops when mode changes
+    final eduMode = ref.read(eduModeProvider);
     return Scaffold(
       backgroundColor: GacomColors.bg(context),
       appBar: AppBar(

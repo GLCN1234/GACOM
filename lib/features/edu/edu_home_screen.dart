@@ -5,12 +5,12 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/edu_mode_provider.dart';
 import '../../core/services/supabase_service.dart';
 
-class EduHomeScreen extends ConsumerStatefulWidget {
+class EduHomeScreen extends StatefulWidget {
   const EduHomeScreen({super.key});
-  @override ConsumerState<EduHomeScreen> createState() => _EduHomeState();
+  @override State<EduHomeScreen> createState() => _EduHomeState();
 }
 
-class _EduHomeState extends ConsumerState<EduHomeScreen> {
+class _EduHomeState extends State<EduHomeScreen> {
   Map<String,dynamic>? _profile;
   Map<String,dynamic>? _eduStats; // edu_progress aggregate
   bool _loading = true;
@@ -93,11 +93,14 @@ class _EduHomeState extends ConsumerState<EduHomeScreen> {
                 child: const Text('EDU', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1))),
             ]),
             actions: [
-              // Switch back to gaming — icon only to prevent AppBar overflow on small screens
-              Consumer(builder: (ctx, ref, _) => Tooltip(
+              // Exit edu mode — write directly to container, no Consumer needed
+              Tooltip(
                 message: 'Switch to Gaming Mode',
                 child: GestureDetector(
-                  onTap: () => ref.read(eduModeProvider.notifier).state = false,
+                  onTap: () {
+                    ProviderScope.containerOf(context)
+                        .read(eduModeProvider.notifier).state = false;
+                  },
                   child: Container(
                     margin: const EdgeInsets.only(right: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -109,7 +112,7 @@ class _EduHomeState extends ConsumerState<EduHomeScreen> {
                     ]),
                   ),
                 ),
-              )),
+              ),
               Stack(children: [
                 IconButton(icon: const Icon(Icons.notifications_outlined, color: GacomColors.textSecondary), onPressed: () {}),
                 Positioned(right: 8, top: 8, child: Container(width: 8, height: 8, decoration: const BoxDecoration(color: GacomColors.deepOrange, shape: BoxShape.circle))),
