@@ -65,22 +65,20 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
   // Real game lists per subject — each entry has a built practice route
   static const _gamesBySubject = {
     'math': [
-      {'name': 'Speed Math',       'desc': 'Solve equations before the clock runs out',           'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
-      {'name': 'Number Duel',      'desc': 'Race the AI to solve problems first',                 'icon': Icons.timer_rounded,        'tag': 'NEW',  'route': '/arena/practice/numberduel'},
-      {'name': '2048',             'desc': 'Combine tiles to reach 2048',                         'icon': Icons.dashboard_rounded,    'tag': '',     'route': '/arena/practice/2048'},
-      {'name': 'Simon Math',       'desc': 'Remember the sequence and solve',                     'icon': Icons.colorize_rounded,     'tag': '',     'route': '/arena/practice/simon'},
-      {'name': 'Math Trivia',      'desc': 'Answer 10 rapid-fire math questions',                 'icon': Icons.quiz_outlined,        'tag': '',     'route': '/arena/practice/trivia'},
+      {'name': 'Algebra Trainer',   'desc': 'Step-by-step: linear, quadratic, simultaneous equations', 'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/arena/practice/algebra'},
+      {'name': 'Speed Math',        'desc': 'Solve equations before the clock runs out',           'icon': Icons.bolt_rounded,         'tag': 'HOT',  'route': '/arena/practice/speedmath'},
+      {'name': 'Number Duel',       'desc': 'Race the AI to solve problems first',                 'icon': Icons.timer_rounded,         'tag': '',     'route': '/arena/practice/numberduel'},
+      {'name': '2048',              'desc': 'Combine tiles to reach 2048',                         'icon': Icons.dashboard_rounded,     'tag': '',     'route': '/arena/practice/2048'},
+      {'name': 'Math Trivia',       'desc': 'Answer 10 rapid-fire math questions',                 'icon': Icons.quiz_outlined,         'tag': '',     'route': '/arena/practice/trivia'},
     ],
     'algebra': [
-      {'name': 'Equation Builder', 'desc': 'Solve linear and quadratic equations step by step',   'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/edu/game/algebra_eq'},
-      {'name': 'Factoriser',       'desc': 'Factorise expressions and polynomials',               'icon': Icons.calculate_outlined,   'tag': '',     'route': '/edu/game/algebra_eq'},
-      {'name': 'Speed Math',       'desc': 'Algebraic speed challenge',                           'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
-      {'name': 'Number Duel',      'desc': 'Algebraic race vs the AI',                           'icon': Icons.timer_rounded,        'tag': '',     'route': '/arena/practice/numberduel'},
+      {'name': 'Algebra Trainer',   'desc': 'Step-by-step linear, quadratic & factorisation',     'icon': Icons.functions_rounded,     'tag': 'NEW',  'route': '/arena/practice/algebra'},
+      {'name': 'Equation Solver',   'desc': 'Solve simultaneous equations step by step',           'icon': Icons.swap_horiz_rounded,   'tag': '',     'route': '/edu/game/simultaneous'},
+      {'name': 'Speed Math',        'desc': 'Algebraic speed challenge',                           'icon': Icons.bolt_rounded,         'tag': 'HOT',  'route': '/arena/practice/speedmath'},
     ],
     'simultaneous': [
-      {'name': 'Equation Solver',  'desc': 'Solve simultaneous equations by substitution',        'icon': Icons.swap_horiz_rounded,  'tag': 'NEW',  'route': '/edu/game/simultaneous'},
-      {'name': 'Elimination Game', 'desc': 'Eliminate variables to find x and y',                'icon': Icons.remove_circle_outline,'tag': '',     'route': '/edu/game/simultaneous'},
-      {'name': 'Speed Math',       'desc': 'Rapid simultaneous equation challenges',              'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
+      {'name': 'Algebra Trainer',   'desc': 'Solve simultaneous equations by substitution & elimination', 'icon': Icons.functions_rounded, 'tag': 'NEW', 'route': '/arena/practice/algebra'},
+      {'name': 'Speed Math',        'desc': 'Rapid simultaneous equation challenges',              'icon': Icons.bolt_rounded,         'tag': '',     'route': '/arena/practice/speedmath'},
     ],
     'geometry': [
       {'name': 'Shape Identifier', 'desc': 'Identify polygons and their properties',             'icon': Icons.category_outlined,    'tag': 'NEW',  'route': '/edu/game/geometry'},
@@ -88,10 +86,9 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
       {'name': 'Proof Builder',    'desc': 'Construct geometric proofs step by step',            'icon': Icons.build_outlined,       'tag': '',     'route': '/edu/game/geometry'},
     ],
     'physics': [
-      {'name': 'Physics Trivia',   'desc': 'Questions on motion, forces, energy and waves',      'icon': Icons.quiz_outlined,        'tag': 'HOT',  'route': '/edu/game/physics_quiz'},
-      {'name': 'Formula Match',    'desc': 'Match physics formulas to their meanings',           'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/edu/game/physics_quiz'},
-      {'name': 'Unit Converter',   'desc': 'Convert SI units under time pressure',               'icon': Icons.swap_horiz_rounded,  'tag': '',     'route': '/edu/game/physics_quiz'},
-      {'name': 'Speed Math',       'desc': 'Solve physics calculations fast',                    'icon': Icons.bolt_rounded,        'tag': '',     'route': '/arena/practice/speedmath'},
+      {'name': 'Physics Trainer',  'desc': 'Step-by-step: Force, Energy, Waves, Electricity',   'icon': Icons.science_outlined,     'tag': 'NEW',  'route': '/arena/practice/physics'},
+      {'name': 'Formula Quiz',     'desc': 'Match physics formulas to their meanings',           'icon': Icons.functions_rounded,    'tag': '',     'route': '/edu/game/physics_quiz'},
+      {'name': 'Speed Calc',       'desc': 'Solve physics calculations fast',                    'icon': Icons.bolt_rounded,        'tag': '',     'route': '/arena/practice/speedmath'},
       {'name': 'Science Duel',     'desc': 'Race another student on physics questions',          'icon': Icons.timer_rounded,        'tag': '',     'route': '/arena/practice/numberduel'},
     ],
     'chemistry': [

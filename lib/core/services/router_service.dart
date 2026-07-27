@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/edu_prefs.dart' as edu_prefs;
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -69,6 +70,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == AppConstants.onboardingRoute ||
           loc == AppConstants.splashRoute;
       if (!isLoggedIn && !isAuthRoute) return AppConstants.loginRoute;
+      // Restore edu mode — if user had edu mode on when they last closed
+      // the browser, redirect them back to edu home after login.
+      if (isLoggedIn && loc == AppConstants.homeRoute) {
+        if (edu_prefs.getEduMode()) return '/edu/home';
+      }
       return null;
     },
     routes: [

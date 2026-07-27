@@ -12,6 +12,10 @@ bool getEduMode() {
 
 void setEduMode(bool v) {
   try {
-    html.window.localStorage[_key] = v ? 'true' : 'false';
+    if (v) {
+      html.window.localStorage[_key] = 'true';
+    } else {
+      html.window.localStorage.remove(_key);
+    }
   } catch (_) {}
 }

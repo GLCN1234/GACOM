@@ -8,8 +8,6 @@ import 'core/services/supabase_service.dart';
 import 'features/profile/screens/settings_screen.dart' show themeModeProvider;
 import 'core/utils/fatal_error_handler_stub.dart'
     if (dart.library.html) 'core/utils/fatal_error_handler_web.dart' as fatal_error;
-import 'core/utils/edu_prefs.dart' as edu_prefs;
-import 'core/providers/edu_mode_provider.dart';
 
 void main() async {
   // Flutter's default release-mode behavior on any widget-build error is to
@@ -54,15 +52,7 @@ void main() async {
     // every app boot regardless of which screen ends up rendering.
     await _checkAndVerifyReturningPayment();
 
-    // Restore edu mode from localStorage — survives page reloads / browser closes
-    final savedEduMode = edu_prefs.getEduMode();
-
-    runApp(ProviderScope(
-      overrides: [
-        if (savedEduMode) eduModeProvider.overrideWith((ref) => true),
-      ],
-      child: const GacomApp(),
-    ));
+    runApp(const ProviderScope(child: GacomApp()));
   }, (error, stack) {
     debugPrint('ZONE ERROR: $error\n$stack');
     _showFatalErrorOnPage(error.toString(), stack.toString());
