@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
@@ -11,92 +14,12 @@ class EduSubjectScreen extends StatefulWidget {
 
 class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProviderStateMixin {
   late TabController _tab;
+  double _realSkill = 0.0; int _realLevel = 1; int _realXp = 0; bool _dataLoaded = false;
 
-  static const _subjectData = {
-    'math': {'name': 'Mathematics', 'icon': '🧮', 'color': 0xFFFF6A00, 'desc': 'Master numbers and problem solving.', 'skill': 0.85, 'level': 12, 'skills': [
-      {'name': 'Arithmetic', 'pct': 0.92}, {'name': 'Fractions', 'pct': 0.86},
-      {'name': 'Algebra', 'pct': 0.78}, {'name': 'Problem Solving', 'pct': 0.80},
-      {'name': 'Geometry', 'pct': 0.81}, {'name': 'Data & Stats', 'pct': 0.75},
-    ]},
-    'science': {'name': 'Science', 'icon': '🔬', 'color': 0xFF00C2A8, 'desc': 'Explore physics, chemistry and biology.', 'skill': 0.72, 'level': 8, 'skills': [
-      {'name': 'Physics', 'pct': 0.80}, {'name': 'Chemistry', 'pct': 0.65},
-      {'name': 'Biology', 'pct': 0.72}, {'name': 'Lab Skills', 'pct': 0.68},
-    ]},
-    'english': {'name': 'English', 'icon': '📖', 'color': 0xFF3D8BFF, 'desc': 'Build vocabulary, grammar and writing.', 'skill': 0.68, 'level': 7, 'skills': [
-      {'name': 'Vocabulary', 'pct': 0.75}, {'name': 'Grammar', 'pct': 0.70},
-      {'name': 'Spelling', 'pct': 0.65}, {'name': 'Reading', 'pct': 0.60},
-    ]},
-    'geography': {'name': 'Geography', 'icon': '🌍', 'color': 0xFF34D399, 'desc': 'Explore the world, its countries and people.', 'skill': 0.70, 'level': 6, 'skills': [
-      {'name': 'World Maps', 'pct': 0.78}, {'name': 'Capitals', 'pct': 0.72},
-      {'name': 'Climate', 'pct': 0.65}, {'name': 'Populations', 'pct': 0.60},
-    ]},
-    'history': {'name': 'History', 'icon': '📜', 'color': 0xFFFF8A33, 'desc': 'Discover civilisations and world events.', 'skill': 0.66, 'level': 5, 'skills': [
-      {'name': 'African History', 'pct': 0.72}, {'name': 'World Wars', 'pct': 0.65},
-      {'name': 'Civilisations', 'pct': 0.60}, {'name': 'Nigerian History', 'pct': 0.75},
-    ]},
-    'coding': {'name': 'Coding', 'icon': '💻', 'color': 0xFF8B5CF6, 'desc': 'Learn programming, logic and algorithms.', 'skill': 0.62, 'level': 4, 'skills': [
-      {'name': 'Logic', 'pct': 0.70}, {'name': 'Algorithms', 'pct': 0.60},
-      {'name': 'Binary', 'pct': 0.55}, {'name': 'Web Basics', 'pct': 0.65},
-    ]},
-    'logic': {'name': 'Logic & IQ', 'icon': '🧠', 'color': 0xFFE85B8A, 'desc': 'Sharpen reasoning and problem-solving.', 'skill': 0.95, 'level': 14, 'skills': [
-      {'name': 'Pattern Recognition', 'pct': 0.95}, {'name': 'Sequences', 'pct': 0.90},
-      {'name': 'Spatial Reasoning', 'pct': 0.88}, {'name': 'Deduction', 'pct': 0.92},
-    ]},
-    'languages': {'name': 'Languages', 'icon': '🌐', 'color': 0xFF00E5FF, 'desc': 'Yoruba, Hausa, Igbo, French & more.', 'skill': 0.58, 'level': 3, 'skills': [
-      {'name': 'Yoruba', 'pct': 0.60}, {'name': 'Hausa', 'pct': 0.55},
-      {'name': 'French', 'pct': 0.52}, {'name': 'Igbo', 'pct': 0.65},
-    ]},
-    'finance': {'name': 'Financial Literacy', 'icon': '💰', 'color': 0xFF34D399, 'desc': 'Learn money, investing and business.', 'skill': 0.61, 'level': 5, 'skills': [
-      {'name': 'Budgeting', 'pct': 0.70}, {'name': 'Investing', 'pct': 0.55},
-      {'name': 'Business', 'pct': 0.65}, {'name': 'Economics', 'pct': 0.58},
-    ]},
-    'engineering': {'name': 'Engineering', 'icon': '⚙', 'color': 0xFF3D8BFF, 'desc': 'Build, design and solve real problems.', 'skill': 0.55, 'level': 4, 'skills': [
-      {'name': 'Structures', 'pct': 0.60}, {'name': 'Circuits', 'pct': 0.50},
-      {'name': 'Machines', 'pct': 0.55}, {'name': 'Robotics', 'pct': 0.45},
-    ]},
-    'creativity': {'name': 'Creativity', 'icon': '🎨', 'color': 0xFFFF6A00, 'desc': 'Art, music, design and expression.', 'skill': 0.74, 'level': 6, 'skills': [
-      {'name': 'Drawing', 'pct': 0.80}, {'name': 'Music', 'pct': 0.70},
-      {'name': 'Design', 'pct': 0.75}, {'name': 'Animation', 'pct': 0.65},
-    ]},
-  };
+  @override void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProgress(); }
+  @override void dispose() { _tab.dispose(); super.dispose(); }
 
-  static const _gamesBySubject = {
-    'math': [
-      {'name': 'Math Quest',       'desc': 'Answer questions and defeat monsters!', 'players': '12.4K', 'tag': 'HOT', 'route': '/arena/practice/speedmath'},
-      {'name': 'Speed Math',       'desc': 'Solve as many problems as you can in 60s', 'players': '9.8K', 'tag': 'NEW', 'route': '/arena/practice/speedmath'},
-      {'name': 'Number Duel',      'desc': 'Race the AI — solve maths first', 'players': '8.1K', 'tag': '', 'route': '/arena/practice/numberduel'},
-      {'name': 'Fraction Master',  'desc': 'Learn fractions with exciting challenges', 'players': '6.4K', 'tag': '', 'route': '/arena/practice/speedmath'},
-      {'name': 'Geometry Builder', 'desc': 'Build shapes and solve geometry puzzles', 'players': '7.2K', 'tag': '', 'route': '/arena/practice/2048'},
-    ],
-    'science': [
-      {'name': 'Science Trivia',  'desc': 'Test your science knowledge', 'players': '10.1K', 'tag': 'HOT', 'route': '/arena/practice/trivia'},
-      {'name': 'Lab Simulator',   'desc': 'Run virtual experiments', 'players': '7.3K', 'tag': '', 'route': '/arena/practice/trivia'},
-    ],
-    'english': [
-      {'name': 'Word Scramble',   'desc': 'Unscramble the hidden word', 'players': '11.2K', 'tag': 'HOT', 'route': '/arena/practice/wordscramble'},
-      {'name': 'Hangman',         'desc': 'Guess the word before time runs out', 'players': '9.5K', 'tag': '', 'route': '/arena/practice/hangman'},
-      {'name': 'Grammar Battle',  'desc': 'Fix sentences to defeat opponents', 'players': '6.8K', 'tag': 'NEW', 'route': '/arena/practice/trivia'},
-    ],
-    'logic': [
-      {'name': 'Chess',           'desc': 'The ultimate strategy game', 'players': '15.2K', 'tag': 'HOT', 'route': '/arena/practice/chess'},
-      {'name': 'Connect Four',    'desc': '4 in a row — beat the AI', 'players': '8.9K', 'tag': '', 'route': '/arena/practice/connect4'},
-      {'name': 'Memory Match',    'desc': 'Flip and match all pairs', 'players': '7.1K', 'tag': '', 'route': '/arena/practice/memory'},
-      {'name': 'Dots & Boxes',    'desc': 'Claim the most boxes vs AI', 'players': '5.4K', 'tag': '', 'route': '/arena/practice/dotsboxes'},
-    ],
-  };
-
-  double _realSkill = 0.0;
-  int _realLevel = 1;
-  int _realXp = 0;
-  bool _dataLoaded = false;
-
-  @override void initState() {
-    super.initState();
-    _tab = TabController(length: 3, vsync: this);
-    _loadRealProgress();
-  }
-
-  Future<void> _loadRealProgress() async {
+  Future<void> _loadProgress() async {
     try {
       final uid = SupabaseService.currentUserId;
       if (uid == null) return;
@@ -105,209 +28,259 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
       if (row != null && mounted) setState(() {
         _realSkill = (row['accuracy'] as int? ?? 0) / 100.0;
         _realLevel = row['level'] as int? ?? 1;
-        _realXp = row['xp'] as int? ?? 0;
+        _realXp    = row['xp'] as int? ?? 0;
         _dataLoaded = true;
       });
     } catch (_) {}
   }
-  @override void dispose() { _tab.dispose(); super.dispose(); }
+
+  static const _subjectMeta = {
+    'math':        {'label': 'Mathematics',         'icon': Icons.calculate_outlined,        'color': 0xFFFF6A00},
+    'algebra':     {'label': 'Algebra',             'icon': Icons.functions_rounded,         'color': 0xFFFF8A33},
+    'geometry':    {'label': 'Geometry',            'icon': Icons.gesture_rounded,           'color': 0xFFE85B8A},
+    'statistics':  {'label': 'Statistics',          'icon': Icons.show_chart_rounded,        'color': 0xFF3D8BFF},
+    'simultaneous':{'label': 'Simultaneous Eqns',  'icon': Icons.swap_horiz_rounded,        'color': 0xFF8B5CF6},
+    'physics':     {'label': 'Physics',             'icon': Icons.science_outlined,          'color': 0xFF00C2A8},
+    'chemistry':   {'label': 'Chemistry',           'icon': Icons.biotech_outlined,          'color': 0xFF8B5CF6},
+    'biology':     {'label': 'Biology',             'icon': Icons.eco_outlined,              'color': 0xFF34D399},
+    'english':     {'label': 'English Language',    'icon': Icons.translate_outlined,        'color': 0xFF3D8BFF},
+    'literature':  {'label': 'Literature',          'icon': Icons.record_voice_over_outlined,'color': 0xFFFF8A33},
+    'geography':   {'label': 'Geography',           'icon': Icons.public_outlined,           'color': 0xFF00C2A8},
+    'history':     {'label': 'History',             'icon': Icons.history_edu_outlined,      'color': 0xFFFF8A33},
+    'economics':   {'label': 'Economics',           'icon': Icons.account_balance_outlined,  'color': 0xFF34D399},
+    'civics':      {'label': 'Civic Education',     'icon': Icons.groups_outlined,           'color': 0xFFFF6A00},
+    'coding':      {'label': 'Computer Science',    'icon': Icons.code_outlined,             'color': 0xFF8B5CF6},
+    'ict':         {'label': 'ICT',                 'icon': Icons.memory_outlined,           'color': 0xFF00E5FF},
+    'logic':       {'label': 'Logic & IQ',          'icon': Icons.psychology_outlined,       'color': 0xFFE85B8A},
+    'waec':        {'label': 'WAEC/NECO Prep',      'icon': Icons.school_outlined,           'color': 0xFFFF6A00},
+    'jamb':        {'label': 'JAMB Prep',           'icon': Icons.star_border_rounded,       'color': 0xFFFFD700},
+    'entrance':    {'label': 'Common Entrance',     'icon': Icons.format_list_bulleted_rounded,'color': 0xFF00C2A8},
+    'yoruba':      {'label': 'Yoruba',              'icon': Icons.language_outlined,         'color': 0xFF34D399},
+    'igbo':        {'label': 'Igbo',                'icon': Icons.language_outlined,         'color': 0xFFFF8A33},
+    'hausa':       {'label': 'Hausa',               'icon': Icons.language_outlined,         'color': 0xFF3D8BFF},
+    'finance':     {'label': 'Financial Literacy',  'icon': Icons.paid_outlined,             'color': 0xFF34D399},
+    'engineering': {'label': 'Engineering',         'icon': Icons.engineering_outlined,      'color': 0xFF3D8BFF},
+  };
+
+  // Real game lists per subject — each entry has a built practice route
+  static const _gamesBySubject = {
+    'math': [
+      {'name': 'Speed Math',       'desc': 'Solve equations before the clock runs out',           'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
+      {'name': 'Number Duel',      'desc': 'Race the AI to solve problems first',                 'icon': Icons.timer_rounded,        'tag': 'NEW',  'route': '/arena/practice/numberduel'},
+      {'name': '2048',             'desc': 'Combine tiles to reach 2048',                         'icon': Icons.dashboard_rounded,    'tag': '',     'route': '/arena/practice/2048'},
+      {'name': 'Simon Math',       'desc': 'Remember the sequence and solve',                     'icon': Icons.colorize_rounded,     'tag': '',     'route': '/arena/practice/simon'},
+      {'name': 'Math Trivia',      'desc': 'Answer 10 rapid-fire math questions',                 'icon': Icons.quiz_outlined,        'tag': '',     'route': '/arena/practice/trivia'},
+    ],
+    'algebra': [
+      {'name': 'Equation Builder', 'desc': 'Solve linear and quadratic equations step by step',   'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/edu/game/algebra_eq'},
+      {'name': 'Factoriser',       'desc': 'Factorise expressions and polynomials',               'icon': Icons.calculate_outlined,   'tag': '',     'route': '/edu/game/algebra_eq'},
+      {'name': 'Speed Math',       'desc': 'Algebraic speed challenge',                           'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
+      {'name': 'Number Duel',      'desc': 'Algebraic race vs the AI',                           'icon': Icons.timer_rounded,        'tag': '',     'route': '/arena/practice/numberduel'},
+    ],
+    'simultaneous': [
+      {'name': 'Equation Solver',  'desc': 'Solve simultaneous equations by substitution',        'icon': Icons.swap_horiz_rounded,  'tag': 'NEW',  'route': '/edu/game/simultaneous'},
+      {'name': 'Elimination Game', 'desc': 'Eliminate variables to find x and y',                'icon': Icons.remove_circle_outline,'tag': '',     'route': '/edu/game/simultaneous'},
+      {'name': 'Speed Math',       'desc': 'Rapid simultaneous equation challenges',              'icon': Icons.bolt_rounded,        'tag': 'HOT',  'route': '/arena/practice/speedmath'},
+    ],
+    'geometry': [
+      {'name': 'Shape Identifier', 'desc': 'Identify polygons and their properties',             'icon': Icons.category_outlined,    'tag': 'NEW',  'route': '/edu/game/geometry'},
+      {'name': 'Angle Calculator', 'desc': 'Find missing angles in triangles and polygons',      'icon': Icons.architecture_rounded, 'tag': '',     'route': '/edu/game/geometry'},
+      {'name': 'Proof Builder',    'desc': 'Construct geometric proofs step by step',            'icon': Icons.build_outlined,       'tag': '',     'route': '/edu/game/geometry'},
+    ],
+    'physics': [
+      {'name': 'Physics Trivia',   'desc': 'Questions on motion, forces, energy and waves',      'icon': Icons.quiz_outlined,        'tag': 'HOT',  'route': '/edu/game/physics_quiz'},
+      {'name': 'Formula Match',    'desc': 'Match physics formulas to their meanings',           'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/edu/game/physics_quiz'},
+      {'name': 'Unit Converter',   'desc': 'Convert SI units under time pressure',               'icon': Icons.swap_horiz_rounded,  'tag': '',     'route': '/edu/game/physics_quiz'},
+      {'name': 'Speed Math',       'desc': 'Solve physics calculations fast',                    'icon': Icons.bolt_rounded,        'tag': '',     'route': '/arena/practice/speedmath'},
+      {'name': 'Science Duel',     'desc': 'Race another student on physics questions',          'icon': Icons.timer_rounded,        'tag': '',     'route': '/arena/practice/numberduel'},
+    ],
+    'chemistry': [
+      {'name': 'Element Match',    'desc': 'Match elements to their symbols on the periodic table','icon': Icons.grid_on_outlined,   'tag': 'HOT',  'route': '/edu/game/chem_quiz'},
+      {'name': 'Equation Balancer','desc': 'Balance chemical equations',                         'icon': Icons.balance_rounded,      'tag': 'NEW',  'route': '/edu/game/chem_quiz'},
+      {'name': 'Chemistry Trivia', 'desc': 'Test your chemistry knowledge',                      'icon': Icons.quiz_outlined,        'tag': '',     'route': '/edu/game/chem_quiz'},
+      {'name': 'Compound Builder', 'desc': 'Identify compounds from formulas',                   'icon': Icons.hub_outlined,         'tag': '',     'route': '/edu/game/chem_quiz'},
+    ],
+    'biology': [
+      {'name': 'Biology Trivia',   'desc': 'Questions on cells, genetics, ecology and the body', 'icon': Icons.quiz_outlined,        'tag': 'HOT',  'route': '/edu/game/bio_quiz'},
+      {'name': 'Cell Diagram',     'desc': 'Label parts of plant and animal cells',              'icon': Icons.circle_outlined,      'tag': 'NEW',  'route': '/edu/game/bio_quiz'},
+      {'name': 'Classification Game','desc':'Classify living organisms into kingdoms',           'icon': Icons.account_tree_outlined,'tag': '',     'route': '/edu/game/bio_quiz'},
+    ],
+    'english': [
+      {'name': 'Word Scramble',    'desc': 'Unscramble vocabulary words under time pressure',    'icon': Icons.spellcheck_rounded,   'tag': 'HOT',  'route': '/arena/practice/wordscramble'},
+      {'name': 'Hangman',          'desc': 'Guess the word before you run out of lives',         'icon': Icons.abc_rounded,          'tag': '',     'route': '/arena/practice/hangman'},
+      {'name': 'Grammar Quiz',     'desc': 'Test your grammar with rapid questions',             'icon': Icons.quiz_outlined,        'tag': 'NEW',  'route': '/arena/practice/trivia'},
+      {'name': 'Sentence Builder', 'desc': 'Arrange words into correct sentences',               'icon': Icons.format_align_left_rounded,'tag':'',  'route': '/arena/practice/trivia'},
+    ],
+    'logic': [
+      {'name': 'Chess',            'desc': 'The ultimate strategy game — built-in AI opponent',  'icon': Icons.extension_rounded,    'tag': 'HOT',  'route': '/arena/practice/chess'},
+      {'name': 'Connect Four',     'desc': 'Strategic 4-in-a-row against the AI',               'icon': Icons.circle_outlined,      'tag': '',     'route': '/arena/practice/connect4'},
+      {'name': 'Memory Match',     'desc': 'Train working memory — flip and match pairs',        'icon': Icons.grid_view_rounded,    'tag': '',     'route': '/arena/practice/memory'},
+      {'name': 'Reversi',          'desc': 'Flip your opponent\'s tiles to dominate the board', 'icon': Icons.radio_button_checked_rounded,'tag':'','route': '/arena/practice/reversi'},
+      {'name': 'Dots & Boxes',     'desc': 'Strategic line-drawing puzzle game',                 'icon': Icons.border_all_rounded,   'tag': '',     'route': '/arena/practice/dotsboxes'},
+    ],
+    'waec': [
+      {'name': 'WAEC Maths Quiz',  'desc': 'Past WAEC mathematics questions, timed',            'icon': Icons.quiz_outlined,        'tag': 'HOT',  'route': '/arena/practice/trivia'},
+      {'name': 'WAEC English',     'desc': 'Comprehension and grammar from past papers',         'icon': Icons.translate_outlined,   'tag': '',     'route': '/arena/practice/trivia'},
+      {'name': 'WAEC Science',     'desc': 'Physics, Chemistry, Biology past questions',         'icon': Icons.science_outlined,     'tag': '',     'route': '/arena/practice/trivia'},
+      {'name': 'Speed Challenge',  'desc': 'Answer as many WAEC questions as possible in 60s',  'icon': Icons.bolt_rounded,        'tag': 'NEW',  'route': '/arena/practice/speedmath'},
+    ],
+    'jamb': [
+      {'name': 'JAMB CBT Practice','desc': 'Simulate the JAMB computer-based test format',      'icon': Icons.computer_outlined,    'tag': 'HOT',  'route': '/arena/practice/trivia'},
+      {'name': 'Use of English',   'desc': 'JAMB Use of English past questions',                'icon': Icons.translate_outlined,   'tag': '',     'route': '/arena/practice/trivia'},
+      {'name': 'JAMB Mathematics', 'desc': 'Mathematics past questions speed challenge',         'icon': Icons.calculate_outlined,   'tag': '',     'route': '/arena/practice/speedmath'},
+    ],
+    'finance': [
+      {'name': 'Budget Builder',   'desc': 'Allocate income and manage expenses wisely',         'icon': Icons.pie_chart_outline_rounded,'tag':'NEW','route': '/arena/practice/numberduel'},
+      {'name': 'Interest Calculator','desc':'Calculate simple and compound interest',            'icon': Icons.percent_rounded,      'tag': '',     'route': '/arena/practice/speedmath'},
+      {'name': 'Finance Trivia',   'desc': 'Test your financial literacy knowledge',             'icon': Icons.quiz_outlined,        'tag': '',     'route': '/arena/practice/trivia'},
+    ],
+  };
+
+  static const _defaultGames = [
+    {'name': 'Subject Trivia',  'desc': 'Test your knowledge with rapid questions',  'icon': Icons.quiz_outlined,     'tag': 'NEW', 'route': '/arena/practice/trivia'},
+    {'name': 'Speed Challenge', 'desc': 'Fastest answers win in this timed battle',  'icon': Icons.bolt_rounded,      'tag': '',    'route': '/arena/practice/speedmath'},
+    {'name': 'Compete Live',    'desc': 'Face another student in a live quiz battle','icon': Icons.emoji_events_outlined,'tag':'HOT','route': '/edu/compete'},
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final data = _subjectData[widget.subjectId] ?? _subjectData['math']!;
-    final color = Color(data['color'] as int);
-    final skills = data['skills'] as List;
-    final games = _gamesBySubject[widget.subjectId] ?? _gamesBySubject['math']!;
-    // Use real data when loaded, otherwise show 0 / prompt to play first
-    final skill = _dataLoaded ? _realSkill : 0.0;
-    final level = _dataLoaded ? _realLevel : 0;
-    final xp    = _dataLoaded ? _realXp : 0;
+    final meta = _subjectMeta[widget.subjectId] ?? _subjectMeta['math']!;
+    final color = Color(meta['color'] as int);
+    final games = _gamesBySubject[widget.subjectId] ?? _defaultGames;
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
-        title: const Text('Edu Gaming', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary)),
+        title: Text(meta['label'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)),
         leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18), onPressed: () => context.pop()),
-        actions: [
-          IconButton(icon: const Icon(Icons.sports_esports_outlined, size: 20, color: GacomColors.textMuted), onPressed: () {}),
-          IconButton(icon: const Icon(Icons.school_outlined, size: 20, color: GacomColors.deepOrange), onPressed: () {}),
-        ],
       ),
       body: Column(children: [
-        // Subject hero card
+        // Subject header
         Container(margin: const EdgeInsets.all(16), padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withOpacity(0.3))),
+          decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withOpacity(0.25))),
           child: Row(children: [
-            Text(data['icon'] as String, style: const TextStyle(fontSize: 40)),
+            Container(width: 52, height: 52, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(14)),
+              child: Icon(meta['icon'] as IconData, color: color, size: 28)),
             const SizedBox(width: 16),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(data['name'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)),
-              Text(data['desc'] as String, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
-              const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                child: Text('Your Skill: ${(skill * 100).round()}%', style: TextStyle(color: color, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))),
+              Text(meta['label'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary)),
+              const SizedBox(height: 4),
+              Row(children: [
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                  child: Text(_dataLoaded ? 'Level $_realLevel' : 'Not started',
+                    style: TextStyle(color: color, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))),
+                if (_dataLoaded) ...[const SizedBox(width: 8),
+                  Text('${(_realSkill * 100).round()}% accuracy', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11))],
+              ]),
             ])),
           ])),
 
-        // Tabs
         TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, labelColor: GacomColors.deepOrange, unselectedLabelColor: GacomColors.textMuted,
           labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13),
           tabs: const [Tab(text: 'GAMES'), Tab(text: 'LEADERBOARD'), Tab(text: 'PROGRESS')]),
 
         Expanded(child: TabBarView(controller: _tab, children: [
-          // ── GAMES tab ───────────────────────────────────────────────────
+          // ── GAMES ────────────────────────────────────────────────────────
           ListView(padding: const EdgeInsets.all(16), children: [
-            const Text('SUBJECT PROGRESS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
-            const SizedBox(height: 4),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              GestureDetector(onTap: () => context.push('/edu/profile'),
-                child: const Text('View full analysis', style: TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
-            ]),
-            const SizedBox(height: 10),
-            Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-              child: _dataLoaded ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Text('Level $level', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary)),
-                  const SizedBox(width: 8),
-                  Text(level >= 10 ? 'Expert' : level >= 5 ? 'Intermediate' : 'Beginner', style: const TextStyle(color: GacomColors.success, fontSize: 12)),
-                  const Spacer(),
-                  Text('${(skill * 100).round()}%', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)),
-                ]),
-                const Text('Overall Proficiency', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-                const SizedBox(height: 8),
-                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: skill, backgroundColor: GacomColors.elevatedCard, valueColor: AlwaysStoppedAnimation(color), minHeight: 6)),
-                const SizedBox(height: 4),
-                Text('$xp XP earned', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-              ]) : const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Column(children: [
-                Text('🎮', style: TextStyle(fontSize: 36)),
-                SizedBox(height: 8),
-                Text('No progress yet', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
-                SizedBox(height: 4),
-                Text('Play a game below to start tracking your skill!', style: TextStyle(color: GacomColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
-              ]))),  // ← closing the Container
-            const SizedBox(height: 16),
-            const Text('TOP SKILLS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
-            const SizedBox(height: 10),
-            GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2, childAspectRatio: 3.2, crossAxisSpacing: 8, mainAxisSpacing: 8,
-              children: skills.map<Widget>((s) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(10), border: Border.all(color: GacomColors.border)),
+            if (!_dataLoaded)
+              Container(padding: const EdgeInsets.all(16), margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(0.2))),
                 child: Row(children: [
+                  Icon(Icons.play_circle_outline_rounded, color: color, size: 28),
+                  const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(s['name'] as String, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 11)),
-                    const SizedBox(height: 4),
-                    ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: s['pct'] as double, backgroundColor: GacomColors.elevatedCard, valueColor: AlwaysStoppedAnimation(color), minHeight: 3)),
+                    const Text('Start playing to build your skill', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                    const Text('Your accuracy and XP will appear here after your first game.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
                   ])),
-                  const SizedBox(width: 8),
-                  Text('${((s['pct'] as double) * 100).round()}%', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textPrimary)),
-                ]))).toList()),
-            const SizedBox(height: 20),
-            Text('GAMES IN ${(data['name'] as String).toUpperCase()}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
-            const SizedBox(height: 10),
-            // Games list — using Column instead of spread to avoid list-context issues
-            Column(children: games.map<Widget>((g) => _GameRow(name: g['name'] as String, desc: g['desc'] as String, players: g['players'] as String, tag: g['tag'] as String, route: g['route'] as String, color: color)).toList()),
-            const SizedBox(height: 12),
-            GestureDetector(onTap: () {},
-              child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.3))),
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('View All ${data['name']} Games', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: color)),
-                  const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward_rounded, color: color, size: 16),
-                ]))),
-            const SizedBox(height: 16),
-            const Text('DAILY MATH CHALLENGE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
-            const SizedBox(height: 10),
-            Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-              child: Row(children: [
-                Container(width: 48, height: 48, decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: Center(child: Text(data['icon'] as String, style: const TextStyle(fontSize: 24)))),
-                const SizedBox(width: 14),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Solve 15 ${data['name']} questions', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
-                  const Text('and earn 100 Edu Points!', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
                 ])),
-                GestureDetector(onTap: () => context.push((games.first['route'] as String)),
-                  child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
-                    child: const Text('Start', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white)))),
-              ])),
+            const Text('AVAILABLE GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
+            const SizedBox(height: 10),
+            ...games.map((g) => GestureDetector(
+              onTap: () => context.push(g['route'] as String),
+              child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
+                child: Row(children: [
+                  Container(width: 48, height: 48, decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(g['icon'] as IconData, color: color, size: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Text(g['name'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                      if ((g['tag'] as String).isNotEmpty) ...[const SizedBox(width: 6),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.14), borderRadius: BorderRadius.circular(4)),
+                          child: Text(g['tag'] as String, style: const TextStyle(color: GacomColors.deepOrange, fontSize: 9, fontWeight: FontWeight.w800)))],
+                    ]),
+                    const SizedBox(height: 2),
+                    Text(g['desc'] as String, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                  ])),
+                  Container(width: 34, height: 34, decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18)),
+                ])),
+            )),
+            const SizedBox(height: 16),
+            GestureDetector(onTap: () => context.push('/edu/compete'),
+              child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
+                child: Row(children: [
+                  const Icon(Icons.emoji_events_outlined, color: GacomColors.deepOrange, size: 22),
+                  const SizedBox(width: 12),
+                  const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Daily Challenge', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+                    Text('Compete live and earn Edu Points', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                  ])),
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(20)),
+                    child: const Text('Compete', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white))),
+                ]))),
           ]),
 
-          // ── LEADERBOARD tab ────────────────────────────────────────────
+          // ── LEADERBOARD ──────────────────────────────────────────────────
           ListView.builder(padding: const EdgeInsets.all(16), itemCount: 10, itemBuilder: (_, i) {
-            final isMe = i == 4;
+            final medals = [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)];
             return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: isMe ? color.withOpacity(0.1) : GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: isMe ? color.withOpacity(0.3) : GacomColors.border)),
+              decoration: BoxDecoration(color: i == 0 ? color.withOpacity(0.08) : GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: i == 0 ? color.withOpacity(0.3) : GacomColors.border)),
               child: Row(children: [
-                Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle, color: i < 3 ? [const Color(0xFFFFD700), const Color(0xFFC0C0C0), const Color(0xFFCD7F32)][i] : GacomColors.elevatedCard),
-                  child: Center(child: Text('${i + 1}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: i < 3 ? Colors.black : GacomColors.textMuted)))),
+                Container(width: 30, height: 30, decoration: BoxDecoration(shape: BoxShape.circle, color: i < 3 ? medals[i] : GacomColors.elevatedCard),
+                  child: Center(child: Text('${i + 1}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: i < 3 ? Colors.black : GacomColors.textMuted)))),
                 const SizedBox(width: 12),
-                Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.elevatedCard),
-                  child: Center(child: Text(['🧑', '👩', '👨', '🧒', '👦', '👧', '🧑', '👩', '👨', '🧒'][i], style: const TextStyle(fontSize: 16)))),
+                Container(width: 34, height: 34, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.elevatedCard, border: Border.all(color: color.withOpacity(0.3))),
+                  child: Center(child: Icon(Icons.person_rounded, color: color, size: 18))),
                 const SizedBox(width: 10),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(isMe ? 'You' : 'Player ${i + 1}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: isMe ? color : GacomColors.textPrimary)),
+                  Text('Student ${i + 1}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
                   Text('Level ${20 - i}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
                 ])),
-                Text('${(4200 - i * 300)} XP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: color)),
+                Text('${4200 - i * 300} XP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: color)),
               ]));
           }),
 
-          // ── PROGRESS tab ───────────────────────────────────────────────
+          // ── PROGRESS ────────────────────────────────────────────────────
           ListView(padding: const EdgeInsets.all(16), children: [
             Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('WEEKLY PROGRESS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
-                const SizedBox(height: 16),
-                Row(children: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].asMap().entries.map((e) {
-                  final h = [0.4, 0.7, 0.5, 0.9, 0.6, 0.3, 0.8][e.key];
-                  return Expanded(child: Column(children: [
-                    SizedBox(height: 80, child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                      Container(width: 24, height: 80 * h, decoration: BoxDecoration(color: e.key == 3 ? color : color.withOpacity(0.4), borderRadius: BorderRadius.circular(4))),
-                    ])),
-                    const SizedBox(height: 4),
-                    Text(e.value, style: const TextStyle(color: GacomColors.textMuted, fontSize: 9)),
-                  ]));
-                }).toList()),
-              ])),
-            const SizedBox(height: 16),
-            ...skills.map((s) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Container(padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child: _dataLoaded ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Text(s['name'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                  Text('Level $_realLevel', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
+                  const SizedBox(width: 10),
+                  Text(_realLevel >= 10 ? 'Expert' : _realLevel >= 5 ? 'Intermediate' : 'Beginner', style: const TextStyle(color: GacomColors.success, fontSize: 12)),
                   const Spacer(),
-                  Text('${((s['pct'] as double) * 100).round()}%', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: color)),
+                  Text('${(_realSkill * 100).round()}%', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: GacomColors.textPrimary)),
                 ]),
+                const SizedBox(height: 4),
+                const Text('Accuracy', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                const SizedBox(height: 10),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: _realSkill, backgroundColor: GacomColors.elevatedCard, valueColor: AlwaysStoppedAnimation(color), minHeight: 8)),
                 const SizedBox(height: 8),
-                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: s['pct'] as double, backgroundColor: GacomColors.elevatedCard, valueColor: AlwaysStoppedAnimation(color), minHeight: 8)),
-              ])))),
+                Text('$_realXp XP earned in this subject', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              ]) : Column(children: [
+                Icon(Icons.play_circle_outline_rounded, size: 48, color: GacomColors.textMuted),
+                const SizedBox(height: 12),
+                const Text('No progress yet', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary)),
+                const SizedBox(height: 6),
+                const Text('Play a game in this subject to start tracking your progress.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
+              ])),
           ]),
         ])),
       ]),
     );
   }
-}
-
-class _GameRow extends StatelessWidget {
-  final String name, desc, players, tag, route; final Color color;
-  const _GameRow({required this.name, required this.desc, required this.players, required this.tag, required this.route, required this.color});
-  @override Widget build(BuildContext ctx) => GestureDetector(onTap: () => GoRouter.of(ctx).push(route),
-    child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
-      child: Row(children: [
-        Container(width: 52, height: 52, decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-          child: const Center(child: Text('🎮', style: TextStyle(fontSize: 24)))),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Text(name, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
-            if (tag.isNotEmpty) ...[const SizedBox(width: 6), Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.15), borderRadius: BorderRadius.circular(4)), child: Text(tag, style: const TextStyle(color: GacomColors.deepOrange, fontSize: 9, fontWeight: FontWeight.w800)))],
-          ]),
-          Text(desc, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-          Text('$players players', style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
-        ])),
-        Container(width: 36, height: 36, decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20)),
-      ])));
 }

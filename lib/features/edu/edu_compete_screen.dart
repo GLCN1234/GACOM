@@ -243,7 +243,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   Widget _buildResult() => Scaffold(
     backgroundColor: GacomColors.obsidian,
     body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Text(_myScore > _oppScore ? '🏆' : _myScore == _oppScore ? '🤝' : '💪', style: const TextStyle(fontSize: 64)),
+      Icon(_myScore > _oppScore ? Icons.emoji_events_rounded : _myScore == _oppScore ? Icons.handshake_outlined : Icons.fitness_center_rounded, size: 64, color: _myScore > _oppScore ? GacomColors.deepOrange : GacomColors.textSecondary),
       const SizedBox(height: 16),
       Text(_myScore > _oppScore ? 'You Won!' : _myScore == _oppScore ? 'It\'s a Draw!' : 'Good Effort!',
         style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: _myScore > _oppScore ? GacomColors.success : GacomColors.textPrimary)),

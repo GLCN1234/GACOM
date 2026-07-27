@@ -13,28 +13,28 @@ class _EduProfileState extends State<EduProfileScreen> {
   bool _loading = true;
 
   static const _subjectMeta = {
-    'math':        {'icon': '🧮', 'label': 'Mathematics',       'color': 0xFFFF6A00},
-    'science':     {'icon': '🔬', 'label': 'Science',            'color': 0xFF00C2A8},
-    'english':     {'icon': '📖', 'label': 'English',            'color': 0xFF3D8BFF},
-    'logic':       {'icon': '🧠', 'label': 'Logic & IQ',         'color': 0xFFE85B8A},
-    'geography':   {'icon': '🌍', 'label': 'Geography',          'color': 0xFF34D399},
-    'history':     {'icon': '📜', 'label': 'History',            'color': 0xFFFF8A33},
-    'coding':      {'icon': '💻', 'label': 'Coding',             'color': 0xFF8B5CF6},
-    'languages':   {'icon': '🌐', 'label': 'Languages',          'color': 0xFF00E5FF},
-    'finance':     {'icon': '💰', 'label': 'Finance',            'color': 0xFF34D399},
-    'engineering': {'icon': '⚙',  'label': 'Engineering',        'color': 0xFF3D8BFF},
-    'creativity':  {'icon': '🎨', 'label': 'Creativity',         'color': 0xFFFF6A00},
+    'math':        {'icon': Icons.calculate_outlined, 'label': 'Mathematics',       'color': 0xFFFF6A00},
+    'science':     {'icon': Icons.science_outlined, 'label': 'Science',            'color': 0xFF00C2A8},
+    'english':     {'icon': Icons.translate_outlined, 'label': 'English',            'color': 0xFF3D8BFF},
+    'logic':       {'icon': Icons.psychology_outlined, 'label': 'Logic & IQ',         'color': 0xFFE85B8A},
+    'geography':   {'icon': Icons.public_outlined, 'label': 'Geography',          'color': 0xFF34D399},
+    'history':     {'icon': Icons.history_edu_outlined, 'label': 'History',            'color': 0xFFFF8A33},
+    'coding':      {'icon': Icons.code_outlined, 'label': 'Coding',             'color': 0xFF8B5CF6},
+    'languages':   {'icon': Icons.language_outlined, 'label': 'Languages',          'color': 0xFF00E5FF},
+    'finance':     {'icon': Icons.paid_outlined, 'label': 'Finance',            'color': 0xFF34D399},
+    'engineering': {'icon': Icons.engineering_outlined,  'label': 'Engineering',        'color': 0xFF3D8BFF},
+    'creativity':  {'icon': Icons.brush_outlined, 'label': 'Creativity',         'color': 0xFFFF6A00},
   };
 
   static const _allBadges = [
-    {'icon': '🏆', 'name': 'Math Master',    'key': 'math',    'threshold': 80},
-    {'icon': '🔥', 'name': '7-Day Streak',   'key': 'streak',  'threshold': 7},
+    {'icon': Icons.emoji_events_rounded, 'name': 'Math Master',    'key': 'math',    'threshold': 80},
+    {'icon': Icons.local_fire_department_rounded, 'name': '7-Day Streak',   'key': 'streak',  'threshold': 7},
     {'icon': '⚡', 'name': 'Speed Solver',   'key': 'speed',   'threshold': 0},
-    {'icon': '🔬', 'name': 'Science Expert', 'key': 'science', 'threshold': 70},
+    {'icon': Icons.science_outlined, 'name': 'Science Expert', 'key': 'science', 'threshold': 70},
     {'icon': '♟',  'name': 'Puzzle King',    'key': 'logic',   'threshold': 80},
-    {'icon': '🧠', 'name': 'Brain Champion', 'key': 'brain',   'threshold': 0},
-    {'icon': '🌍', 'name': 'Globe Trotter',  'key': 'geo',     'threshold': 0},
-    {'icon': '💻', 'name': 'Code Wizard',    'key': 'coding',  'threshold': 60},
+    {'icon': Icons.psychology_outlined, 'name': 'Brain Champion', 'key': 'brain',   'threshold': 0},
+    {'icon': Icons.public_outlined, 'name': 'Globe Trotter',  'key': 'geo',     'threshold': 0},
+    {'icon': Icons.code_outlined, 'name': 'Code Wizard',    'key': 'coding',  'threshold': 60},
   ];
 
   @override void initState() { super.initState(); _load(); }
@@ -74,7 +74,7 @@ class _EduProfileState extends State<EduProfileScreen> {
             decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(20), border: Border.all(color: _progress.isEmpty ? GacomColors.border : GacomColors.deepOrange.withOpacity(0.3))),
             child: _progress.isEmpty
               ? const Column(children: [
-                  Text('🎓', style: TextStyle(fontSize: 40)),
+                  Icon(Icons.school_rounded, color: GacomColors.deepOrange, size: 40),
                   SizedBox(height: 12),
                   Text('No rank yet', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
                   SizedBox(height: 6),
@@ -83,7 +83,7 @@ class _EduProfileState extends State<EduProfileScreen> {
               : Column(children: [
                   Row(children: [
                     Container(width: 64, height: 64, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange, width: 3), color: GacomColors.elevatedCard),
-                      child: const Center(child: Text('🏆', style: TextStyle(fontSize: 28)))),
+                      child: const Center(child: Icon(Icons.emoji_events_rounded, color: GacomColors.deepOrange, size: 28))),
                     const SizedBox(width: 16),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('$_totalXp XP', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 32, color: GacomColors.textPrimary)),
@@ -108,11 +108,11 @@ class _EduProfileState extends State<EduProfileScreen> {
                 const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: Text('No skills tracked yet.\nPlay games to build your profile!', style: TextStyle(color: GacomColors.textMuted, fontSize: 13), textAlign: TextAlign.center)))
               else ...[
                 ..._progress.map((s) {
-                  final meta = _subjectMeta[s['subject'] as String] ?? {'icon': '📚', 'label': s['subject'], 'color': 0xFFFF6A00};
+                  final meta = _subjectMeta[s['subject'] as String] ?? {'icon': Icons.menu_book_rounded, 'label': s['subject'], 'color': 0xFFFF6A00};
                   final pct = (s['accuracy'] as int? ?? 0) / 100.0;
                   final color = Color(meta['color'] as int);
                   return Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [
-                    Text(meta['icon'] as String, style: const TextStyle(fontSize: 18)),
+                    Icon(meta['icon'] as IconData, size: 18, color: color),
                     const SizedBox(width: 10),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
@@ -130,8 +130,8 @@ class _EduProfileState extends State<EduProfileScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('AI INSIGHT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
                     const SizedBox(height: 6),
-                    Row(children: [const Text('🏅 Strongest: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_strongest, style: const TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
-                    Row(children: [const Text('⚠️ Needs work: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_weakest, style: const TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
+                    Row(children: [const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.military_tech_rounded, size: 14, color: GacomColors.textSecondary), SizedBox(width: 4), Text('Strongest: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_strongest, style: const TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
+                    Row(children: [const Text('Needs work: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_weakest, style: const TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
                   ])),
               ],
             ])),
@@ -163,7 +163,7 @@ class _EduProfileState extends State<EduProfileScreen> {
           Container(padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(gradient: LinearGradient(colors: [GacomColors.deepOrange.withOpacity(0.2), GacomColors.cardDark]), borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
             child: Row(children: [
-              const Text('🏖', style: TextStyle(fontSize: 32)),
+              const const Icon(Icons.beach_access_rounded, size: 32, color: GacomColors.deepOrange),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Holiday Brain Challenge', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),

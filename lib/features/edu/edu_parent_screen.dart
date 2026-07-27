@@ -55,7 +55,7 @@ class _EduParentState extends State<EduParentScreen> {
               Container(padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.2))),
                 child: const Row(children: [
-                  Text('👨‍👩‍👧', style: TextStyle(fontSize: 24)),
+                  const Icon(Icons.family_restroom_rounded, size: 24, color: GacomColors.deepOrange),
                   SizedBox(width: 12),
                   Expanded(child: Text('Students assigned to you by their schools or directly. You can view their daily progress and subject reports here.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
                 ])),
@@ -102,7 +102,7 @@ class _StudentCard extends StatelessWidget {
       ]),
       const SizedBox(height: 12),
       Row(children: [
-        _StatBadge('🎯', '${s['accuracy']}%', 'Accuracy'),
+        _StatBadge(Icons.gps_fixed_rounded, '${s['accuracy']}%', 'Accuracy'),
         const SizedBox(width: 8),
         _StatBadge('⭐', '${s['xp']}', 'Edu XP'),
         const SizedBox(width: 8),
@@ -112,11 +112,11 @@ class _StudentCard extends StatelessWidget {
 }
 
 class _StatBadge extends StatelessWidget {
-  final String icon, value, label;
+  final dynamic icon; final String value, label;
   const _StatBadge(this.icon, this.value, this.label);
   @override Widget build(BuildContext ctx) => Expanded(child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(10)),
     child: Column(children: [
-      Text(icon, style: const TextStyle(fontSize: 14)),
+      icon is IconData ? Icon(icon as IconData, size: 18, color: GacomColors.deepOrange) : Text(icon.toString(), style: const TextStyle(fontSize: 14)),
       Text(value, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
       Text(label, style: const TextStyle(color: GacomColors.textMuted, fontSize: 9)),
     ])));
