@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/edu_prefs.dart' as edu_prefs;
 
 class EduHomeScreen extends StatefulWidget {
   const EduHomeScreen({super.key});
@@ -66,7 +67,10 @@ class _EduHomeState extends State<EduHomeScreen> {
         ]),
         actions: [
           GestureDetector(
-            onTap: () => context.go(AppConstants.homeRoute),
+            onTap: () {
+                edu_prefs.setEduMode(false);
+                context.go(AppConstants.homeRoute);
+              },
             child: Container(margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),

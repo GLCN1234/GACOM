@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/edu_prefs.dart' as edu_prefs;
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -147,6 +148,7 @@ class _Header extends StatelessWidget {
                 builder: (_) => const _EduModeDialog(),
               );
               if (accepted == true && context.mounted) {
+                edu_prefs.setEduMode(true);
                 context.go('/edu/home');
               }
             },

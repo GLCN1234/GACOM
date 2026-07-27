@@ -43,6 +43,8 @@ import '../../features/arena/screens/games/extra_games.dart';
 import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
 import '../../features/arena/screens/games/reaction_solo.dart';
+import '../../features/arena/screens/games/algebra_game.dart';
+import '../../features/arena/screens/games/physics_game.dart';
 import '../../features/edu/edu_home_screen.dart';
 import '../../features/edu/edu_subject_screen.dart';
 import '../../features/edu/edu_subjects_screen.dart';
@@ -192,6 +194,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/rps', builder: (_, __) => const RpsSoloScreen()),
               GoRoute(path: 'practice/trivia', builder: (_, __) => const TriviaSoloScreen()),
               GoRoute(path: 'practice/reaction', builder: (_, __) => const ReactionSoloScreen()),
+              GoRoute(path: 'practice/algebra', builder: (_, __) => const AlgebraGame()),
+              GoRoute(path: 'practice/physics', builder: (_, __) => const PhysicsGame()),
+              // Edu curriculum game routes
+              GoRoute(path: 'edu/game/algebra_eq', builder: (_, __) => const AlgebraGame()),
+              GoRoute(path: 'edu/game/simultaneous', builder: (_, __) => const AlgebraGame()),
+              GoRoute(path: 'edu/game/geometry', builder: (_, __) => const AlgebraGame()),
+              GoRoute(path: 'edu/game/physics_quiz', builder: (_, __) => const PhysicsGame()),
+              GoRoute(path: 'edu/game/chem_quiz', builder: (_, __) => const PhysicsGame()),
+              GoRoute(path: 'edu/game/bio_quiz', builder: (_, __) => const TriviaSoloScreen()),
               GoRoute(path: 'practice/connect4', builder: (_, __) => const ConnectFourGame()),
               GoRoute(path: 'practice/reversi', builder: (_, __) => const ReversiGame()),
               GoRoute(path: 'practice/memory', builder: (_, __) => const MemoryMatchGame()),
