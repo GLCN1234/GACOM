@@ -130,8 +130,19 @@ class _EduProfileState extends State<EduProfileScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('AI INSIGHT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
                     const SizedBox(height: 6),
-                    Row(children: [const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.military_tech_rounded, size: 14, color: GacomColors.textSecondary), SizedBox(width: 4), Text('Strongest: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_strongest, style: const TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
-                    Row(children: [const Text('Needs work: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)), Text(_weakest, style: const TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12))]),
+                    Row(children: [
+                      const Icon(Icons.military_tech_rounded, size: 14, color: GacomColors.success),
+                      const SizedBox(width: 4),
+                      const Text('Strongest: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
+                      Text(_strongest, style: const TextStyle(color: GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12)),
+                    ]),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      const Icon(Icons.warning_amber_rounded, size: 14, color: GacomColors.error),
+                      const SizedBox(width: 4),
+                      const Text('Needs work: ', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
+                      Text(_weakest, style: const TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12)),
+                    ]),
                   ])),
               ],
             ])),
@@ -151,7 +162,7 @@ class _EduProfileState extends State<EduProfileScreen> {
               else { earned = _progress.any((p) => p['subject'] == key && (p['accuracy'] as int? ?? 0) >= threshold); }
               return Column(children: [
                 Container(width: 52, height: 52, decoration: BoxDecoration(shape: BoxShape.circle, color: earned ? GacomColors.deepOrange.withOpacity(0.15) : GacomColors.elevatedCard, border: Border.all(color: earned ? GacomColors.deepOrange.withOpacity(0.5) : GacomColors.border)),
-                  child: Center(child: Text(b['icon'] as String, style: TextStyle(fontSize: 24, color: earned ? null : Colors.black12)))),
+                  child: Center(child: Icon(b['icon'] as IconData, size: 24, color: earned ? GacomColors.deepOrange : Colors.black12))),
                 const SizedBox(height: 4),
                 Text(b['name'] as String, textAlign: TextAlign.center, maxLines: 2,
                   style: TextStyle(fontSize: 9, color: earned ? GacomColors.textSecondary : GacomColors.textMuted, height: 1.2)),
@@ -163,7 +174,7 @@ class _EduProfileState extends State<EduProfileScreen> {
           Container(padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(gradient: LinearGradient(colors: [GacomColors.deepOrange.withOpacity(0.2), GacomColors.cardDark]), borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
             child: Row(children: [
-              const const Icon(Icons.beach_access_rounded, size: 32, color: GacomColors.deepOrange),
+              const Icon(Icons.beach_access_rounded, size: 32, color: GacomColors.deepOrange),
               const SizedBox(width: 14),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Holiday Brain Challenge', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
