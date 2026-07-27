@@ -60,8 +60,6 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-  @override
-  Widget build(BuildContext context) {
     final roleAsync = ref.watch(userRoleProvider);
     final role = roleAsync.valueOrNull ?? 'user';
     final isPrivileged = ['admin', 'super_admin', 'moderator'].contains(role);
