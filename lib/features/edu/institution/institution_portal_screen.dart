@@ -48,13 +48,22 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(
+      automaticallyImplyLeading: false,
       title: Text(_institution?['name'] ?? 'Institution Portal', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)),
-      actions: [IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load)],
+      actions: [
+        IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
+        IconButton(
+          icon: const Icon(Icons.logout_rounded, color: GacomColors.error),
+          tooltip: 'Log out',
+          onPressed: () async {
+            await SupabaseService.client.auth.signOut();
+            if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+          }),
+      ],
     ),
     body: _loading ? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange))
       : _institution == null ? _buildNotLinked()
       : Column(children: [
-          // Stats strip
           Container(color: GacomColors.cardDark, padding: const EdgeInsets.all(16),
             child: Row(children: [
               _PortalStat(label: 'Students', value: '${_students.length}', icon: Icons.people_outline_rounded, color: GacomColors.deepOrange),
@@ -72,13 +81,32 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
         ]),
   );
 
-  Widget _buildNotLinked() => Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Icon(Icons.account_balance_outlined, size: 64, color: GacomColors.textMuted),
-    const SizedBox(height: 16),
-    const Text('Institution Portal', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)),
-    const SizedBox(height: 8),
-    const Text('This portal is for school administrators. Log in with your institution\'s GACOM credentials to access your dashboard.', style: TextStyle(color: GacomColors.textMuted, fontSize: 13, height: 1.5), textAlign: TextAlign.center),
-  ])));
+  Widget _buildNotLinked() {
+    final email = SupabaseService.client.auth.currentUser?.email ?? 'unknown';
+    return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.account_balance_outlined, size: 64, color: GacomColors.textMuted),
+      const SizedBox(height: 16),
+      const Text('Institution Not Found', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary)),
+      const SizedBox(height: 8),
+      Text('Logged in as: $email', style: const TextStyle(color: GacomColors.accentCyan, fontSize: 12, fontFamily: 'Courier')),
+      const SizedBox(height: 8),
+      const Text('No institution is linked to this email address.\nAsk your GACOM admin to add your institution and ensure the login email matches.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, height: 1.5), textAlign: TextAlign.center),
+      const SizedBox(height: 24),
+      ElevatedButton.icon(
+        onPressed: _load,
+        icon: const Icon(Icons.refresh_rounded, size: 16),
+        label: const Text('Retry', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)),
+        style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))),
+      const SizedBox(height: 12),
+      TextButton.icon(
+        onPressed: () async {
+          await SupabaseService.client.auth.signOut();
+          if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+        },
+        icon: const Icon(Icons.logout_rounded, size: 16, color: GacomColors.error),
+        label: const Text('Log out', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+    ])));
+  }
 
   Widget _buildStudents() => _students.isEmpty
     ? const Center(child: Text('No students enrolled yet.\nShare your institution code with students.', style: TextStyle(color: GacomColors.textMuted, fontSize: 13), textAlign: TextAlign.center))
