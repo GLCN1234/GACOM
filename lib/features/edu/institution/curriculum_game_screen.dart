@@ -29,7 +29,13 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
   static const _levels = ['foundation', 'beginner', 'intermediate', 'advanced', 'challenge'];
   static const _levelLabels = ['Foundation', 'Beginner', 'Intermediate', 'Advanced', 'Challenge'];
   static const _levelColors = [0xFF34D399, 0xFF3D8BFF, 0xFFFF8A33, 0xFFE85B8A, 0xFFFF6A00];
-  static const _levelIcons = [Icons.looks_1_rounded, Icons.looks_2_rounded, Icons.looks_3_rounded, Icons.looks_4_rounded, Icons.looks_5_rounded];
+  static const _levelIcons = [
+    Icons.filter_1_rounded,
+    Icons.filter_2_rounded,
+    Icons.filter_3_rounded,
+    Icons.filter_4_rounded,
+    Icons.filter_5_rounded,
+  ];
   static const _passMark = 0.8; // 80% to advance level
   static const _questionsPerSession = 10; // show 10 at a time from the bank
 
