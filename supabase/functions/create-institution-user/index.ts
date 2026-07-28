@@ -24,10 +24,7 @@ Deno.serve(async (req) => {
     if (!user) throw new Error('Not authenticated')
 
     const { data: profile } = await userClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+      .from('profiles').select('role').eq('id', user.id).single()
 
     if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
       throw new Error('Not authorized')
@@ -38,7 +35,6 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Create the auth user
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: login_email,
       password: login_code,
@@ -47,32 +43,26 @@ Deno.serve(async (req) => {
     })
 
     if (createError) {
-      // Already exists — just update password
       if (createError.message.includes('already registered')) {
         const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
         const existing = list?.users.find((u: any) => u.email === login_email)
         if (existing) {
           await adminClient.auth.admin.updateUserById(existing.id, {
-            password: login_code,
-            email_confirm: true,
+            password: login_code, email_confirm: true
           })
-          // Ensure profile exists with institution role
           await adminClient.from('profiles').upsert({
             id: existing.id,
             display_name: login_email.split('@')[0].replace(/\./g, ' '),
             role: 'institution',
             username: login_email.split('@')[0],
           })
-          return new Response(
-            JSON.stringify({ success: true, message: 'Updated existing user' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
+          return new Response(JSON.stringify({ success: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
         }
       }
       throw createError
     }
 
-    // Create profile with institution role
     if (newUser?.user) {
       await adminClient.from('profiles').upsert({
         id: newUser.user.id,
