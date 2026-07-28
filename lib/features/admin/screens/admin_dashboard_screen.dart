@@ -952,16 +952,32 @@ class _InstitutionsAdminState extends State<_InstitutionsAdminSection> {
     try {
       final code = _generateCode();
       final email = '${_nameCtrl.text.trim().toLowerCase().replaceAll(' ', '.')}@gacom.edu.ng';
-      await SupabaseService.client.from('institutions').insert({
+      final row = await SupabaseService.client.from('institutions').insert({
         'name': _nameCtrl.text.trim(),
         'type': _type,
         'state': _stateCtrl.text.trim().isEmpty ? null : _stateCtrl.text.trim(),
         'login_code': code,
         'login_email': email,
         'created_by': SupabaseService.currentUserId,
-      });
+      }).select('id').single();
+
+      // Create a Supabase auth user so the institution can actually log in
+      try {
+        await SupabaseService.client.functions.invoke('create-institution-user', body: {
+          'institution_id': row['id'],
+          'login_email': email,
+          'login_code': code,
+        });
+      } catch (e) {
+        // Auth user creation failed — still show success but warn admin
+        if (mounted) GacomSnackbar.show(context, 'Institution saved but auth setup failed: $e\nCreate user manually in Supabase Auth.', isError: true);
+        setState(() => _adding = false);
+        _load();
+        return;
+      }
+
       if (mounted) {
-        GacomSnackbar.show(context, 'Institution added! Login: $email / Code: $code', isSuccess: true);
+        GacomSnackbar.show(context, 'Done! Login email: $email\nPassword: $code', isSuccess: true);
         _nameCtrl.clear(); _stateCtrl.clear();
         setState(() => _adding = false);
         _load();

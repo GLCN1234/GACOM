@@ -176,9 +176,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go(AppConstants.homeRoute);
     } on AuthException catch (e) {
       if (!mounted) return;
-      // If credential error, show targeted popup prompting password reset
       final msg = e.message.toLowerCase();
-      if (msg.contains('invalid') || msg.contains('credentials') ||
+      // Institution accounts failing login — show specific message
+      if (email.contains('@gacom.edu.ng')) {
+        GacomSnackbar.show(context,
+          'Institution login failed. Please check your login code or contact your GACOM admin.',
+          isError: true);
+      } else if (msg.contains('invalid') || msg.contains('credentials') ||
           msg.contains('password') || msg.contains('not found')) {
         _showCredentialErrorPopup(email);
       } else {
