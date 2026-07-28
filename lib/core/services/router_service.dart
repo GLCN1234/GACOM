@@ -77,6 +77,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // the browser, redirect them back to edu home after login.
       if (isLoggedIn && loc == AppConstants.homeRoute) {
         if (edu_prefs.getEduMode()) return '/edu/home';
+        // Institution users always land on their portal
+        try {
+          final profile = Supabase.instance.client.auth.currentUser?.userMetadata;
+          if (profile?['role'] == 'institution') return '/edu/portal';
+        } catch (_) {}
       }
       return null;
     },

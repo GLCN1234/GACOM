@@ -173,7 +173,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _loading = true);
     try {
       await Supabase.instance.client.auth.signInWithPassword(email: email, password: pass);
-      if (mounted) context.go(AppConstants.homeRoute);
+      if (!mounted) return;
+      // Check if this is an institution login — redirect to portal
+      try {
+        final profile = await Supabase.instance.client
+            .from('profiles').select('role').eq('id', Supabase.instance.client.auth.currentUser!.id).single();
+        if (profile['role'] == 'institution') {
+          context.go('/edu/portal');
+          return;
+        }
+      } catch (_) {}
+      context.go(AppConstants.homeRoute);
     } on AuthException catch (e) {
       if (!mounted) return;
       final msg = e.message.toLowerCase();
