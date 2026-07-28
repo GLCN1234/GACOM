@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/constants/app_constants.dart';
 
 /// Institution admin portal — accessed via generated login credentials.
 /// Shows student roster, per-student progress, curriculum uploads.
@@ -57,7 +59,7 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
           tooltip: 'Log out',
           onPressed: () async {
             await SupabaseService.client.auth.signOut();
-            if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+            if (context.mounted) context.go(AppConstants.loginRoute);
           }),
       ],
     ),
@@ -101,7 +103,7 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
       TextButton.icon(
         onPressed: () async {
           await SupabaseService.client.auth.signOut();
-          if (context.mounted) Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+          if (context.mounted) context.go(AppConstants.loginRoute);
         },
         icon: const Icon(Icons.logout_rounded, size: 16, color: GacomColors.error),
         label: const Text('Log out', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),

@@ -951,9 +951,12 @@ class _InstitutionsAdminState extends State<_InstitutionsAdminSection> {
     setState(() => _adding = true);
     try {
       final code = _generateCode();
-      final email = '${_nameCtrl.text.trim().toLowerCase().replaceAll(' ', '.')}@gacom.edu.ng';
+      final name = _nameCtrl.text.trim();
+      final email = '${name.toLowerCase().replaceAll(' ', '.')}@gacom.edu.ng';
+
+      // 1. Insert institution row
       final row = await SupabaseService.client.from('institutions').insert({
-        'name': _nameCtrl.text.trim(),
+        'name': name,
         'type': _type,
         'state': _stateCtrl.text.trim().isEmpty ? null : _stateCtrl.text.trim(),
         'login_code': code,
@@ -961,28 +964,31 @@ class _InstitutionsAdminState extends State<_InstitutionsAdminSection> {
         'created_by': SupabaseService.currentUserId,
       }).select('id').single();
 
-      // Create a Supabase auth user so the institution can actually log in
+      // 2. Try edge function first (if deployed)
+      bool authCreated = false;
       try {
-        await SupabaseService.client.functions.invoke('create-institution-user', body: {
-          'institution_id': row['id'],
-          'login_email': email,
-          'login_code': code,
-        });
-      } catch (e) {
-        // Auth user creation failed — still show success but warn admin
-        if (mounted) GacomSnackbar.show(context, 'Institution saved but auth setup failed: $e\nCreate user manually in Supabase Auth.', isError: true);
-        setState(() => _adding = false);
-        _load();
-        return;
+        final res = await SupabaseService.client.functions.invoke(
+          'create-institution-user',
+          body: {'institution_id': row['id'], 'login_email': email, 'login_code': code},
+        );
+        authCreated = res.status == 200;
+      } catch (_) {}
+
+      if (!authCreated) {
+        // Edge function not deployed — show instructions to admin
+        if (mounted) GacomSnackbar.show(context,
+          'Institution saved!\n\nGo to Supabase Dashboard → Authentication → Users → Add User:\nEmail: $email\nPassword: $code\nCheck "Auto Confirm User"\n\nThen run in SQL Editor:\ninsert into profiles (id, display_name, role, username) select id, \'$name\', \'institution\', \'${email.split('@')[0]}\' from auth.users where email = \'$email\' on conflict (id) do update set role = \'institution\';',
+          isError: false);
+      } else {
+        if (mounted) GacomSnackbar.show(context, 'Done!\nEmail: $email\nPassword: $code', isSuccess: true);
       }
 
-      if (mounted) {
-        GacomSnackbar.show(context, 'Done! Login email: $email\nPassword: $code', isSuccess: true);
-        _nameCtrl.clear(); _stateCtrl.clear();
-        setState(() => _adding = false);
-        _load();
-      }
-    } catch (e) { if (mounted) { setState(() => _adding = false); GacomSnackbar.show(context, 'Error: $e', isError: true); } }
+      _nameCtrl.clear(); _stateCtrl.clear();
+      setState(() => _adding = false);
+      _load();
+    } catch (e) {
+      if (mounted) { setState(() => _adding = false); GacomSnackbar.show(context, 'Error: $e', isError: true); }
+    }
   }
 
   @override
