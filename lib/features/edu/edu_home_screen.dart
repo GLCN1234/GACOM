@@ -53,6 +53,8 @@ class _EduHomeState extends State<EduHomeScreen> {
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final email = SupabaseService.client.auth.currentUser?.email ?? '';
+    final isInstitution = email.contains('@gacom.edu.ng');
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
