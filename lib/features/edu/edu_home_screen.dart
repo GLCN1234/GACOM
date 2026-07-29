@@ -24,41 +24,41 @@ class _EduHomeState extends State<EduHomeScreen> {
     } catch (_) {}
   }
 
-  // Non-const because IconData can't be stored in const maps
   final _subjects = [
-    {'icon': Icons.calculate_outlined,         'label': 'Mathematics',  'id': 'math',        'color': 0xFFFF6A00},
-    {'icon': Icons.science_outlined,           'label': 'Physics',      'id': 'physics',     'color': 0xFF00C2A8},
-    {'icon': Icons.biotech_outlined,           'label': 'Chemistry',    'id': 'chemistry',   'color': 0xFF8B5CF6},
-    {'icon': Icons.eco_outlined,               'label': 'Biology',      'id': 'biology',     'color': 0xFF34D399},
-    {'icon': Icons.translate_outlined,         'label': 'English',      'id': 'english',     'color': 0xFF3D8BFF},
-    {'icon': Icons.public_outlined,            'label': 'Geography',    'id': 'geography',   'color': 0xFF00C2A8},
-    {'icon': Icons.history_edu_outlined,       'label': 'History',      'id': 'history',     'color': 0xFFFF8A33},
-    {'icon': Icons.code_outlined,              'label': 'Coding',       'id': 'coding',      'color': 0xFF8B5CF6},
-    {'icon': Icons.psychology_outlined,        'label': 'Logic',        'id': 'logic',       'color': 0xFFE85B8A},
-    {'icon': Icons.account_balance_outlined,   'label': 'Economics',    'id': 'economics',   'color': 0xFF34D399},
-    {'icon': Icons.construction_outlined,      'label': 'Engineering',  'id': 'engineering', 'color': 0xFF3D8BFF},
-    {'icon': Icons.more_horiz_rounded,         'label': 'More',         'id': 'math',        'color': 0xFF6B6B80},
+    {'icon': Icons.calculate_outlined,       'label': 'Mathematics', 'id': 'math',        'color': 0xFFFF6A00},
+    {'icon': Icons.science_outlined,         'label': 'Physics',     'id': 'physics',     'color': 0xFF00C2A8},
+    {'icon': Icons.biotech_outlined,         'label': 'Chemistry',   'id': 'chemistry',   'color': 0xFF8B5CF6},
+    {'icon': Icons.eco_outlined,             'label': 'Biology',     'id': 'biology',     'color': 0xFF34D399},
+    {'icon': Icons.translate_outlined,       'label': 'English',     'id': 'english',     'color': 0xFF3D8BFF},
+    {'icon': Icons.public_outlined,          'label': 'Geography',   'id': 'geography',   'color': 0xFF00C2A8},
+    {'icon': Icons.history_edu_outlined,     'label': 'History',     'id': 'history',     'color': 0xFFFF8A33},
+    {'icon': Icons.code_outlined,            'label': 'Coding',      'id': 'coding',      'color': 0xFF8B5CF6},
+    {'icon': Icons.psychology_outlined,      'label': 'Logic',       'id': 'logic',       'color': 0xFFE85B8A},
+    {'icon': Icons.account_balance_outlined, 'label': 'Economics',   'id': 'economics',   'color': 0xFF34D399},
+    {'icon': Icons.construction_outlined,    'label': 'Engineering', 'id': 'engineering', 'color': 0xFF3D8BFF},
+    {'icon': Icons.more_horiz_rounded,       'label': 'More',        'id': 'math',        'color': 0xFF6B6B80},
   ];
 
   final _quickGames = [
-    {'name': 'Speed Math',    'icon': Icons.bolt_rounded,          'route': '/arena/practice/speedmath'},
-    {'name': 'Word Scramble', 'icon': Icons.spellcheck_rounded,    'route': '/arena/practice/wordscramble'},
-    {'name': 'Chess',         'icon': Icons.extension_rounded,     'route': '/arena/practice/chess'},
-    {'name': 'Trivia',        'icon': Icons.quiz_outlined,         'route': '/arena/practice/trivia'},
-    {'name': 'Number Duel',   'icon': Icons.timer_rounded,         'route': '/arena/practice/numberduel'},
-    {'name': 'Hangman',       'icon': Icons.abc_rounded,           'route': '/arena/practice/hangman'},
+    {'name': 'Speed Math',    'icon': Icons.bolt_rounded,       'route': '/arena/practice/speedmath'},
+    {'name': 'Word Scramble', 'icon': Icons.spellcheck_rounded, 'route': '/arena/practice/wordscramble'},
+    {'name': 'Chess',         'icon': Icons.extension_rounded,  'route': '/arena/practice/chess'},
+    {'name': 'Trivia',        'icon': Icons.quiz_outlined,      'route': '/arena/practice/trivia'},
+    {'name': 'Number Duel',   'icon': Icons.timer_rounded,      'route': '/arena/practice/numberduel'},
+    {'name': 'Hangman',       'icon': Icons.abc_rounded,        'route': '/arena/practice/hangman'},
   ];
 
   @override
   Widget build(BuildContext context) {
     final hour = DateTime.now().hour;
     final greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+    final email = SupabaseService.client.auth.currentUser?.email ?? '';
+    final isInstitution = email.contains('@gacom.edu.ng');
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
-        backgroundColor: GacomColors.obsidian,
-        elevation: 0,
+        backgroundColor: GacomColors.obsidian, elevation: 0,
         title: Row(children: [
           const Text('GACOM', style: TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 1.5)),
           const SizedBox(width: 8),
@@ -67,23 +67,17 @@ class _EduHomeState extends State<EduHomeScreen> {
             child: const Text('EDU', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1))),
         ]),
         actions: [
-          // Return to portal — only for institution users
-          Builder(builder: (ctx) {
-            final email = SupabaseService.client.auth.currentUser?.email ?? '';
-            if (email.contains('@gacom.edu.ng')) {
-              return GestureDetector(
-                onTap: () => context.go('/edu/portal'),
-                child: Container(margin: const EdgeInsets.only(right: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.4))),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.account_balance_outlined, size: 13, color: GacomColors.accentCyan),
-                    SizedBox(width: 4),
-                    Text('Portal', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.accentCyan)),
-                  ])));
-            }
-            return const SizedBox.shrink();
-          }),
+          if (isInstitution)
+            GestureDetector(
+              onTap: () => context.go('/edu/portal'),
+              child: Container(margin: const EdgeInsets.only(right: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.4))),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.account_balance_outlined, size: 13, color: GacomColors.accentCyan),
+                  SizedBox(width: 4),
+                  Text('Portal', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.accentCyan)),
+                ]))),
           GestureDetector(
             onTap: () { edu_prefs.setEduMode(false); context.go(AppConstants.homeRoute); },
             child: Container(margin: const EdgeInsets.only(right: 8),
@@ -98,7 +92,6 @@ class _EduHomeState extends State<EduHomeScreen> {
         ],
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        // Greeting
         Row(children: [
           Container(width: 48, height: 48,
             decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: GacomColors.deepOrange, width: 2), color: GacomColors.elevatedCard),
@@ -106,7 +99,7 @@ class _EduHomeState extends State<EduHomeScreen> {
               style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)))),
           const SizedBox(width: 12),
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$greeting', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani')),
+            Text(greeting, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
             Text(_name, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
           ]),
           const Spacer(),
@@ -120,8 +113,6 @@ class _EduHomeState extends State<EduHomeScreen> {
               ]))),
         ]),
         const SizedBox(height: 20),
-
-        // Hero card
         Container(width: double.infinity, padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -135,7 +126,7 @@ class _EduHomeState extends State<EduHomeScreen> {
               ])),
             ]),
             const SizedBox(height: 12),
-            const Text('Play educational games across 12 subjects. Build real academic skills while competing on leaderboards with students worldwide.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5)),
+            const Text('Play educational games across 12 subjects. Build real academic skills while competing on leaderboards.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5)),
             const SizedBox(height: 16),
             GestureDetector(onTap: () => context.push('/edu/subjects'),
               child: Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -147,8 +138,27 @@ class _EduHomeState extends State<EduHomeScreen> {
                 ]))),
           ])),
         const SizedBox(height: 20),
-
-        // Quick play
+        if (!isInstitution)
+          GestureDetector(
+            onTap: () => context.push('/edu/paywall'),
+            child: Container(margin: const EdgeInsets.only(bottom: 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [GacomColors.deepOrange.withOpacity(0.15), GacomColors.cardDark]),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.workspace_premium_rounded, color: GacomColors.deepOrange, size: 20)),
+                const SizedBox(width: 12),
+                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Free Plan — Maths only', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textPrimary)),
+                  Text('Upgrade ₦3,500/month → unlock all 24 subjects', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                ])),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(20)),
+                  child: const Text('UPGRADE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11))),
+              ]))),
         Row(children: [
           const Text('PLAY NOW', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
           const Spacer(),
@@ -170,39 +180,9 @@ class _EduHomeState extends State<EduHomeScreen> {
                   const SizedBox(height: 6),
                   Text(g['name'] as String, textAlign: TextAlign.center, maxLines: 2,
                     style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10, color: GacomColors.textPrimary, height: 1.2)),
-                ])),
-            );
-          },
-        )),
+                ])));
+          })),
         const SizedBox(height: 20),
-
-        // Upgrade banner — visible to all non-institution users
-        Builder(builder: (ctx) {
-          final email = SupabaseService.client.auth.currentUser?.email ?? '';
-          if (email.contains('@gacom.edu.ng')) return const SizedBox.shrink();
-          return GestureDetector(
-            onTap: () => context.push('/edu/paywall'),
-            child: Container(margin: const EdgeInsets.only(bottom: 20), padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [GacomColors.deepOrange.withOpacity(0.15), GacomColors.cardDark]),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
-              child: Row(children: [
-                Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.workspace_premium_rounded, color: GacomColors.deepOrange, size: 20)),
-                const SizedBox(width: 12),
-                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Free Plan — Math only', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textPrimary)),
-                  Text('Upgrade to ₦3,500/month → unlock all 24 subjects', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-                ])),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(20)),
-                  child: const Text('UPGRADE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11))),
-              ])),
-          );
-        }),
-
-        // Subjects
         Row(children: [
           const Text('SUBJECTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
           const Spacer(),
@@ -226,13 +206,9 @@ class _EduHomeState extends State<EduHomeScreen> {
                   const SizedBox(height: 8),
                   Text(s['label'] as String, textAlign: TextAlign.center,
                     style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textPrimary)),
-                ]),
-              ),
-            );
+                ])));
           }),
         const SizedBox(height: 20),
-
-        // Bottom action row
         Row(children: [
           _ActionCard(icon: Icons.emoji_events_outlined, label: 'Compete', color: GacomColors.deepOrange, onTap: () => context.push('/edu/compete')),
           const SizedBox(width: 10),
@@ -250,6 +226,8 @@ class _ActionCard extends StatelessWidget {
   final IconData icon; final String label; final Color color; final VoidCallback onTap;
   const _ActionCard({required this.icon, required this.label, required this.color, required this.onTap});
   @override Widget build(BuildContext ctx) => Expanded(child: GestureDetector(onTap: onTap,
-    child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
-      child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 6), Text(label, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textPrimary))]))));
+    child: Container(padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
+      child: Column(children: [Icon(icon, color: color, size: 24), const SizedBox(height: 6),
+        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textPrimary))]))));
 }
