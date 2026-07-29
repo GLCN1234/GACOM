@@ -24,7 +24,8 @@ class _EduHomeState extends State<EduHomeScreen> {
     } catch (_) {}
   }
 
-  static const _subjects = [
+  // Non-const because IconData can't be stored in const maps
+  final _subjects = [
     {'icon': Icons.calculate_outlined,         'label': 'Mathematics',  'id': 'math',        'color': 0xFFFF6A00},
     {'icon': Icons.science_outlined,           'label': 'Physics',      'id': 'physics',     'color': 0xFF00C2A8},
     {'icon': Icons.biotech_outlined,           'label': 'Chemistry',    'id': 'chemistry',   'color': 0xFF8B5CF6},
@@ -39,7 +40,7 @@ class _EduHomeState extends State<EduHomeScreen> {
     {'icon': Icons.more_horiz_rounded,         'label': 'More',         'id': 'math',        'color': 0xFF6B6B80},
   ];
 
-  static const _quickGames = [
+  final _quickGames = [
     {'name': 'Speed Math',    'icon': Icons.bolt_rounded,          'route': '/arena/practice/speedmath'},
     {'name': 'Word Scramble', 'icon': Icons.spellcheck_rounded,    'route': '/arena/practice/wordscramble'},
     {'name': 'Chess',         'icon': Icons.extension_rounded,     'route': '/arena/practice/chess'},
@@ -175,7 +176,33 @@ class _EduHomeState extends State<EduHomeScreen> {
         )),
         const SizedBox(height: 20),
 
-        // Subjects grid
+        // Upgrade banner — visible to all non-institution users
+        Builder(builder: (ctx) {
+          final email = SupabaseService.client.auth.currentUser?.email ?? '';
+          if (email.contains('@gacom.edu.ng')) return const SizedBox.shrink();
+          return GestureDetector(
+            onTap: () => context.push('/edu/paywall'),
+            child: Container(margin: const EdgeInsets.only(bottom: 20), padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [GacomColors.deepOrange.withOpacity(0.15), GacomColors.cardDark]),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.workspace_premium_rounded, color: GacomColors.deepOrange, size: 20)),
+                const SizedBox(width: 12),
+                const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Free Plan — Math only', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textPrimary)),
+                  Text('Upgrade to ₦3,500/month → unlock all 24 subjects', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                ])),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(20)),
+                  child: const Text('UPGRADE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11))),
+              ])),
+          );
+        }),
+
+        // Subjects
         Row(children: [
           const Text('SUBJECTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
           const Spacer(),
