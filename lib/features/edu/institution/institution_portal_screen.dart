@@ -108,6 +108,8 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
               _PortalStat(label: 'Curricula', value: '${_curricula.length}', icon: Icons.upload_file_rounded, color: GacomColors.accentCyan),
               _PortalStat(label: 'Active Today', value: '${_students.where((s) => s['progress'] != null && (s['progress'] as List).isNotEmpty).length}', icon: Icons.trending_up_rounded, color: GacomColors.success),
             ])),
+          // Always-visible AI plan strip — shows on every tab, not just Upload
+          _PlanStrip(institution: _institution),
           TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, labelColor: GacomColors.deepOrange, unselectedLabelColor: GacomColors.textMuted,
             labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13),
             tabs: const [Tab(text: 'STUDENTS'), Tab(text: 'CURRICULUM'), Tab(text: 'UPLOAD')]),
@@ -208,6 +210,80 @@ class _PortalStat extends StatelessWidget {
     Text(value, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: color)),
     Text(label, style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
   ]));
+}
+
+// Compact plan strip — always visible at top of portal regardless of tab
+class _PlanStrip extends StatelessWidget {
+  final Map<String,dynamic>? institution;
+  const _PlanStrip({required this.institution});
+
+  static const _limits = {'free': 50, 'basic': 200, 'pro': 500, 'unlimited': 9999};
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = (institution?['ai_plan'] as String?) ?? 'free';
+    final used = (institution?['ai_calls_used'] as int?) ?? 0;
+    final limit = (institution?['ai_calls_limit'] as int?) ?? (_limits[plan] ?? 50);
+    final isFree = plan == 'free';
+
+    return Container(
+      color: GacomColors.obsidian,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(children: [
+        Icon(Icons.auto_awesome_rounded, color: GacomColors.accentCyan, size: 15),
+        const SizedBox(width: 8),
+        Text('${plan[0].toUpperCase()}${plan.substring(1)} Plan',
+          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textPrimary)),
+        const SizedBox(width: 6),
+        Text('($used/$limit topics)', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+        const Spacer(),
+        GestureDetector(
+          onTap: () => _showUpgradeSheet(context),
+          child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(color: isFree ? GacomColors.deepOrange : GacomColors.accentCyan.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+            child: Text(isFree ? 'UPGRADE' : 'CHANGE PLAN',
+              style: TextStyle(color: isFree ? Colors.white : GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10))),
+        ),
+      ]),
+    );
+  }
+
+  void _showUpgradeSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('AI PLAN PRICING', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.textPrimary)),
+          const SizedBox(height: 16),
+          _planRow('Free', '₦0', '50 topics/mo', GacomColors.textMuted),
+          _planRow('Basic', '₦5,000/mo', '200 topics/mo', GacomColors.accentCyan),
+          _planRow('Pro', '₦12,000/mo', '500 topics/mo', GacomColors.deepOrange),
+          _planRow('Unlimited', '₦25,000/mo', '9,999 topics/mo', GacomColors.success),
+          const SizedBox(height: 16),
+          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
+            child: const Text('To upgrade your plan, contact your GACOM account manager or email support@gacom.net with your institution name.',
+              style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  Widget _planRow(String name, String price, String limit, Color color) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(children: [
+      Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      const SizedBox(width: 10),
+      Text(name, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+      const Spacer(),
+      Text(limit, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+      const SizedBox(width: 12),
+      Text(price, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: color)),
+    ]),
+  );
 }
 
 class _AiPlanCard extends StatelessWidget {
