@@ -193,7 +193,10 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
           ]));
       });
 
-  Widget _buildUpload() => _CurriculumUploader(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load);
+  Widget _buildUpload() => Column(children: [
+    _AiPlanCard(institution: _institution),
+    Expanded(child: _CurriculumUploader(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load)),
+  ]);
 }
 
 class _PortalStat extends StatelessWidget {
@@ -205,6 +208,63 @@ class _PortalStat extends StatelessWidget {
     Text(value, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: color)),
     Text(label, style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
   ]));
+}
+
+class _AiPlanCard extends StatelessWidget {
+  final Map<String,dynamic>? institution;
+  const _AiPlanCard({required this.institution});
+
+  static const _plans = {
+    'free':      {'label': 'Free',      'limit': 50,   'price': '₦0'},
+    'basic':     {'label': 'Basic',     'limit': 200,  'price': '₦5,000/mo'},
+    'pro':       {'label': 'Pro',       'limit': 500,  'price': '₦12,000/mo'},
+    'unlimited': {'label': 'Unlimited', 'limit': 9999, 'price': '₦25,000/mo'},
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = (institution?['ai_plan'] as String?) ?? 'free';
+    final used = (institution?['ai_calls_used'] as int?) ?? 0;
+    final limit = (institution?['ai_calls_limit'] as int?) ?? (_plans[plan]?['limit'] as int? ?? 50);
+    final planInfo = _plans[plan] ?? _plans['free']!;
+    final pct = limit > 0 ? (used / limit).clamp(0.0, 1.0) : 0.0;
+    final isLow = pct > 0.8;
+
+    return Container(margin: const EdgeInsets.all(16), padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [GacomColors.accentCyan.withOpacity(0.1), GacomColors.cardDark]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: GacomColors.accentCyan.withOpacity(0.3))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.auto_awesome_rounded, color: GacomColors.accentCyan, size: 18),
+          const SizedBox(width: 8),
+          Text('AI PLAN: ${(planInfo['label'] as String).toUpperCase()}',
+            style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.accentCyan, letterSpacing: 0.5)),
+          const Spacer(),
+          Text(planInfo['price'] as String, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Text('$used / $limit', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+          const SizedBox(width: 6),
+          const Text('topic generations used', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 6),
+        ClipRRect(borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(value: pct, backgroundColor: GacomColors.elevatedCard,
+            valueColor: AlwaysStoppedAnimation(isLow ? GacomColors.error : GacomColors.accentCyan), minHeight: 6)),
+        if (isLow) ...[
+          const SizedBox(height: 10),
+          Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(10)),
+            child: const Center(child: Text('UPGRADE PLAN — CONTACT GACOM ADMIN', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12)))),
+        ] else if (plan == 'free') ...[
+          const SizedBox(height: 10),
+          const Text('Basic ₦5,000/mo (200) · Pro ₦12,000/mo (500) · Unlimited ₦25,000/mo', style: TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+        ],
+      ]));
+  }
 }
 
 class _CurriculumUploader extends StatefulWidget {
