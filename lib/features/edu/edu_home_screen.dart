@@ -66,11 +66,25 @@ class _EduHomeState extends State<EduHomeScreen> {
             child: const Text('EDU', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1))),
         ]),
         actions: [
+          // Return to portal — only for institution users
+          Builder(builder: (ctx) {
+            final email = SupabaseService.client.auth.currentUser?.email ?? '';
+            if (email.contains('@gacom.edu.ng')) {
+              return GestureDetector(
+                onTap: () => context.go('/edu/portal'),
+                child: Container(margin: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.4))),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.account_balance_outlined, size: 13, color: GacomColors.accentCyan),
+                    SizedBox(width: 4),
+                    Text('Portal', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.accentCyan)),
+                  ])));
+            }
+            return const SizedBox.shrink();
+          }),
           GestureDetector(
-            onTap: () {
-                edu_prefs.setEduMode(false);
-                context.go(AppConstants.homeRoute);
-              },
+            onTap: () { edu_prefs.setEduMode(false); context.go(AppConstants.homeRoute); },
             child: Container(margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20), border: Border.all(color: GacomColors.border)),
