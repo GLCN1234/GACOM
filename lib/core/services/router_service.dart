@@ -53,6 +53,7 @@ import '../../features/edu/edu_profile_screen.dart';
 import '../../features/edu/edu_parent_screen.dart';
 import '../../features/edu/edu_chat_screen.dart';
 import '../../features/edu/edu_paywall_screen.dart';
+import '../../features/edu/edu_compete_screen.dart';
 import '../../features/edu/institution/institution_picker_screen.dart';
 import '../../features/edu/institution/institution_portal_screen.dart';
 import '../../features/edu/institution/curriculum_game_screen.dart';
