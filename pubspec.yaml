@@ -39,7 +39,6 @@ dependencies:
   equatable: ^2.0.5
   dio: ^5.4.3
   connectivity_plus: ^6.0.3
-  flutter_webrtc: ^0.10.7
   flame: ^1.18.0
 
 dev_dependencies:
@@ -53,3 +52,5 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+dependency_overrides:
+  web: ^1.1.0
