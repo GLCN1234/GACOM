@@ -44,11 +44,12 @@ class EduVoiceService {
       _channel = Supabase.instance.client.channel('edu_voice_$roomId');
 
       _pc!.onicecandidate = (web.RTCPeerConnectionIceEvent event) {
-        if (event.candidate != null) {
+        final c = event.candidate;
+        if (c != null) {
           _channel?.sendBroadcastMessage(event: 'ice', payload: {
-            'candidate': event.candidate!.candidate,
-            'sdpMid': event.candidate!.sdpMid,
-            'sdpMLineIndex': event.candidate!.sdpMLineIndex,
+            'candidate': c.candidate,
+            'sdpMid': c.sdpMid,
+            'sdpMLineIndex': c.sdpMLineIndex,
           });
         }
       }.toJS;
@@ -56,31 +57,36 @@ class EduVoiceService {
       _channel!
         .onBroadcast(event: 'offer', callback: (payload) async {
           if (isInitiator) return;
-          final desc = web.RTCSessionDescriptionInit(type: 'offer', sdp: payload['sdp'] as String);
-          await _pc!.setRemoteDescription(desc).toDart;
+          final remoteDesc = web.RTCSessionDescriptionInit(type: 'offer', sdp: payload['sdp'] as String);
+          await _pc!.setRemoteDescription(remoteDesc).toDart;
+
           final answer = await _pc!.createAnswer().toDart;
-          await _pc!.setLocalDescription(answer).toDart;
-          _channel!.sendBroadcastMessage(event: 'answer', payload: {'sdp': answer.sdp});
+          if (answer == null) return;
+          final localDesc = web.RTCLocalSessionDescriptionInit(type: answer.type, sdp: answer.sdp ?? '');
+          await _pc!.setLocalDescription(localDesc).toDart;
+          _channel!.sendBroadcastMessage(event: 'answer', payload: {'sdp': answer.sdp ?? ''});
         })
         .onBroadcast(event: 'answer', callback: (payload) async {
           if (!isInitiator) return;
-          final desc = web.RTCSessionDescriptionInit(type: 'answer', sdp: payload['sdp'] as String);
-          await _pc!.setRemoteDescription(desc).toDart;
+          final remoteDesc = web.RTCSessionDescriptionInit(type: 'answer', sdp: payload['sdp'] as String);
+          await _pc!.setRemoteDescription(remoteDesc).toDart;
         })
         .onBroadcast(event: 'ice', callback: (payload) async {
-          final candidate = web.RTCIceCandidateInit(
+          final candidateInit = web.RTCIceCandidateInit(
             candidate: payload['candidate'] as String,
             sdpMid: payload['sdpMid'] as String?,
             sdpMLineIndex: (payload['sdpMLineIndex'] as num?)?.toInt(),
           );
-          await _pc!.addIceCandidate(web.RTCIceCandidate(candidate)).toDart;
+          await _pc!.addIceCandidate(candidateInit).toDart;
         })
         .subscribe();
 
       if (isInitiator) {
         final offer = await _pc!.createOffer().toDart;
-        await _pc!.setLocalDescription(offer).toDart;
-        _channel!.sendBroadcastMessage(event: 'offer', payload: {'sdp': offer.sdp});
+        if (offer == null) return;
+        final localDesc = web.RTCLocalSessionDescriptionInit(type: offer.type, sdp: offer.sdp ?? '');
+        await _pc!.setLocalDescription(localDesc).toDart;
+        _channel!.sendBroadcastMessage(event: 'offer', payload: {'sdp': offer.sdp ?? ''});
       }
     } catch (e) {
       onError?.call(e.toString());
