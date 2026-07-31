@@ -12,6 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class EduVoiceService {
   web.RTCPeerConnection? _pc;
   web.MediaStream? _localStream;
+  web.HTMLAudioElement? _remoteAudioEl;
   RealtimeChannel? _channel;
   bool _muted = false;
   void Function(bool connected)? onConnectionChange;
@@ -81,6 +82,23 @@ class EduVoiceService {
 
       _pc = web.RTCPeerConnection(_iceServers);
 
+      // Receive the OTHER person's audio and actually play it — this was
+      // the missing piece. Setting up the peer connection only handles
+      // sending your own mic; without this, the connection succeeds but
+      // nothing renders the incoming sound.
+      _pc!.ontrack = (web.RTCTrackEvent event) {
+        print('[EduVoice] Received remote track');
+        final streams = event.streams.toDart;
+        if (streams.isNotEmpty) {
+          _remoteAudioEl = web.HTMLAudioElement()
+            ..autoplay = true
+            ..srcObject = streams.first;
+          print('[EduVoice] Remote audio element attached and playing');
+        } else {
+          print('[EduVoice] Remote track event had no streams');
+        }
+      }.toJS;
+
       final constraints = {'audio': true, 'video': false}.jsify() as web.MediaStreamConstraints;
       _localStream = await web.window.navigator.mediaDevices.getUserMedia(constraints).toDart;
       print('[EduVoice] Got microphone access');
@@ -137,9 +155,11 @@ class EduVoiceService {
     print('[EduVoice] Stopping');
     try { await _channel?.unsubscribe(); } catch (_) {}
     try { _localStream?.getTracks().toDart.forEach((t) => t.stop()); } catch (_) {}
+    try { _remoteAudioEl?.pause(); _remoteAudioEl?.srcObject = null; } catch (_) {}
     try { _pc?.close(); } catch (_) {}
     _pc = null;
     _localStream = null;
     _channel = null;
+    _remoteAudioEl = null;
   }
 }
