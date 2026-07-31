@@ -6,10 +6,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
 import 'edu_compete_screen.dart';
 
-/// Browse-and-invite lobby for Edu Compete. Shows students currently
-/// online in the lobby with their school, lets you send a direct
-/// invite, and pops up a real-time accept/decline dialog when someone
-/// invites you.
 class EduCompeteLobbyScreen extends StatefulWidget {
   const EduCompeteLobbyScreen({super.key});
   @override State<EduCompeteLobbyScreen> createState() => _EduCompeteLobbyState();
@@ -21,12 +17,19 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
   List<Map<String,dynamic>> _onlineStudents = [];
   bool _loading = true;
   String _mySubjectInterest = 'Mathematics';
-  final Set<String> _pendingSentInvites = {}; // receiverId set — shows "Invited..." state
+  final Set<String> _pendingSentInvites = {};
+  bool _navigatingAway = false;
 
   static const _subjects = ['Mathematics', 'Science', 'English', 'Logic', 'Geography', 'History'];
 
   @override void initState() { super.initState(); _joinLobby(); _listenForIncomingInvites(); }
-  @override void dispose() { _presenceChannel?.untrack(); _presenceChannel?.unsubscribe(); _inviteChannel?.unsubscribe(); super.dispose(); }
+
+  @override void dispose() {
+    _presenceChannel?.untrack();
+    _presenceChannel?.unsubscribe();
+    _inviteChannel?.unsubscribe();
+    super.dispose();
+  }
 
   Future<void> _joinLobby() async {
     final uid = SupabaseService.currentUserId;
@@ -48,7 +51,7 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
       .onPresenceJoin((_) => _refreshOnlineList())
       .onPresenceLeave((_) => _refreshOnlineList())
       .subscribe((status, error) async {
-        if (status == RealtimeSubscribeStatus.subscribed) {
+        if (status == RealtimeSubscribeStatus.subscribed && !_navigatingAway) {
           await _presenceChannel!.track({
             'user_id': uid, 'name': myName, 'institution': myInstitution,
             'subject': _mySubjectInterest, 'online_at': DateTime.now().toIso8601String(),
@@ -60,7 +63,7 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
   }
 
   void _refreshOnlineList() {
-    if (_presenceChannel == null) return;
+    if (_presenceChannel == null || _navigatingAway) return;
     final uid = SupabaseService.currentUserId;
     final states = _presenceChannel!.presenceState();
     final students = <Map<String,dynamic>>[];
@@ -82,88 +85,110 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
           schema: 'public',
           table: 'edu_compete_invites',
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'receiver_id', value: uid),
-          callback: (payload) => _showIncomingInviteDialog(payload.newRecord),
+          callback: (payload) {
+            if (!_navigatingAway) _showIncomingInviteDialog(payload.newRecord);
+          },
         )
         .onPostgresChanges(
-          // Sender listens for their own sent invite being accepted/declined
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'edu_compete_invites',
           filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'sender_id', value: uid),
-          callback: (payload) => _handleInviteResponse(payload.newRecord),
+          callback: (payload) {
+            if (!_navigatingAway) _handleInviteResponse(payload.newRecord);
+          },
         )
         .subscribe();
   }
 
   void _handleInviteResponse(Map<String,dynamic> invite) {
+    if (_navigatingAway) return;
     final receiverId = invite['receiver_id'] as String;
     setState(() => _pendingSentInvites.remove(receiverId));
     if (invite['status'] == 'accepted' && invite['room_id'] != null && mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => EduCompeteScreen(
-        directRoomId: invite['room_id'] as String,
-        directOpponentId: receiverId,
-        directSubject: invite['subject'] as String,
-      )));
+      _goToMatch(roomId: invite['room_id'] as String, opponentId: receiverId, subject: invite['subject'] as String);
     } else if (invite['status'] == 'declined' && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Your invite was declined')));
     }
   }
 
+  void _goToMatch({required String roomId, required String opponentId, required String subject}) {
+    if (_navigatingAway || !mounted) return;
+    _navigatingAway = true;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => EduCompeteScreen(
+      directRoomId: roomId,
+      directOpponentId: opponentId,
+      directSubject: subject,
+    )));
+  }
+
   Future<void> _showIncomingInviteDialog(Map<String,dynamic> invite) async {
-    if (!mounted) return;
+    if (!mounted || _navigatingAway) return;
     String senderName = 'A student';
     try {
       final p = await SupabaseService.client.from('profiles').select('display_name').eq('id', invite['sender_id']).single();
       senderName = p['display_name'] as String? ?? 'A student';
     } catch (_) {}
-    if (!mounted) return;
+    if (!mounted || _navigatingAway) return;
 
     HapticFeedback.mediumImpact();
-    showDialog(context: context, barrierDismissible: false, builder: (_) => Dialog(
-      backgroundColor: GacomColors.cardDark,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 64, height: 64, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.deepOrange.withOpacity(0.15)),
-          child: const Icon(Icons.emoji_events_outlined, color: GacomColors.deepOrange, size: 32)),
-        const SizedBox(height: 16),
-        Text('$senderName invited you!', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary), textAlign: TextAlign.center),
-        const SizedBox(height: 6),
-        Text('${invite['subject']} competition', style: const TextStyle(color: GacomColors.textMuted, fontSize: 13)),
-        const SizedBox(height: 24),
-        Row(children: [
-          Expanded(child: OutlinedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await SupabaseService.client.from('edu_compete_invites').update({'status': 'declined', 'responded_at': DateTime.now().toIso8601String()}).eq('id', invite['id']);
-            },
-            style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('Decline', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)))),
-          const SizedBox(width: 12),
-          Expanded(child: ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                final res = await SupabaseService.client.rpc('accept_edu_invite', params: {'p_invite_id': invite['id']});
-                if (res['success'] == true && mounted) {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => EduCompeteScreen(
-                    directRoomId: res['room_id'] as String,
-                    directOpponentId: res['opponent_id'] as String,
-                    directSubject: invite['subject'] as String,
-                  )));
+    bool responding = false;
+
+    showDialog(context: context, barrierDismissible: false, builder: (dialogCtx) => StatefulBuilder(
+      builder: (dialogCtx, setDialogState) => Dialog(
+        backgroundColor: GacomColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 64, height: 64, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.deepOrange.withOpacity(0.15)),
+            child: const Icon(Icons.emoji_events_outlined, color: GacomColors.deepOrange, size: 32)),
+          const SizedBox(height: 16),
+          Text('$senderName invited you!', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary), textAlign: TextAlign.center),
+          const SizedBox(height: 6),
+          Text('${invite['subject']} competition', style: const TextStyle(color: GacomColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 24),
+          if (responding)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: CircularProgressIndicator(color: GacomColors.deepOrange))
+          else Row(children: [
+            Expanded(child: OutlinedButton(
+              onPressed: () async {
+                setDialogState(() => responding = true);
+                try {
+                  await SupabaseService.client.from('edu_compete_invites').update({'status': 'declined', 'responded_at': DateTime.now().toIso8601String()}).eq('id', invite['id']);
+                } catch (_) {}
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+              },
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('Decline', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)))),
+            const SizedBox(width: 12),
+            Expanded(child: ElevatedButton(
+              onPressed: () async {
+                setDialogState(() => responding = true);
+                try {
+                  final res = await SupabaseService.client.rpc('accept_edu_invite', params: {'p_invite_id': invite['id']});
+                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                  if (res['success'] == true && mounted) {
+                    _goToMatch(roomId: res['room_id'] as String, opponentId: res['opponent_id'] as String, subject: invite['subject'] as String);
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['error']?.toString() ?? 'This invite is no longer available')));
+                  }
+                } catch (e) {
+                  if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
-              } catch (e) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('Accept', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
-        ]),
-      ])),
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              child: const Text('Accept', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
+          ]),
+        ])),
+      ),
     ));
   }
 
   Future<void> _sendInvite(Map<String,dynamic> student) async {
-    final receiverId = student['user_id'] as String;
+    if (_navigatingAway) return;
+    final receiverId = student['user_id'] as String?;
+    if (receiverId == null) return;
+    if (_pendingSentInvites.contains(receiverId)) return;
     setState(() => _pendingSentInvites.add(receiverId));
     try {
       await SupabaseService.client.from('edu_compete_invites').insert({
@@ -172,9 +197,9 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
         'subject': _mySubjectInterest,
         'status': 'pending',
       });
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invite sent to ${student['name']}')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invite sent to ${student['name'] ?? 'student'}')));
     } catch (e) {
-      setState(() => _pendingSentInvites.remove(receiverId));
+      if (mounted) setState(() => _pendingSentInvites.remove(receiverId));
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sending invite: $e')));
     }
   }
@@ -191,8 +216,11 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
           final sel = s == _mySubjectInterest;
           return GestureDetector(
             onTap: () async {
+              if (_navigatingAway) return;
               setState(() => _mySubjectInterest = s);
-              await _presenceChannel?.track({'user_id': SupabaseService.currentUserId, 'subject': s, 'online_at': DateTime.now().toIso8601String()});
+              try {
+                await _presenceChannel?.track({'user_id': SupabaseService.currentUserId, 'subject': s, 'online_at': DateTime.now().toIso8601String()});
+              } catch (_) {}
             },
             child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(color: sel ? GacomColors.deepOrange : GacomColors.cardDark, borderRadius: BorderRadius.circular(20), border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.border)),
@@ -217,8 +245,8 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
             ])))
           : ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: _onlineStudents.length, itemBuilder: (_, i) {
               final s = _onlineStudents[i];
-              final receiverId = s['user_id'] as String;
-              final invited = _pendingSentInvites.contains(receiverId);
+              final receiverId = s['user_id'] as String?;
+              final invited = receiverId != null && _pendingSentInvites.contains(receiverId);
               return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
                 child: Row(children: [
