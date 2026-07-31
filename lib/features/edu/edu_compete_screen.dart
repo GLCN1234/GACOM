@@ -25,6 +25,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   bool _searching = false;
   bool _inMatch = false;
   bool _matchOver = false;
+  bool _opponentLeft = false;
   String? _roomId;
   String? _opponentId;
   String _opponentName = '';
@@ -67,7 +68,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
 
   List<Map<String,dynamic>> get _qSet => _questions[_selectedSubject] ?? _questions['Mathematics']!;
 
-  @override void dispose() { _timer?.cancel(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); super.dispose(); }
+  @override void dispose() { _timer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); super.dispose(); }
 
   // ── Real matchmaking via Supabase RPC + queue ─────────────────────────────
   Future<void> _startSearch() async {
@@ -132,28 +133,53 @@ class _EduCompeteState extends State<EduCompeteScreen> {
       _opponentName = oppName;
       _myScore = 0; _oppScore = 0; _qIdx = 0;
       _matchOver = false; _selected = null; _answered = false;
+      _opponentLeft = false;
     });
 
-    // Subscribe to score updates from the opponent via the room row
-    _roomChannel = SupabaseService.client
-        .channel('edu_room_$roomId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'edu_compete_rooms',
-          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'id', value: roomId),
-          callback: (payload) {
-            final row = payload.newRecord;
-            final uid = SupabaseService.currentUserId;
-            final isP1 = row['player1_id'] == uid;
-            final oppScoreField = isP1 ? row['player2_score'] : row['player1_score'];
-            if (mounted) setState(() => _oppScore = (oppScoreField as int?) ?? 0);
-            if (row['status'] == 'completed' && mounted) setState(() { _matchOver = true; _inMatch = false; });
-          },
-        )
-        .subscribe();
+    final uid = SupabaseService.currentUserId!;
+
+    // Subscribe to score updates AND presence (who's actually still connected)
+    _roomChannel = SupabaseService.client.channel(
+      'edu_room_$roomId',
+      opts: const RealtimeChannelConfig(self: true),
+    );
+
+    _roomChannel!
+      .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'edu_compete_rooms',
+        filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'id', value: roomId),
+        callback: (payload) {
+          final row = payload.newRecord;
+          final isP1 = row['player1_id'] == uid;
+          final oppScoreField = isP1 ? row['player2_score'] : row['player1_score'];
+          if (mounted) setState(() => _oppScore = (oppScoreField as int?) ?? 0);
+          if (row['status'] == 'completed' && mounted) setState(() { _matchOver = true; _inMatch = false; });
+        },
+      )
+      // Presence: fires when the opponent's connection actually drops —
+      // closed tab, lost internet, navigated away. This is the real signal,
+      // not something either player can fake or delay.
+      .onPresenceSync((_) => _checkOpponentPresence())
+      .onPresenceLeave((payload) => _checkOpponentPresence())
+      .subscribe((status, error) async {
+        if (status == RealtimeSubscribeStatus.subscribed) {
+          await _roomChannel!.track({'user_id': uid, 'online_at': DateTime.now().toIso8601String()});
+        }
+      });
 
     _startTimer();
+  }
+
+  void _checkOpponentPresence() {
+    if (_roomChannel == null || _opponentId == null || !_inMatch) return;
+    final states = _roomChannel!.presenceState();
+    final opponentStillHere = states.any((s) => s.presences.any((p) => p.payload['user_id'] == _opponentId));
+    if (!opponentStillHere && mounted && !_opponentLeft) {
+      setState(() { _opponentLeft = true; });
+      _timer?.cancel();
+    }
   }
 
   void _startTimer() {
@@ -212,11 +238,15 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   }
 
   void _reset() {
-    _timer?.cancel(); _roomChannel?.unsubscribe(); _queueSub?.cancel();
-    setState(() { _inMatch = false; _searching = false; _matchOver = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
+    _timer?.cancel();
+    _roomChannel?.untrack();
+    _roomChannel?.unsubscribe();
+    _queueSub?.cancel();
+    setState(() { _inMatch = false; _searching = false; _matchOver = false; _opponentLeft = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
   }
 
   @override Widget build(BuildContext context) {
+    if (_opponentLeft) return _buildOpponentLeft();
     if (_matchOver) return _buildResult();
     if (_inMatch) return _buildMatch();
     return _buildLobby();
@@ -312,6 +342,26 @@ class _EduCompeteState extends State<EduCompeteScreen> {
       ]))),
     );
   }
+
+  Widget _buildOpponentLeft() => Scaffold(
+    backgroundColor: GacomColors.obsidian,
+    body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.person_off_rounded, size: 64, color: GacomColors.error),
+      const SizedBox(height: 16),
+      Text('$_opponentName left the match', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary), textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      const Text('Your opponent disconnected. You can find a new opponent below.', style: TextStyle(color: GacomColors.textMuted, fontSize: 13), textAlign: TextAlign.center),
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
+        child: Column(children: [
+          Text('Your score: $_myScore', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.deepOrange)),
+        ])),
+      const SizedBox(height: 32),
+      SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _reset,
+        style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        child: const Text('FIND NEW OPPONENT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)))),
+    ]))),
+  );
 
   Widget _buildResult() => Scaffold(
     backgroundColor: GacomColors.obsidian,
