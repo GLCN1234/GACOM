@@ -54,7 +54,7 @@ import '../../features/edu/edu_parent_screen.dart';
 import '../../features/edu/edu_chat_screen.dart';
 import '../../features/edu/edu_paywall_screen.dart';
 import '../../features/edu/edu_compete_screen.dart';
-import '../../features/edu/edu_compete_screen.dart';
+import '../../features/edu/edu_compete_lobby_screen.dart';
 import '../../features/edu/institution/institution_picker_screen.dart';
 import '../../features/edu/institution/institution_portal_screen.dart';
 import '../../features/edu/institution/curriculum_game_screen.dart';
@@ -197,7 +197,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/edu/profile',  builder: (_, __) => const EduProfileScreen()),
           GoRoute(path: '/edu/parent',   builder: (_, __) => const EduParentScreen()),
           GoRoute(path: '/edu/chat',     builder: (_, __) => const EduChatScreen()),
-          GoRoute(path: '/edu/compete',  builder: (_, __) => const EduCompeteScreen()),
+          GoRoute(path: '/edu/compete',  builder: (_, __) => const EduCompeteLobbyScreen()),
           GoRoute(path: '/edu/paywall',  builder: (_, s) => EduPaywallScreen(lockedSubject: s.extra as String?)),
           GoRoute(path: '/edu/subject/:id', builder: (_, s) => EduSubjectScreen(subjectId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/curriculum/:id', builder: (_, s) => CurriculumGameScreen(curriculumId: s.pathParameters['id']!)),
