@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/edu_voice_service.dart';
 
 /// Real academic competition — students are matched via a Supabase queue
 /// (not a fake timer), questions are synced through the match room so both
@@ -38,8 +39,9 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   RealtimeChannel? _roomChannel;
   StreamSubscription? _queueSub;
 
-  bool _voiceConnected = false; // reserved for future voice feature
+  bool _voiceConnected = false;
   bool _voiceEnabled = false;
+  final _voice = EduVoiceService();
   String? _queueEntryId;
 
   static const _questions = {
@@ -68,7 +70,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
 
   List<Map<String,dynamic>> get _qSet => _questions[_selectedSubject] ?? _questions['Mathematics']!;
 
-  @override void dispose() { _timer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); super.dispose(); }
+  @override void dispose() { _timer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); _voice.stop(); super.dispose(); }
 
   // ── Real matchmaking via Supabase RPC + queue ─────────────────────────────
   Future<void> _startSearch() async {
@@ -226,15 +228,29 @@ class _EduCompeteState extends State<EduCompeteScreen> {
     _startTimer();
   }
 
-  void _toggleVoice() {
-    // Voice chat is temporarily unavailable — the underlying WebRTC package
-    // has an unresolved upstream compatibility bug with the current Flutter
-    // web compiler (tracked publicly on the flutter/flutter GitHub repo).
-    // Real matchmaking and live scoring both work fully without it.
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Voice chat is temporarily unavailable — text competition works fully.'),
-      backgroundColor: GacomColors.elevatedCard,
-    ));
+  Future<void> _toggleVoice() async {
+    if (_voiceEnabled) {
+      await _voice.stop();
+      setState(() { _voiceEnabled = false; _voiceConnected = false; });
+      return;
+    }
+    if (_roomId == null || _opponentId == null) return;
+    setState(() => _voiceEnabled = true);
+    _voice.onConnectionChange = (connected) { if (mounted) setState(() => _voiceConnected = connected); };
+    _voice.onError = (err) {
+      if (mounted) {
+        setState(() { _voiceEnabled = false; _voiceConnected = false; });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Voice error: $err — check microphone permission.'), backgroundColor: GacomColors.elevatedCard));
+      }
+    };
+    try {
+      // Deterministic initiator so both sides agree who creates the offer —
+      // whichever user ID sorts first is always the initiator.
+      final isInitiator = SupabaseService.currentUserId!.compareTo(_opponentId!) < 0;
+      await _voice.start(roomId: _roomId!, isInitiator: isInitiator);
+    } catch (_) {
+      // onError callback already handles user feedback
+    }
   }
 
   void _reset() {
@@ -242,6 +258,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
     _roomChannel?.untrack();
     _roomChannel?.unsubscribe();
     _queueSub?.cancel();
+    _voice.stop();
     setState(() { _inMatch = false; _searching = false; _matchOver = false; _opponentLeft = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
   }
 
@@ -260,7 +277,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('LIVE ACADEMIC BATTLE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
           const SizedBox(height: 6),
-          const Text('Get matched with a real student currently searching for the same subject. Voice chat is coming in a future update.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4)),
+          const Text('Get matched with a real student searching for the same subject. Voice chat is available — needs microphone permission, works over most networks but can fail behind strict school firewalls.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4)),
         ])),
       const SizedBox(height: 20),
       const Text('CHOOSE SUBJECT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
@@ -334,10 +351,10 @@ class _EduCompeteState extends State<EduCompeteScreen> {
         const Spacer(),
         GestureDetector(onTap: _toggleVoice,
           child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20)),
-            child: const Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.mic_off_rounded, size: 14, color: GacomColors.textMuted),
-              SizedBox(width: 6),
-              Text('Voice chat coming soon', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(_voiceEnabled ? (_voiceConnected ? Icons.mic_rounded : Icons.mic_off_rounded) : Icons.mic_none_rounded, size: 14, color: _voiceConnected ? GacomColors.success : GacomColors.textMuted),
+              const SizedBox(width: 6),
+              Text(_voiceEnabled ? (_voiceConnected ? 'Voice connected — tap to leave' : 'Connecting voice...') : 'Tap to enable voice chat', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
             ]))),
       ]))),
     );
