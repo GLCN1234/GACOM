@@ -26,28 +26,33 @@ class EduVoiceService {
 
   Future<void> start({required String roomId, required bool isInitiator}) async {
     try {
+      print('[EduVoice] Starting — roomId=$roomId isInitiator=$isInitiator');
       _channel = Supabase.instance.client.channel('edu_voice_$roomId');
       final channelReady = Completer<void>();
 
       _channel!
         .onBroadcast(event: 'offer', callback: (payload) async {
-          if (isInitiator || _pc == null) return;
+          print('[EduVoice] Received OFFER');
+          if (isInitiator || _pc == null) { print('[EduVoice] Ignoring offer (isInitiator=$isInitiator, pcNull=${_pc == null})'); return; }
           try {
             final remoteDesc = web.RTCSessionDescriptionInit(type: 'offer', sdp: payload['sdp'] as String);
             await _pc!.setRemoteDescription(remoteDesc).toDart;
             final answer = await _pc!.createAnswer().toDart;
-            if (answer == null) return;
+            if (answer == null) { print('[EduVoice] createAnswer returned null'); return; }
             final localDesc = web.RTCLocalSessionDescriptionInit(type: answer.type, sdp: answer.sdp ?? '');
             await _pc!.setLocalDescription(localDesc).toDart;
+            print('[EduVoice] Sending ANSWER');
             _channel?.sendBroadcastMessage(event: 'answer', payload: {'sdp': answer.sdp ?? ''});
-          } catch (_) {}
+          } catch (e) { print('[EduVoice] Error handling offer: $e'); }
         })
         .onBroadcast(event: 'answer', callback: (payload) async {
-          if (!isInitiator || _pc == null) return;
+          print('[EduVoice] Received ANSWER');
+          if (!isInitiator || _pc == null) { print('[EduVoice] Ignoring answer (isInitiator=$isInitiator, pcNull=${_pc == null})'); return; }
           try {
             final remoteDesc = web.RTCSessionDescriptionInit(type: 'answer', sdp: payload['sdp'] as String);
             await _pc!.setRemoteDescription(remoteDesc).toDart;
-          } catch (_) {}
+            print('[EduVoice] Remote description (answer) set successfully');
+          } catch (e) { print('[EduVoice] Error handling answer: $e'); }
         })
         .onBroadcast(event: 'ice', callback: (payload) async {
           if (_pc == null) return;
@@ -58,9 +63,11 @@ class EduVoiceService {
               sdpMLineIndex: (payload['sdpMLineIndex'] as num?)?.toInt(),
             );
             await _pc!.addIceCandidate(candidateInit).toDart;
-          } catch (_) {}
+            print('[EduVoice] ICE candidate added');
+          } catch (e) { print('[EduVoice] Error adding ICE candidate: $e'); }
         })
         .subscribe((status, error) {
+          print('[EduVoice] Channel status: $status, error: $error');
           if (status == RealtimeSubscribeStatus.subscribed && !channelReady.isCompleted) {
             channelReady.complete();
           }
@@ -70,21 +77,22 @@ class EduVoiceService {
         });
 
       await channelReady.future.timeout(const Duration(seconds: 8));
+      print('[EduVoice] Channel ready, creating peer connection');
 
-      // Only NOW create the peer connection and request the mic —
-      // the signaling channel is guaranteed ready to send by this point.
       _pc = web.RTCPeerConnection(_iceServers);
 
       final constraints = {'audio': true, 'video': false}.jsify() as web.MediaStreamConstraints;
       _localStream = await web.window.navigator.mediaDevices.getUserMedia(constraints).toDart;
+      print('[EduVoice] Got microphone access');
 
       for (final track in _localStream!.getTracks().toDart) {
         _pc!.addTrack(track, _localStream!);
       }
 
       _pc!.onconnectionstatechange = (JSAny _) {
-        final connected = _pc?.connectionState == 'connected';
-        onConnectionChange?.call(connected);
+        final state = _pc?.connectionState;
+        print('[EduVoice] Connection state changed: $state');
+        onConnectionChange?.call(state == 'connected');
       }.toJS;
 
       _pc!.onicecandidate = (web.RTCPeerConnectionIceEvent event) {
@@ -96,18 +104,23 @@ class EduVoiceService {
               'sdpMid': c.sdpMid,
               'sdpMLineIndex': c.sdpMLineIndex,
             });
-          } catch (_) {}
+            print('[EduVoice] Sent ICE candidate');
+          } catch (e) { print('[EduVoice] Error sending ICE candidate: $e'); }
         }
       }.toJS;
 
       if (isInitiator) {
         final offer = await _pc!.createOffer().toDart;
-        if (offer == null) return;
+        if (offer == null) { print('[EduVoice] createOffer returned null'); return; }
         final localDesc = web.RTCLocalSessionDescriptionInit(type: offer.type, sdp: offer.sdp ?? '');
         await _pc!.setLocalDescription(localDesc).toDart;
+        print('[EduVoice] Sending OFFER');
         _channel?.sendBroadcastMessage(event: 'offer', payload: {'sdp': offer.sdp ?? ''});
+      } else {
+        print('[EduVoice] Not initiator — waiting for offer to arrive');
       }
     } catch (e) {
+      print('[EduVoice] FATAL ERROR: $e');
       onError?.call(e.toString());
       rethrow;
     }
@@ -121,6 +134,7 @@ class EduVoiceService {
   bool get isMuted => _muted;
 
   Future<void> stop() async {
+    print('[EduVoice] Stopping');
     try { await _channel?.unsubscribe(); } catch (_) {}
     try { _localStream?.getTracks().toDart.forEach((t) => t.stop()); } catch (_) {}
     try { _pc?.close(); } catch (_) {}
