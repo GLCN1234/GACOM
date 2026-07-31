@@ -25,9 +25,9 @@ class _EduCompeteLobbyState extends State<EduCompeteLobbyScreen> {
   @override void initState() { super.initState(); _joinLobby(); _listenForIncomingInvites(); }
 
   @override void dispose() {
-    _presenceChannel?.untrack();
-    _presenceChannel?.unsubscribe();
-    _inviteChannel?.unsubscribe();
+    _presenceChannel?.untrack()?.catchError((_) => null);
+    _presenceChannel?.unsubscribe()?.catchError((_) => null);
+    _inviteChannel?.unsubscribe()?.catchError((_) => null);
     super.dispose();
   }
 

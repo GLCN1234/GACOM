@@ -77,7 +77,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
 
   List<Map<String,dynamic>> get _qSet => _questions[_selectedSubject] ?? _questions['Mathematics']!;
 
-  @override void dispose() { _timer?.cancel(); _leaveGraceTimer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); _voice.stop(); super.dispose(); }
+  @override void dispose() { _timer?.cancel(); _leaveGraceTimer?.cancel(); _roomChannel?.untrack()?.catchError((_) => null); _roomChannel?.unsubscribe()?.catchError((_) => null); _queueSub?.cancel(); _voice.stop().catchError((_) => null); super.dispose(); }
 
   @override void initState() {
     super.initState();
@@ -130,7 +130,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   }
 
   Future<void> _enterRoom(String roomId, String opponentId, {required bool isInitiator}) async {
-    _roomChannel?.unsubscribe();
+    _roomChannel?.unsubscribe()?.catchError((_) => null);
     _queueSub?.cancel();
 
     String oppName = 'Opponent';
@@ -258,7 +258,7 @@ class _EduCompeteState extends State<EduCompeteScreen> {
 
   Future<void> _toggleVoice() async {
     if (_voiceEnabled) {
-      await _voice.stop();
+      await _voice.stop().catchError((_) => null);
       setState(() { _voiceEnabled = false; _voiceConnected = false; });
       return;
     }
@@ -280,10 +280,10 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   void _reset() {
     _timer?.cancel();
     _leaveGraceTimer?.cancel();
-    _roomChannel?.untrack();
-    _roomChannel?.unsubscribe();
+    _roomChannel?.untrack()?.catchError((_) => null);
+    _roomChannel?.unsubscribe()?.catchError((_) => null);
     _queueSub?.cancel();
-    _voice.stop();
+    _voice.stop().catchError((_) => null);
     setState(() { _inMatch = false; _searching = false; _matchOver = false; _opponentLeft = false; _opponentSeenOnce = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
   }
 
