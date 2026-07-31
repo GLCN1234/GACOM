@@ -15,7 +15,12 @@ import '../../core/services/edu_voice_service.dart';
 /// for most networks, but can fail behind strict school/corporate firewalls
 /// that block UDP — if that happens the match still works, just without audio.
 class EduCompeteScreen extends StatefulWidget {
-  const EduCompeteScreen({super.key});
+  // When these are provided (from an accepted invite), the screen skips
+  // the auto-matchmaking lobby entirely and enters the given room directly.
+  final String? directRoomId;
+  final String? directOpponentId;
+  final String? directSubject;
+  const EduCompeteScreen({super.key, this.directRoomId, this.directOpponentId, this.directSubject});
   @override State<EduCompeteScreen> createState() => _EduCompeteState();
 }
 
@@ -27,6 +32,8 @@ class _EduCompeteState extends State<EduCompeteScreen> {
   bool _inMatch = false;
   bool _matchOver = false;
   bool _opponentLeft = false;
+  bool _opponentSeenOnce = false;
+  Timer? _leaveGraceTimer;
   String? _roomId;
   String? _opponentId;
   String _opponentName = '';
@@ -70,9 +77,18 @@ class _EduCompeteState extends State<EduCompeteScreen> {
 
   List<Map<String,dynamic>> get _qSet => _questions[_selectedSubject] ?? _questions['Mathematics']!;
 
-  @override void dispose() { _timer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); _voice.stop(); super.dispose(); }
+  @override void dispose() { _timer?.cancel(); _leaveGraceTimer?.cancel(); _roomChannel?.untrack(); _roomChannel?.unsubscribe(); _queueSub?.cancel(); _voice.stop(); super.dispose(); }
 
-  // ── Real matchmaking via Supabase RPC + queue ─────────────────────────────
+  @override void initState() {
+    super.initState();
+    if (widget.directRoomId != null && widget.directOpponentId != null) {
+      if (widget.directSubject != null) _selectedSubject = widget.directSubject!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _enterRoom(widget.directRoomId!, widget.directOpponentId!, isInitiator: false);
+      });
+    }
+  }
+
   Future<void> _startSearch() async {
     setState(() => _searching = true);
     try {
@@ -80,12 +96,10 @@ class _EduCompeteState extends State<EduCompeteScreen> {
       final matched = res['matched'] as bool? ?? false;
 
       if (matched) {
-        // We found someone waiting — room created immediately
         final roomId = res['room_id'] as String;
         final opponentId = res['opponent_id'] as String;
         await _enterRoom(roomId, opponentId, isInitiator: true);
       } else {
-        // We're now in the queue — listen for a room to be created for us
         _listenForMatch();
       }
     } catch (e) {
@@ -119,7 +133,6 @@ class _EduCompeteState extends State<EduCompeteScreen> {
     _roomChannel?.unsubscribe();
     _queueSub?.cancel();
 
-    // Fetch opponent's display name
     String oppName = 'Opponent';
     try {
       final p = await SupabaseService.client.from('profiles').select('display_name').eq('id', opponentId).single();
@@ -136,11 +149,12 @@ class _EduCompeteState extends State<EduCompeteScreen> {
       _myScore = 0; _oppScore = 0; _qIdx = 0;
       _matchOver = false; _selected = null; _answered = false;
       _opponentLeft = false;
+      _opponentSeenOnce = false;
     });
+    _leaveGraceTimer?.cancel();
 
     final uid = SupabaseService.currentUserId!;
 
-    // Subscribe to score updates AND presence (who's actually still connected)
     _roomChannel = SupabaseService.client.channel(
       'edu_room_$roomId',
       opts: const RealtimeChannelConfig(self: true),
@@ -160,9 +174,6 @@ class _EduCompeteState extends State<EduCompeteScreen> {
           if (row['status'] == 'completed' && mounted) setState(() { _matchOver = true; _inMatch = false; });
         },
       )
-      // Presence: fires when the opponent's connection actually drops —
-      // closed tab, lost internet, navigated away. This is the real signal,
-      // not something either player can fake or delay.
       .onPresenceSync((_) => _checkOpponentPresence())
       .onPresenceLeave((payload) => _checkOpponentPresence())
       .subscribe((status, error) async {
@@ -178,10 +189,28 @@ class _EduCompeteState extends State<EduCompeteScreen> {
     if (_roomChannel == null || _opponentId == null || !_inMatch) return;
     final states = _roomChannel!.presenceState();
     final opponentStillHere = states.any((s) => s.presences.any((p) => p.payload['user_id'] == _opponentId));
-    if (!opponentStillHere && mounted && !_opponentLeft) {
-      setState(() { _opponentLeft = true; });
-      _timer?.cancel();
+
+    if (opponentStillHere) {
+      _opponentSeenOnce = true;
+      _leaveGraceTimer?.cancel();
+      _leaveGraceTimer = null;
+      return;
     }
+
+    if (!_opponentSeenOnce) {
+      return;
+    }
+
+    _leaveGraceTimer?.cancel();
+    _leaveGraceTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted || !_inMatch) return;
+      final statesNow = _roomChannel?.presenceState() ?? [];
+      final stillGone = !statesNow.any((s) => s.presences.any((p) => p.payload['user_id'] == _opponentId));
+      if (stillGone && mounted) {
+        setState(() { _opponentLeft = true; });
+        _timer?.cancel();
+      }
+    });
   }
 
   void _startTimer() {
@@ -201,7 +230,6 @@ class _EduCompeteState extends State<EduCompeteScreen> {
     if (correct) _myScore += 10 + _timeLeft;
     setState(() { _selected = opt; _answered = true; });
 
-    // Push my updated score to the shared room row so opponent sees it live
     if (_roomId != null) {
       final uid = SupabaseService.currentUserId!;
       try {
@@ -244,22 +272,19 @@ class _EduCompeteState extends State<EduCompeteScreen> {
       }
     };
     try {
-      // Deterministic initiator so both sides agree who creates the offer —
-      // whichever user ID sorts first is always the initiator.
       final isInitiator = SupabaseService.currentUserId!.compareTo(_opponentId!) < 0;
       await _voice.start(roomId: _roomId!, isInitiator: isInitiator);
-    } catch (_) {
-      // onError callback already handles user feedback
-    }
+    } catch (_) {}
   }
 
   void _reset() {
     _timer?.cancel();
+    _leaveGraceTimer?.cancel();
     _roomChannel?.untrack();
     _roomChannel?.unsubscribe();
     _queueSub?.cancel();
     _voice.stop();
-    setState(() { _inMatch = false; _searching = false; _matchOver = false; _opponentLeft = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
+    setState(() { _inMatch = false; _searching = false; _matchOver = false; _opponentLeft = false; _opponentSeenOnce = false; _myScore = 0; _oppScore = 0; _qIdx = 0; _voiceEnabled = false; _voiceConnected = false; });
   }
 
   @override Widget build(BuildContext context) {
