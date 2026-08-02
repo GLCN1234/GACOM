@@ -7,6 +7,7 @@ const corsHeaders = {
 
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const BATCH_SIZE = 15
 
 const LEVELS = [
   { key: 'foundation', label: 'Foundation', count: 60, instruction: 'Very basic recall and recognition. Single-step. Beginner-friendly, gentle introduction to the world.' },
@@ -31,27 +32,19 @@ Your responsibility is to transform every learning objective into a game childre
 
 GOLDEN RULE: If the child feels like they are studying, you have failed. They should think "I want to beat this level," never "I am learning Mathematics." Learning must become invisible. Fun must become obvious.
 
-CORE PHILOSOPHY: Never ask "what question should I ask?" Ask "what game mechanic naturally teaches this concept?" Every lesson becomes gameplay wrapped in story, mission, world, goal, challenge, reward, and progression.
-
-HIDE THE LEARNING — do not present the underlying academic question directly. Wrap it in narrative:
+HIDE THE LEARNING — wrap the academic question in narrative:
 Never: "What is 7 + 5?"
 Instead: "The bridge needs 12 magic stones. You already collected 7. Find the remaining stones before sunset."
-Never: "Spell Elephant."
-Instead: "The Elephant Guardian has forgotten its magical name. Restore the ancient letters before the portal closes."
-
-STORY FIRST — every generation begins with a short adventure premise that frames the whole topic as a quest, mission, or world to explore.
-
-PLAYER EMOTION — the player should feel curiosity, wonder, excitement, achievement, discovery. Never boredom, never fear of failure.
 
 FAILURE IS NARRATIVE — never say "Wrong" or "Incorrect." Instead: "The bridge collapses — try a different path." Always gentle, always inviting another attempt.
 
-REWARDS ARE THEMED — describe rewards in-world: XP, Coins, Knowledge Crystals, Story Progress — not plain "+10 points."
+REWARDS ARE THEMED — describe rewards in-world: XP, Coins, Knowledge Crystals — not plain "+10 points."
 
-BOSS BATTLES — the final difficulty level of every topic is the story's climax: a named boss who must be defeated by demonstrating full mastery of the topic.
+BOSS BATTLES — the final difficulty level is the story's climax: a named boss who must be defeated by demonstrating full mastery of the topic.
 
-Every single question must still be a real, gradeable academic question underneath — the story is the skin, the curriculum is the skeleton. Never sacrifice academic accuracy for the sake of story.
+Every question must still be a real, gradeable academic question underneath. Never sacrifice academic accuracy for the sake of story.
 
-You must respond with ONLY valid JSON as instructed in each request — no markdown code fences, no explanation text before or after.`
+CRITICAL: You must respond with ONLY a raw JSON array. No markdown code fences (no \`\`\`json), no explanation text before or after, no commentary. Just the array, starting with [ and ending with ].`
 
 async function callGroq(apiKey: string, prompt: string, maxTokens: number, attempt = 1): Promise<string> {
   const response = await fetch(GROQ_ENDPOINT, {
@@ -88,13 +81,30 @@ async function callGroq(apiKey: string, prompt: string, maxTokens: number, attem
   return data.choices[0].message.content.trim()
 }
 
-async function generateLevelQuestions(
+function parseQuestionsJSON(rawText: string, levelLabel: string): any[] {
+  let cleaned = rawText.trim()
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+
+  try {
+    return JSON.parse(cleaned)
+  } catch { /* fall through */ }
+
+  const match = cleaned.match(/\[[\s\S]*\]/)
+  if (match) {
+    try { return JSON.parse(match[0]) } catch { /* fall through */ }
+  }
+
+  throw new Error(`Could not parse AI response for level ${levelLabel}. Raw start: ${cleaned.slice(0, 200)}`)
+}
+
+async function generateQuestionBatch(
   apiKey: string,
   subject: string,
   classLevel: string,
   topic: string,
   content: string,
   level: typeof LEVELS[0],
+  batchSize: number,
   worldTheme: string,
 ): Promise<any[]> {
   const prompt = `Subject: ${subject}
@@ -105,39 +115,26 @@ Stage Instructions: ${level.instruction}
 World Theme for this adventure: ${worldTheme}
 
 Curriculum Content to teach (keep every question academically accurate to this):
-${content.slice(0, 2500)}
+${content.slice(0, 2000)}
 
-Generate exactly ${level.count} questions for the "${level.label}" stage of this "${worldTheme}"-themed adventure.
-Use a mix of these underlying question mechanics across the ${level.count} questions (but always wrap them in the story — never show the raw academic phrasing): ${QUESTION_TYPES.join(' | ')}
+Generate exactly ${batchSize} questions for the "${level.label}" stage of this "${worldTheme}"-themed adventure.
+Use a mix of these mechanics (wrap them in story — never show raw academic phrasing): ${QUESTION_TYPES.join(' | ')}
 
 Rules:
-- Every question must be wrapped in the "${worldTheme}" narrative
-- Every question must still test ONLY this specific curriculum topic, with a real, correct, gradeable answer
-- Vary the underlying mechanic — do not make all of them multiple choice
-- "steps" must explain the real academic working needed to solve it
-- "narrative_success" is a short, fun in-world line for a correct answer
-- "narrative_failure" is a short, gentle, in-world line for a wrong answer (never says "wrong")
-- "concept" is one sentence stating the real academic concept (plain academic language, for parent/teacher review)
-- If this is the "Boss Battle" stage, questions should feel like a climactic final showdown
+- Every question wrapped in the "${worldTheme}" narrative
+- Every question tests ONLY this curriculum topic, with a real, correct, gradeable answer
+- Vary the mechanic — not all multiple choice
+- "steps": real academic working needed to solve it
+- "narrative_success": short fun in-world line for correct answer
+- "narrative_failure": short gentle in-world line for wrong answer (never "wrong")
+- "concept": one sentence, plain academic language, for parent/teacher review
+- If "Boss Battle" stage, questions feel like a climactic showdown
 
-Respond ONLY with a valid JSON array, nothing else:
+Respond with ONLY this JSON array, nothing else:
 [{"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A. ...","steps":["Step 1: ...","Step 2: ..."],"narrative_success":"...","narrative_failure":"...","concept":"..."}]`
 
-  const rawText = await callGroq(apiKey, prompt, 7000)
-
-  let questions
-  try {
-    questions = JSON.parse(rawText)
-  } catch {
-    const match = rawText.match(/\[[\s\S]*\]/)
-    if (match) {
-      try { questions = JSON.parse(match[0]) }
-      catch { throw new Error(`Could not parse AI response for level ${level.label}`) }
-    } else {
-      throw new Error(`Could not parse AI response for level ${level.label}`)
-    }
-  }
-
+  const rawText = await callGroq(apiKey, prompt, 4096)
+  const questions = parseQuestionsJSON(rawText, level.label)
   return questions.map((q: any) => ({ ...q, level: level.key, level_label: level.label, world_theme: worldTheme }))
 }
 
@@ -211,10 +208,14 @@ Deno.serve(async (req) => {
 
     const allQuestions: any[] = []
     for (const level of LEVELS) {
-      console.log(`Generating ${level.count} ${level.label} questions for: ${topic} (theme: ${worldTheme})`)
-      const questions = await generateLevelQuestions(groqKey, subject, class_level, topic, content, level, worldTheme)
-      allQuestions.push(...questions)
-      await new Promise(r => setTimeout(r, 12000))
+      const batches = Math.ceil(level.count / BATCH_SIZE)
+      for (let b = 0; b < batches; b++) {
+        const thisBatchSize = Math.min(BATCH_SIZE, level.count - b * BATCH_SIZE)
+        console.log(`Generating batch ${b + 1}/${batches} (${thisBatchSize} questions) for ${level.label}: ${topic}`)
+        const questions = await generateQuestionBatch(groqKey, subject, class_level, topic, content, level, thisBatchSize, worldTheme)
+        allQuestions.push(...questions)
+        await new Promise(r => setTimeout(r, 10000))
+      }
     }
 
     await supabase.from('institution_curricula').update({
