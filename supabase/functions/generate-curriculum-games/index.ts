@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const GROQ_MODEL = 'llama-3.3-70b-versatile'
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+
 const LEVELS = [
   { key: 'foundation', label: 'Foundation', count: 60, instruction: 'Very basic recall and recognition. Single-step. Beginner-friendly, gentle introduction to the world.' },
   { key: 'beginner', label: 'Beginner', count: 60, instruction: 'Simple application, one or two steps. The adventure starts picking up pace.' },
@@ -35,23 +38,58 @@ Never: "What is 7 + 5?"
 Instead: "The bridge needs 12 magic stones. You already collected 7. Find the remaining stones before sunset."
 Never: "Spell Elephant."
 Instead: "The Elephant Guardian has forgotten its magical name. Restore the ancient letters before the portal closes."
-Never: "Which country has Abuja as its capital?"
-Instead: "You are travelling across Africa. Collect the correct passport before your train departs."
 
-STORY FIRST — every generation begins with a short adventure premise (2-3 sentences) that frames the whole topic as a quest, mission, or world to explore.
+STORY FIRST — every generation begins with a short adventure premise that frames the whole topic as a quest, mission, or world to explore.
 
 PLAYER EMOTION — the player should feel curiosity, wonder, excitement, achievement, discovery. Never boredom, never fear of failure.
 
-FAILURE IS NARRATIVE — never say "Wrong" or "Incorrect." Instead: "The bridge collapses — try a different path." / "The robot shuts down — recheck your circuit." / "The dragon dozes back off — approach again." Always gentle, always inviting another attempt.
+FAILURE IS NARRATIVE — never say "Wrong" or "Incorrect." Instead: "The bridge collapses — try a different path." Always gentle, always inviting another attempt.
 
-REWARDS ARE THEMED — describe rewards in-world: XP, Coins, Knowledge Crystals, Story Progress, a new Ally, a Hidden Treasure — not plain "+10 points."
+REWARDS ARE THEMED — describe rewards in-world: XP, Coins, Knowledge Crystals, Story Progress — not plain "+10 points."
 
-BOSS BATTLES — the final difficulty level of every topic is the story's climax: a named boss (e.g. "The Fraction King," "The Grammar Wizard," "The Geometry Titan") who must be defeated by demonstrating full mastery of the topic.
+BOSS BATTLES — the final difficulty level of every topic is the story's climax: a named boss who must be defeated by demonstrating full mastery of the topic.
 
-Every single question must still be a real, gradeable academic question underneath — the story is the skin, the curriculum is the skeleton. A student answering correctly must genuinely prove they understood the concept. Never sacrifice academic accuracy for the sake of story.`
+Every single question must still be a real, gradeable academic question underneath — the story is the skin, the curriculum is the skeleton. Never sacrifice academic accuracy for the sake of story.
+
+You must respond with ONLY valid JSON as instructed in each request — no markdown code fences, no explanation text before or after.`
+
+async function callGroq(apiKey: string, prompt: string, maxTokens: number, attempt = 1): Promise<string> {
+  const response = await fetch(GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: GACOM_GAME_DESIGNER_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.8,
+    }),
+  })
+
+  if (response.status === 429 && attempt <= 4) {
+    const retryAfter = response.headers.get('retry-after')
+    const waitMs = retryAfter ? parseFloat(retryAfter) * 1000 : attempt * 8000
+    console.log(`Groq rate limited, waiting ${waitMs}ms (attempt ${attempt})`)
+    await new Promise(r => setTimeout(r, waitMs))
+    return callGroq(apiKey, prompt, maxTokens, attempt + 1)
+  }
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`Groq API error: ${err}`)
+  }
+
+  const data = await response.json()
+  return data.choices[0].message.content.trim()
+}
 
 async function generateLevelQuestions(
-  anthropicKey: string,
+  apiKey: string,
   subject: string,
   classLevel: string,
   topic: string,
@@ -59,9 +97,7 @@ async function generateLevelQuestions(
   level: typeof LEVELS[0],
   worldTheme: string,
 ): Promise<any[]> {
-  const prompt = `${GACOM_GAME_DESIGNER_SYSTEM_PROMPT}
-
-Subject: ${subject}
+  const prompt = `Subject: ${subject}
 Class Level: ${classLevel}
 Topic: ${topic}
 Difficulty Stage: ${level.label}
@@ -69,84 +105,52 @@ Stage Instructions: ${level.instruction}
 World Theme for this adventure: ${worldTheme}
 
 Curriculum Content to teach (keep every question academically accurate to this):
-${content.slice(0, 3000)}
+${content.slice(0, 2500)}
 
 Generate exactly ${level.count} questions for the "${level.label}" stage of this "${worldTheme}"-themed adventure.
 Use a mix of these underlying question mechanics across the ${level.count} questions (but always wrap them in the story — never show the raw academic phrasing): ${QUESTION_TYPES.join(' | ')}
 
 Rules:
-- Every question must be wrapped in the "${worldTheme}" narrative — a scenario, character, or mission moment
+- Every question must be wrapped in the "${worldTheme}" narrative
 - Every question must still test ONLY this specific curriculum topic, with a real, correct, gradeable answer
 - Vary the underlying mechanic — do not make all of them multiple choice
-- "steps" must explain the real academic working needed to solve it (still accurate, but can reference the story, e.g. "The bridge needs 12 stones total")
-- "narrative_success" is a short, fun in-world line said when the student gets it right (e.g. "The stones glow gold — the bridge is complete!")
-- "narrative_failure" is a short, gentle, in-world line for a wrong answer (never says "wrong" — e.g. "The bridge trembles. Recount your stones and try again.")
-- "concept" is one sentence stating the real academic concept being taught (for parents/teachers reviewing progress — this one CAN be plain academic language)
-- If this is the "Boss Battle" stage, every question should feel like part of a climactic final showdown with a named boss
+- "steps" must explain the real academic working needed to solve it
+- "narrative_success" is a short, fun in-world line for a correct answer
+- "narrative_failure" is a short, gentle, in-world line for a wrong answer (never says "wrong")
+- "concept" is one sentence stating the real academic concept (plain academic language, for parent/teacher review)
+- If this is the "Boss Battle" stage, questions should feel like a climactic final showdown
 
-Respond ONLY with a valid JSON array. No explanation, no markdown:
-[
-  {
-    "type": "multiple_choice",
-    "question": "Narrative-wrapped question text...",
-    "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
-    "answer": "A. ...",
-    "steps": ["Step 1: ...", "Step 2: ...", "Step 3: ..."],
-    "narrative_success": "...",
-    "narrative_failure": "...",
-    "concept": "Plain academic concept for parent/teacher view."
-  }
-]`
+Respond ONLY with a valid JSON array, nothing else:
+[{"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A. ...","steps":["Step 1: ...","Step 2: ..."],"narrative_success":"...","narrative_failure":"...","concept":"..."}]`
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`Claude API error for level ${level.label}: ${err}`)
-  }
-
-  const data = await response.json()
-  const rawText = data.content[0].text.trim()
+  const rawText = await callGroq(apiKey, prompt, 7000)
 
   let questions
   try {
     questions = JSON.parse(rawText)
   } catch {
     const match = rawText.match(/\[[\s\S]*\]/)
-    if (match) questions = JSON.parse(match[0])
-    else throw new Error(`Could not parse AI response for level ${level.label}`)
+    if (match) {
+      try { questions = JSON.parse(match[0]) }
+      catch { throw new Error(`Could not parse AI response for level ${level.label}`) }
+    } else {
+      throw new Error(`Could not parse AI response for level ${level.label}`)
+    }
   }
 
   return questions.map((q: any) => ({ ...q, level: level.key, level_label: level.label, world_theme: worldTheme }))
 }
 
-async function generateStoryIntro(anthropicKey: string, subject: string, topic: string, worldTheme: string): Promise<string> {
-  const prompt = `${GACOM_GAME_DESIGNER_SYSTEM_PROMPT}
-
-Write a short (3-4 sentence) adventure story intro that frames the topic "${topic}" (subject: ${subject}) as a "${worldTheme}"-themed quest. This is shown to the student before they start playing — it should hook them immediately like the opening of a game, not a lesson description.
+async function generateStoryIntro(apiKey: string, subject: string, topic: string, worldTheme: string): Promise<string> {
+  const prompt = `Write a short (3-4 sentence) adventure story intro that frames the topic "${topic}" (subject: ${subject}) as a "${worldTheme}"-themed quest. Shown to the student before they start playing — hook them immediately like the opening of a game.
 
 Respond with ONLY the story text, no JSON, no quotes, no extra formatting.`
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }),
-  })
-  if (!response.ok) return `Your adventure into ${topic} begins now!`
-  const data = await response.json()
-  return data.content[0].text.trim()
+  try {
+    return await callGroq(apiKey, prompt, 300)
+  } catch {
+    return `Your adventure into ${topic} begins now!`
+  }
 }
 
 const WORLD_THEMES = [
@@ -170,8 +174,8 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')
-    if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY not configured')
+    const groqKey = Deno.env.get('GROQ_API_KEY')
+    if (!groqKey) throw new Error('GROQ_API_KEY not configured — add it in Supabase Dashboard > Edge Functions > Secrets')
 
     if (curriculum_id) {
       const { data: curriculum } = await supabase
@@ -203,14 +207,14 @@ Deno.serve(async (req) => {
     }
 
     const worldTheme = WORLD_THEMES[Math.floor(Math.random() * WORLD_THEMES.length)]
-    const storyIntro = await generateStoryIntro(anthropicKey, subject, topic, worldTheme)
+    const storyIntro = await generateStoryIntro(groqKey, subject, topic, worldTheme)
 
     const allQuestions: any[] = []
     for (const level of LEVELS) {
       console.log(`Generating ${level.count} ${level.label} questions for: ${topic} (theme: ${worldTheme})`)
-      const questions = await generateLevelQuestions(anthropicKey, subject, class_level, topic, content, level, worldTheme)
+      const questions = await generateLevelQuestions(groqKey, subject, class_level, topic, content, level, worldTheme)
       allQuestions.push(...questions)
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise(r => setTimeout(r, 12000))
     }
 
     await supabase.from('institution_curricula').update({
