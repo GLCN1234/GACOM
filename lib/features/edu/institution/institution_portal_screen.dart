@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'curriculum_uploader_widget.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -197,7 +198,7 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
 
   Widget _buildUpload() => Column(children: [
     _AiPlanCard(institution: _institution),
-    Expanded(child: _CurriculumUploader(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load)),
+    Expanded(child: CurriculumUploaderWidget(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load)),
   ]);
 }
 
