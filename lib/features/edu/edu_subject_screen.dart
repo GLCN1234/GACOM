@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
+import 'institution/curriculum_game_screen.dart';
 
 class EduSubjectScreen extends StatefulWidget {
   final String subjectId;
@@ -15,8 +16,9 @@ class EduSubjectScreen extends StatefulWidget {
 class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProviderStateMixin {
   late TabController _tab;
   double _realSkill = 0.0; int _realLevel = 1; int _realXp = 0; bool _dataLoaded = false;
+  List<Map<String,dynamic>> _institutionAdventures = []; bool _loadingAdventures = true;
 
-  @override void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProgress(); }
+  @override void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProgress(); _loadInstitutionAdventures(); }
   @override void dispose() { _tab.dispose(); super.dispose(); }
 
   Future<void> _loadProgress() async {
@@ -32,6 +34,26 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
         _dataLoaded = true;
       });
     } catch (_) {}
+  }
+  Future<void> _loadInstitutionAdventures() async {
+    try {
+      final uid = SupabaseService.currentUserId;
+      if (uid == null) { if (mounted) setState(() => _loadingAdventures = false); return; }
+      final link = await SupabaseService.client.from('student_institutions')
+          .select('institution_id').eq('student_id', uid).maybeSingle();
+      final instId = link?['institution_id'] as String?;
+      if (instId == null) { if (mounted) setState(() => _loadingAdventures = false); return; }
+      final subjectLabel = _subjectMeta[widget.subjectId]?['label'] as String? ?? '';
+      final rows = await SupabaseService.client.from('institution_curricula')
+          .select('id,topic,subject,world_theme,total_questions,status')
+          .eq('institution_id', instId)
+          .eq('status', 'ready')
+          .ilike('subject', subjectLabel);
+      if (mounted) setState(() {
+        _institutionAdventures = List<Map<String,dynamic>>.from(rows as List);
+        _loadingAdventures = false;
+      });
+    } catch (_) { if (mounted) setState(() => _loadingAdventures = false); }
   }
 
   static const _subjectMeta = {
@@ -191,6 +213,28 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
                     const Text('Your accuracy and XP will appear here after your first game.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
                   ])),
                 ])),
+            if (_institutionAdventures.isNotEmpty) ...[
+              const Text('YOUR SCHOOL\'S ADVENTURES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.accentCyan, letterSpacing: 1)),
+              const SizedBox(height: 10),
+              ..._institutionAdventures.map((c) => GestureDetector(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CurriculumGameScreen(curriculumId: c['id'] as String))),
+                child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.3))),
+                  child: Row(children: [
+                    Container(width: 48, height: 48, decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.auto_stories_rounded, color: GacomColors.accentCyan, size: 24)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(c['topic'] as String? ?? 'Topic', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text('${c['world_theme'] ?? 'Adventure'} \u00b7 ${c['total_questions'] ?? 0} questions', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                    ])),
+                    Container(width: 34, height: 34, decoration: const BoxDecoration(color: GacomColors.accentCyan, shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18)),
+                  ])),
+              )),
+              const SizedBox(height: 20),
+            ],
             const Text('AVAILABLE GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
             const SizedBox(height: 10),
             ...games.map((g) => GestureDetector(
