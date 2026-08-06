@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'curriculum_uploader_widget.dart';
+import 'bulk_curriculum_uploader_widget.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -14,6 +15,7 @@ class InstitutionPortalScreen extends StatefulWidget {
 
 class _InstitutionPortalState extends State<InstitutionPortalScreen> with SingleTickerProviderStateMixin {
   late TabController _tab;
+  bool _bulkUploadMode = false;
   Map<String,dynamic>? _institution;
   List<Map<String,dynamic>> _students = [];
   List<Map<String,dynamic>> _curricula = [];
@@ -198,8 +200,26 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
 
   Widget _buildUpload() => Column(children: [
     _AiPlanCard(institution: _institution),
-    Expanded(child: CurriculumUploaderWidget(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load)),
+    Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 0), child: Row(children: [
+      Expanded(child: _uploadModeButton('Single Topic', Icons.edit_note_rounded, !_bulkUploadMode)),
+      const SizedBox(width: 8),
+      Expanded(child: _uploadModeButton('Bulk from PDF', Icons.picture_as_pdf_rounded, _bulkUploadMode)),
+    ])),
+    Expanded(child: _bulkUploadMode
+        ? BulkCurriculumUploaderWidget(institutionId: _institution?['id'] as String? ?? '', onQueued: _load)
+        : CurriculumUploaderWidget(institutionId: _institution?['id'] as String? ?? '', onUploaded: _load)),
   ]);
+  Widget _uploadModeButton(String label, IconData icon, bool selected) => GestureDetector(
+    onTap: () => setState(() => _bulkUploadMode = label == 'Bulk from PDF'),
+    child: Container(padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(
+        color: selected ? GacomColors.deepOrange.withOpacity(0.12) : GacomColors.elevatedCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: selected ? GacomColors.deepOrange : GacomColors.border)),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, size: 15, color: selected ? GacomColors.deepOrange : GacomColors.textMuted),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: selected ? GacomColors.deepOrange : GacomColors.textMuted)),
+      ])));
 }
 
 class _PortalStat extends StatelessWidget {
