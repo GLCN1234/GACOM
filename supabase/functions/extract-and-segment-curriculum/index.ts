@@ -56,7 +56,13 @@ Deno.serve(async (req) => {
       }),
     })
 
-    if (!groqRes.ok) throw new Error(`Groq API error: ${await groqRes.text()}`)
+    if (!groqRes.ok) {
+      const errText = await groqRes.text()
+      if (errText.includes('rate_limit_exceeded') && errText.includes('tokens per day')) {
+        throw new Error("Groq's free daily AI quota is used up for today — try again in a couple of hours.")
+      }
+      throw new Error(`Groq API error: ${errText}`)
+    }
 
     const groqData = await groqRes.json()
     let raw = groqData.choices[0].message.content.trim()

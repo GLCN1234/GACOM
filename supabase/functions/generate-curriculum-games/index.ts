@@ -74,6 +74,9 @@ async function callGroq(apiKey: string, prompt: string, maxTokens: number, attem
 
   if (!response.ok) {
     const err = await response.text()
+    if (err.includes('rate_limit_exceeded') && err.includes('tokens per day')) {
+      throw new Error(`DAILY_QUOTA_EXCEEDED: ${err}`)
+    }
     throw new Error(`Groq API error: ${err}`)
   }
 
@@ -174,6 +177,10 @@ Deno.serve(async (req) => {
     const groqKey = Deno.env.get('GROQ_API_KEY')
     if (!groqKey) throw new Error('GROQ_API_KEY not configured')
 
+    if (body.mode === 'advance_queue') {
+      return await handleAdvanceQueue(supabase, groqKey)
+    }
+
     if (batch_number === 0) {
       const { data: curriculum } = await supabase
         .from('institution_curricula').select('institution_id').eq('id', curriculum_id).single()
@@ -264,3 +271,99 @@ Deno.serve(async (req) => {
     )
   }
 })
+
+// ── Background queue processor ──────────────────────────────────
+// Called by a Supabase pg_cron job every minute, NOT by the browser.
+// This is what lets generation keep running even if the institution
+// admin closes the tab or shuts their laptop mid-upload. Each tick
+// claims the oldest unfinished topic (claim_next_curriculum_batch
+// uses FOR UPDATE SKIP LOCKED so two overlapping ticks never grab the
+// same row) and advances it by several batches, staying under the
+// 150s edge function limit.
+const MAX_BATCHES_PER_TICK = 6
+const TIME_BUDGET_MS = 100_000
+
+async function handleAdvanceQueue(supabase: any, groqKey: string): Promise<Response> {
+  const startTime = Date.now()
+  const results: any[] = []
+
+  for (let i = 0; i < MAX_BATCHES_PER_TICK; i++) {
+    if (Date.now() - startTime > TIME_BUDGET_MS) break
+
+    const { data: claimed, error: claimError } = await supabase.rpc('claim_next_curriculum_batch')
+    if (claimError) { console.error('claim error:', claimError); break }
+    if (!claimed || claimed.length === 0) break
+
+    const result = await processOneBatch(supabase, groqKey, claimed[0])
+    results.push(result)
+    if (result.quota_exceeded) break
+  }
+
+  return new Response(JSON.stringify({ processed: results.length, results }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+}
+
+async function processOneBatch(supabase: any, groqKey: string, row: any): Promise<any> {
+  const curriculumId = row.id as string
+  const nextBatch = row.next_batch_number as number
+
+  try {
+    if (nextBatch === 0) {
+      const worldTheme = WORLD_THEMES[Math.floor(Math.random() * WORLD_THEMES.length)]
+      const storyIntro = await generateStoryIntro(groqKey, row.subject, row.topic, worldTheme)
+
+      await supabase.from('institution_curricula').update({
+        world_theme: worldTheme, story_intro: storyIntro, story_progress: '',
+        generated_questions: [], status: 'processing', total_questions: 0,
+        next_batch_number: 1, batch_error_count: 0, processing_locked_at: null,
+      }).eq('id', curriculumId)
+
+      return { curriculum_id: curriculumId, batch: 0, progress_label: 'Story written' }
+    }
+
+    const { level, batchInLevel } = batchToLevel(nextBatch)
+    if (!level) throw new Error(`Invalid batch_number: ${nextBatch}`)
+
+    const { data: existing } = await supabase
+      .from('institution_curricula').select('generated_questions, world_theme, story_intro, story_progress').eq('id', curriculumId).single()
+
+    const worldTheme = existing?.world_theme || 'Adventure'
+    const currentQuestions = Array.isArray(existing?.generated_questions) ? existing.generated_questions : []
+
+    const { questions: newQuestions, chapterUpdate } = await generateQuestionBatch(
+      groqKey, row.subject, row.class_level, row.topic, row.content, level, worldTheme,
+      existing?.story_intro || '', existing?.story_progress || '',
+    )
+    if (newQuestions.length > 0) newQuestions[newQuestions.length - 1].chapter_update = chapterUpdate
+
+    const allQuestions = [...currentQuestions, ...newQuestions]
+    const rollingProgress = `${existing?.story_progress || ''}\n${chapterUpdate}`.split('\n').filter(Boolean).slice(-3).join('\n')
+    const isLastBatch = nextBatch === TOTAL_BATCHES - 1
+
+    await supabase.from('institution_curricula').update({
+      generated_questions: allQuestions, total_questions: allQuestions.length,
+      story_progress: rollingProgress, status: isLastBatch ? 'ready' : 'processing',
+      next_batch_number: nextBatch + 1, batch_error_count: 0, processing_locked_at: null,
+    }).eq('id', curriculumId)
+
+    return { curriculum_id: curriculumId, batch: nextBatch, done: isLastBatch, progress_label: `${level.label} — batch ${batchInLevel + 1}/${BATCHES_PER_LEVEL}` }
+
+  } catch (error) {
+    const message = (error as Error).message
+    console.error(`advance_queue error on ${curriculumId}, batch ${nextBatch}:`, error)
+    if (message.startsWith('DAILY_QUOTA_EXCEEDED')) {
+      // Not this topic's fault — Groq's free daily token cap was hit.
+      // Don't count it as a strike, just release the lock so cron
+      // picks this same topic back up once quota resets.
+      await supabase.from('institution_curricula').update({ processing_locked_at: null }).eq('id', curriculumId)
+      return { curriculum_id: curriculumId, batch: nextBatch, quota_exceeded: true }
+    }
+    const newErrorCount = (row.batch_error_count ?? 0) + 1
+    await supabase.from('institution_curricula').update({
+      batch_error_count: newErrorCount,
+      status: newErrorCount >= 3 ? 'failed' : 'processing',
+      processing_locked_at: null,
+    }).eq('id', curriculumId)
+    return { curriculum_id: curriculumId, batch: nextBatch, error: message }
+  }
+}
