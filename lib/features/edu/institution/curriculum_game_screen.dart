@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/theme/theme_kit.dart';
+import '../widgets/progress_collector_widget.dart';
 
 class CurriculumGameScreen extends StatefulWidget {
   final String curriculumId;
@@ -70,6 +72,14 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
   Color get _levelColor => Color(_levelColors[_currentLevelIdx]);
   String get _levelLabel => _levelLabels[_currentLevelIdx];
   bool get _isBossLevel => _currentLevelIdx == _levels.length - 1;
+  ThemeKit get _kit => themeKitFor(_worldTheme);
+  String? get _latestChapterBeat {
+    for (int i = _levelQuestions.length - 1; i >= 0; i--) {
+      final beat = _levelQuestions[i]['chapter_update'] as String?;
+      if (beat != null && beat.isNotEmpty) return beat;
+    }
+    return null;
+  }
 
   void _answer(String opt) {
     if (_answered) return;
@@ -187,6 +197,9 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(20)),
           child: Text(_worldTheme.toUpperCase(), style: const TextStyle(color: GacomColors.accentCyan, fontSize: 9, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, letterSpacing: 1))),
+        const SizedBox(height: 14),
+        ProgressCollectorWidget(kit: _kit, current: _correct, target: _questionsPerSession),
+        const SizedBox(height: 14),
         const SizedBox(height: 10),
 
         Container(width: double.infinity, padding: const EdgeInsets.all(20),
@@ -302,7 +315,9 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
       Text('$_levelLabel Complete!', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: _levelColor)),
       const SizedBox(height: 8),
       Text('You scored $pct%', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 16)),
-      const SizedBox(height: 24),
+      const SizedBox(height: 20),
+      ProgressCollectorWidget(kit: _kit, current: _questionsPerSession, target: _questionsPerSession, chapterBeat: _latestChapterBeat),
+      const SizedBox(height: 20),
       Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
         child: Column(children: [
           Icon(nextIsBoss ? Icons.local_fire_department_rounded : Icons.lock_open_rounded, color: nextIsBoss ? GacomColors.deepOrange : GacomColors.success, size: 28),
