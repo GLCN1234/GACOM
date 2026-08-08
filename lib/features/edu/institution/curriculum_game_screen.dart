@@ -98,6 +98,7 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
       if (pct >= _passMark) {
         if (_currentLevelIdx >= _levels.length - 1) {
           setState(() => _gameComplete = true);
+          _saveCompletion(pct);
         } else {
           setState(() { _levelComplete = true; });
         }
@@ -107,6 +108,19 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
       return;
     }
     setState(() { _qIdx++; _selected = null; _answered = false; });
+  }
+
+  Future<void> _saveCompletion(double finalAccuracy) async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) return;
+    try {
+      await SupabaseService.client.from('student_curriculum_progress').upsert({
+        'student_id': uid,
+        'curriculum_id': widget.curriculumId,
+        'final_accuracy': (finalAccuracy * 100).round(),
+        'completed_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'student_id,curriculum_id');
+    } catch (_) {}
   }
 
   void _advanceLevel() {
