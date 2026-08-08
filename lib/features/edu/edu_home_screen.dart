@@ -216,15 +216,29 @@ class _EduHomeState extends State<EduHomeScreen> {
           itemBuilder: (_, i) {
             final s = _subjects[i];
             final color = Color(s['color'] as int);
+            final isFree = s['id'] == 'math';
             return GestureDetector(
-              onTap: () => context.push('/edu/subject/${s['id']}'),
+              onTap: () {
+                if (isFree) {
+                  context.push('/edu/subject/${s['id']}');
+                } else {
+                  context.push('/edu/paywall', extra: s['label']);
+                }
+              },
               child: Container(
-                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withOpacity(0.2))),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(s['icon'] as IconData, color: color, size: 26),
-                  const SizedBox(height: 8),
-                  Text(s['label'] as String, textAlign: TextAlign.center,
-                    style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textPrimary)),
+                decoration: BoxDecoration(
+                  color: isFree ? GacomColors.cardDark : GacomColors.cardDark.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isFree ? color.withOpacity(0.2) : GacomColors.border.withOpacity(0.4))),
+                child: Stack(children: [
+                  Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(s['icon'] as IconData, color: isFree ? color : GacomColors.textMuted, size: 26),
+                    const SizedBox(height: 8),
+                    Text(s['label'] as String, textAlign: TextAlign.center,
+                      style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: isFree ? GacomColors.textPrimary : GacomColors.textMuted)),
+                  ]),
+                  if (!isFree)
+                    Positioned(top: 6, right: 6, child: Icon(Icons.lock_rounded, color: GacomColors.textMuted, size: 14)),
                 ]),
               ),
             );
