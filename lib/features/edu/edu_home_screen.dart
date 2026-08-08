@@ -230,7 +230,7 @@ class _EduHomeState extends State<EduHomeScreen> {
                   color: isFree ? GacomColors.cardDark : GacomColors.cardDark.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: isFree ? color.withOpacity(0.2) : GacomColors.border.withOpacity(0.4))),
-                child: Stack(children: [
+                child: Stack(alignment: Alignment.center, children: [
                   Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Icon(s['icon'] as IconData, color: isFree ? color : GacomColors.textMuted, size: 26),
                     const SizedBox(height: 8),
