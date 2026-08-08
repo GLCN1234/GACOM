@@ -17,6 +17,7 @@ class EduSubjectsScreen extends StatelessWidget {
     {'icon': Icons.science_outlined,         'label': 'Physics',           'id': 'physics',     'color': 0xFF00C2A8, 'games': 9,  'desc': 'Motion, Forces, Energy, Waves, Electricity'},
     {'icon': Icons.biotech_outlined,         'label': 'Chemistry',         'id': 'chemistry',   'color': 0xFF8B5CF6, 'games': 8,  'desc': 'Elements, Reactions, Bonding, Organic'},
     {'icon': Icons.eco_outlined,             'label': 'Biology',           'id': 'biology',     'color': 0xFF34D399, 'games': 7,  'desc': 'Cells, Genetics, Ecology, Human Body'},
+    {'icon': Icons.precision_manufacturing_outlined, 'label': 'Basic Science and Technology', 'id': 'bst', 'color': 0xFF00C2A8, 'games': 8, 'desc': 'Basic Science, PHE, Basic Technology, IT'},
     // Languages
     {'icon': Icons.translate_outlined,       'label': 'English Language',  'id': 'english',     'color': 0xFF3D8BFF, 'games': 10, 'desc': 'Grammar, Comprehension, Essay, Vocabulary'},
     {'icon': Icons.record_voice_over_outlined,'label': 'Literature',       'id': 'literature',  'color': 0xFFFF8A33, 'games': 5,  'desc': 'Prose, Poetry, Drama, African Literature'},

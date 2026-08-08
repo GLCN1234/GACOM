@@ -37,6 +37,7 @@ class _EduHomeState extends State<EduHomeScreen> {
     {'icon': Icons.psychology_outlined,        'label': 'Logic',        'id': 'logic',       'color': 0xFFE85B8A},
     {'icon': Icons.account_balance_outlined,   'label': 'Economics',    'id': 'economics',   'color': 0xFF34D399},
     {'icon': Icons.construction_outlined,      'label': 'Engineering',  'id': 'engineering', 'color': 0xFF3D8BFF},
+    {'icon': Icons.precision_manufacturing_outlined, 'label': 'Basic Science', 'id': 'bst', 'color': 0xFF00C2A8},
     {'icon': Icons.more_horiz_rounded,         'label': 'More',         'id': 'math',        'color': 0xFF6B6B80},
   ];
 

@@ -82,6 +82,7 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
     'hausa':       {'label': 'Hausa',               'icon': Icons.language_outlined,         'color': 0xFF3D8BFF},
     'finance':     {'label': 'Financial Literacy',  'icon': Icons.paid_outlined,             'color': 0xFF34D399},
     'engineering': {'label': 'Engineering',         'icon': Icons.engineering_outlined,      'color': 0xFF3D8BFF},
+    'bst':         {'label': 'Basic Science and Technology', 'icon': Icons.precision_manufacturing_outlined, 'color': 0xFF00C2A8},
   };
 
   // Real game lists per subject — each entry has a built practice route
