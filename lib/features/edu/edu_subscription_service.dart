@@ -22,11 +22,13 @@ class EduSubscriptionService {
       if (uid == null) return false;
       final row = await SupabaseService.client
           .from('edu_subscriptions')
-          .select('status')
+          .select('status, expires_at')
           .eq('user_id', uid)
           .eq('status', 'active')
           .maybeSingle();
-      _cachedStatus = row != null;
+      final expiresAt = row?['expires_at'] != null ? DateTime.tryParse(row!['expires_at'] as String) : null;
+      final stillValid = row != null && expiresAt != null && expiresAt.isAfter(DateTime.now());
+      _cachedStatus = stillValid;
       _cacheTime = DateTime.now();
       return _cachedStatus!;
     } catch (_) {
