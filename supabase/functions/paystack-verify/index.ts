@@ -53,6 +53,45 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Edu Gaming subscription payments use a distinct reference prefix and
+    // activate a subscription row instead of crediting the wallet.
+    if (reference.startsWith('EDU_')) {
+      const { data: subRow, error: subFetchError } = await supabase
+        .from('edu_subscriptions')
+        .select('id, amount')
+        .eq('reference', reference)
+        .maybeSingle()
+      if (subFetchError || !subRow) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Subscription record not found for this reference' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const expectedNaira = (subRow.amount ?? 0) / 100
+      if (Math.abs(amountNaira - expectedNaira) > 0.01) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Amount mismatch' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const expiresAt = new Date()
+      expiresAt.setMonth(expiresAt.getMonth() + 1)
+      const { error: updateError } = await supabase
+        .from('edu_subscriptions')
+        .update({ status: 'active', expires_at: expiresAt.toISOString() })
+        .eq('reference', reference)
+      if (updateError) {
+        return new Response(
+          JSON.stringify({ success: false, error: updateError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      return new Response(
+        JSON.stringify({ success: true, subscription: 'active' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { data, error } = await supabase.rpc('credit_wallet_from_reference', {
       p_reference: reference,
       p_amount: amountNaira,
