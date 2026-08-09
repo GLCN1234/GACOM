@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/paystack_service.dart';
 
 /// Edu Gaming paywall — ₦3,500/month for full access.
 /// Free tier: 1 level of Mathematics (Foundation only) with all other subjects locked.
@@ -42,8 +43,18 @@ class _EduPaywallState extends State<EduPaywallScreen> {
         'reference': ref,
       });
 
-      // Navigate to wallet/payment screen with edu plan context
-      if (mounted) context.push('/wallet?edu_sub=true&ref=$ref&amount=350000');
+      // Launch Paystack directly for this subscription — do NOT route through
+      // the wallet screen, which has no awareness of edu_sub/ref/amount params
+      // and would just show the user's regular wallet balance instead.
+      if (mounted) {
+        final launched = await PaystackService.initializeAndPay(
+          context: context,
+          amountNaira: 3500.0,
+          reference: ref,
+          callbackUrl: 'https://gamicom.net/#/edu',
+        );
+        if (launched == null && mounted) setState(() => _paying = false);
+      }
     } catch (e) {
       if (mounted) setState(() => _paying = false);
     }
