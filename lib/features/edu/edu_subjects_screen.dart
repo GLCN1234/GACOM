@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'edu_subscription_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import 'edu_paywall_screen.dart';
@@ -79,7 +80,7 @@ class EduSubjectsScreen extends StatelessWidget {
         itemBuilder: (_, i) {
           final s = _subjects[i];
           final color = Color(s['color'] as int);
-          final isFree = s['id'] == 'math';
+          final isFree = s['id'] == 'math' || EduSubscriptionService.cachedIsPro;
           return GestureDetector(
             onTap: () {
               if (isFree) {

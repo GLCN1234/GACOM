@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'edu_subscription_service.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
@@ -13,7 +14,7 @@ class EduHomeScreen extends StatefulWidget {
 class _EduHomeState extends State<EduHomeScreen> {
   String _name = 'Student';
 
-  @override void initState() { super.initState(); _loadName(); }
+  @override void initState() { super.initState(); _loadName(); EduSubscriptionService.isPro().then((_) { if (mounted) setState(() {}); }); }
 
   Future<void> _loadName() async {
     try {
@@ -216,7 +217,7 @@ class _EduHomeState extends State<EduHomeScreen> {
           itemBuilder: (_, i) {
             final s = _subjects[i];
             final color = Color(s['color'] as int);
-            final isFree = s['id'] == 'math';
+            final isFree = s['id'] == 'math' || EduSubscriptionService.cachedIsPro;
             return GestureDetector(
               onTap: () {
                 if (isFree) {

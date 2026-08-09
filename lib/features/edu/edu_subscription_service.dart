@@ -36,6 +36,11 @@ class EduSubscriptionService {
     }
   }
 
+  /// Synchronous read of the last-known pro status, for widgets that
+  /// can't await. Defaults to false until isPro() has resolved at least
+  /// once (e.g. from the edu home screen's initState).
+  static bool get cachedIsPro => _cachedStatus ?? false;
+
   /// Clears cache (call after subscription purchase)
   static void clearCache() { _cachedStatus = null; _cacheTime = null; }
 
