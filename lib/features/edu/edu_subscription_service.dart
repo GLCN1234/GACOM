@@ -1,4 +1,4 @@
-import '../../../core/services/supabase_service.dart';
+import '../../core/services/supabase_service.dart';
 
 /// Checks if the current user has an active edu subscription.
 /// Free tier: Mathematics Foundation level only.
