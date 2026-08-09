@@ -41,7 +41,7 @@ class _EduPaywallState extends State<EduPaywallScreen> {
         'plan': 'monthly',
         'amount': 350000, // kobo
         'reference': ref,
-      });
+      }, onConflict: 'user_id,status');
 
       // Launch Paystack directly for this subscription — do NOT route through
       // the wallet screen, which has no awareness of edu_sub/ref/amount params
