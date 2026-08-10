@@ -48,7 +48,7 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
   }
 
   int get _avg => _times.isEmpty ? 0 : _times.reduce((a, b) => a + b) ~/ _times.length;
-  String get _rating => _avg < 200 ? 'Lightning Fast ⚡' : _avg < 300 ? 'Very Fast 🔥' : _avg < 400 ? 'Good 👍' : _avg < 500 ? 'Average 🙂' : 'Keep practising 💪';
+  String get _rating => _avg < 200 ? 'Lightning Fast' : _avg < 300 ? 'Very Fast' : _avg < 400 ? 'Good' : _avg < 500 ? 'Average' : 'Keep practising';
 
   @override void dispose() { _waitTimer?.cancel(); super.dispose(); }
 
@@ -82,7 +82,7 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
   ]))));
 
   Widget _buildResults() => Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Text('⚡ Results', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
+    const Text('Results', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
     const SizedBox(height: 24),
     Text('${_avg}ms average', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 40, color: GacomColors.deepOrange)),
     const SizedBox(height: 8),

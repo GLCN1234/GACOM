@@ -482,7 +482,7 @@ class _MyMatchTabState extends ConsumerState<_MyMatchTab> {
             _CredRow(label: 'Room ID', value: roomId),
             if (roomPass != null) _CredRow(label: 'Password', value: roomPass),
             const SizedBox(height: 8),
-            const Text('⚠️ Do not share these credentials', style: TextStyle(color: GacomColors.warning, fontSize: 12)),
+            const Text('Do not share these credentials', style: TextStyle(color: GacomColors.warning, fontSize: 12)),
           ]),
         ),
         const SizedBox(height: 20),
@@ -756,7 +756,7 @@ class _AdminTabState extends ConsumerState<_AdminTab> {
 
       // Disputed matches
       if (disputedMatches.isNotEmpty) ...[
-        const Text('⚠️ DISPUTED MATCHES', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w700, color: GacomColors.warning, letterSpacing: 1)),
+        const Text('DISPUTED MATCHES', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.w700, color: GacomColors.warning, letterSpacing: 1)),
         const SizedBox(height: 10),
         ...disputedMatches.map((m) {
           final p1 = m['player1'] as Map<String, dynamic>?;

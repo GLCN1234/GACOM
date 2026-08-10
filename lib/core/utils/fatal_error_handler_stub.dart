@@ -5,5 +5,5 @@
 // still surfaces the error to the console so it's not silently lost.
 void showFatalErrorOnPage(String error, String stack) {
   // ignore: avoid_print
-  print('⚠️ FATAL ERROR (no on-screen overlay on this platform): $error\n$stack');
+  print('FATAL ERROR (no on-screen overlay on this platform): $error\n$stack');
 }

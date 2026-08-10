@@ -18,9 +18,9 @@ import '../../../shared/widgets/gacom_button.dart';
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
 final _demoPosts = [
-  {'id': 'demo1', 'author': {'id': 'u1', 'username': 'xXSniperKingXx', 'display_name': 'Sniper King', 'avatar_url': null, 'verification_status': 'verified'}, 'caption': '🔥 Just hit Diamond rank in PUBG Mobile after 3 days straight. The grind never stops. Who else is in Diamond?', 'post_type': 'text', 'media_urls': [], 'likes_count': 1247, 'comments_count': 89, 'shares_count': 34, 'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(), 'is_liked': [], '_score': 0.0},
-  {'id': 'demo2', 'author': {'id': 'u2', 'username': 'NijaGameQueen', 'display_name': 'Nija Game Queen', 'avatar_url': null, 'verification_status': 'verified'}, 'caption': '🏆 Won ₦50,000 in the weekend tournament! First time ever. Gacom platform is legit, no cap.', 'post_type': 'text', 'media_urls': [], 'likes_count': 3821, 'comments_count': 204, 'shares_count': 118, 'created_at': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(), 'is_liked': [], '_score': 0.0},
-  {'id': 'demo3', 'author': {'id': 'u3', 'username': 'LagosGamer247', 'display_name': 'Lagos Gamer', 'avatar_url': null, 'verification_status': 'unverified'}, 'caption': 'FC25 Ultimate team finally done 💎 Took me 6 months. Rate my squad below 👇', 'post_type': 'text', 'media_urls': [], 'likes_count': 892, 'comments_count': 156, 'shares_count': 22, 'created_at': DateTime.now().subtract(const Duration(hours: 9)).toIso8601String(), 'is_liked': [], '_score': 0.0},
+  {'id': 'demo1', 'author': {'id': 'u1', 'username': 'xXSniperKingXx', 'display_name': 'Sniper King', 'avatar_url': null, 'verification_status': 'verified'}, 'caption': 'Just hit Diamond rank in PUBG Mobile after 3 days straight. The grind never stops. Who else is in Diamond?', 'post_type': 'text', 'media_urls': [], 'likes_count': 1247, 'comments_count': 89, 'shares_count': 34, 'created_at': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(), 'is_liked': [], '_score': 0.0},
+  {'id': 'demo2', 'author': {'id': 'u2', 'username': 'NijaGameQueen', 'display_name': 'Nija Game Queen', 'avatar_url': null, 'verification_status': 'verified'}, 'caption': 'Won ₦50,000 in the weekend tournament! First time ever. Gacom platform is legit, no cap.', 'post_type': 'text', 'media_urls': [], 'likes_count': 3821, 'comments_count': 204, 'shares_count': 118, 'created_at': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(), 'is_liked': [], '_score': 0.0},
+  {'id': 'demo3', 'author': {'id': 'u3', 'username': 'LagosGamer247', 'display_name': 'Lagos Gamer', 'avatar_url': null, 'verification_status': 'unverified'}, 'caption': 'FC25 Ultimate team finally done. Took me 6 months. Rate my squad below.', 'post_type': 'text', 'media_urls': [], 'likes_count': 892, 'comments_count': 156, 'shares_count': 22, 'created_at': DateTime.now().subtract(const Duration(hours: 9)).toIso8601String(), 'is_liked': [], '_score': 0.0},
 ];
 final _demoTrending = [
   {'tag': '#PUBGNigeria', 'posts': '12.4K'}, {'tag': '#FC25Ultimate', 'posts': '8.9K'}, {'tag': '#GacomTournament', 'posts': '6.2K'}, {'tag': '#MobileGaming', 'posts': '4.1K'},
@@ -175,7 +175,7 @@ class _Header extends StatelessWidget {
               child: avatarUrl == null ? Text(name[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16)) : null)),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('$greeting 👋', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 0.5)),
+            Text('$greeting', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12, fontFamily: 'Rajdhani', letterSpacing: 0.5)),
             Text(name, style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: 0.3)),
           ])),
           GestureDetector(onTap: () => context.go(AppConstants.createPostRoute),
@@ -607,7 +607,7 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
   void _sharePost() {
     final caption = widget.post['caption'] as String? ?? '';
     final author = (widget.post['author'] as Map?)?['username'] as String? ?? 'someone';
-    Share.share('Check out this post by @$author on Gacom 🎮\n\n"$caption"\n\nhttps://gamicom.netlify.app');
+    Share.share('Check out this post by @$author on Gacom\n\n"$caption"\n\nhttps://gamicom.netlify.app');
   }
 
   @override
@@ -992,19 +992,19 @@ class _EduModeDialogState extends State<_EduModeDialog> {
 
   static const _pages = [
     {
-      'icon': '🎓',
+      'icon': Icons.school_outlined,
       'title': 'Welcome to Edu Gaming',
       'subtitle': 'A smarter way to learn',
       'body': 'Edu Gaming transforms GACOM into a full learning platform. Play educational games across 12 subjects, track your skills, earn Edu Points, and compete on leaderboards with students around the world.',
     },
     {
-      'icon': '📚',
+      'icon': Icons.menu_book_outlined,
       'title': 'What\'s Different',
       'subtitle': 'Edu mode vs Gaming mode',
       'body': '• All social posts and gaming challenges are hidden\n• Navigation changes to subject-focused screens\n• Chats are limited to students only\n• Competitions are academic quizzes, not Arena stakes\n• No real-money wagering in Edu mode\n• You can switch back to Gaming mode any time',
     },
     {
-      'icon': '👨‍👩‍👧',
+      'icon': Icons.family_restroom_rounded,
       'title': 'Parents & Teachers',
       'subtitle': 'Built-in progress tracking',
       'body': 'Parents and teachers can be assigned to see your progress reports, subject accuracy, streaks, and weekly certificates. Schools can assign you to class groups and monitor your learning journey.',

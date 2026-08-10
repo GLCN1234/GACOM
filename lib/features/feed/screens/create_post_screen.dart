@@ -88,7 +88,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       }
 
       if (mounted) {
-        GacomSnackbar.show(context, 'Post published! 🔥', isSuccess: true);
+        GacomSnackbar.show(context, 'Post published!', isSuccess: true);
         context.go(AppConstants.homeRoute);
       }
     } catch (e) {
@@ -163,7 +163,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
             maxLines: 6,
             style: const TextStyle(color: GacomColors.textPrimary, fontSize: 16),
             decoration: const InputDecoration(
-              hintText: "What's on your mind, gamer? 🎮",
+              hintText: "What's on your mind, gamer?",
               hintStyle: TextStyle(color: GacomColors.textMuted, fontSize: 16),
               border: InputBorder.none,
             ),

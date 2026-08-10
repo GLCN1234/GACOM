@@ -22,6 +22,6 @@ void showFatalErrorOnPage(String error, String stack) {
     ..style.fontSize = '12px'
     ..style.overflow = 'auto'
     ..style.whiteSpace = 'pre-wrap'
-    ..text = '⚠️ App crashed — screenshot this:\n\n$error\n\n$stack';
+    ..text = 'App crashed — screenshot this:\n\n$error\n\n$stack';
   html.document.body?.append(div);
 }

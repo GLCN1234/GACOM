@@ -137,7 +137,7 @@ class _BlogScreenState extends ConsumerState<BlogScreen> with SingleTickerProvid
                   'published_at': DateTime.now().toIso8601String(),
                 });
                 if (ctx.mounted) Navigator.pop(ctx);
-                GacomSnackbar.show(context, 'Article published! ✅', isSuccess: true);
+                GacomSnackbar.show(context, 'Article published!', isSuccess: true);
                 setState(() => _loading = true);
                 await _load();
               } catch (e) {

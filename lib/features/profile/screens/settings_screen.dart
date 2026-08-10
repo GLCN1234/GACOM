@@ -414,7 +414,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               }).eq('id', SupabaseService.currentUserId!);
               if (ctx.mounted) {
                 Navigator.pop(ctx);
-                GacomSnackbar.show(context, 'Profile updated ✅',
+                GacomSnackbar.show(context, 'Profile updated',
                     isSuccess: true);
                 await _loadProfile();
               }
@@ -468,7 +468,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                   GacomSnackbar.show(
-                      context, 'Username updated ✅',
+                      context, 'Username updated',
                       isSuccess: true);
                   await _loadProfile();
                 }
@@ -531,7 +531,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                   GacomSnackbar.show(
-                      context, 'Password updated ✅',
+                      context, 'Password updated',
                       isSuccess: true);
                 }
               } catch (_) {
@@ -575,7 +575,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       'id', SupabaseService.currentUserId!);
               if (ctx.mounted) {
                 Navigator.pop(ctx);
-                GacomSnackbar.show(context, 'Gamer tag updated ✅',
+                GacomSnackbar.show(context, 'Gamer tag updated',
                     isSuccess: true);
                 await _loadProfile();
               }
@@ -636,7 +636,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                   GacomSnackbar.show(
-                      context, 'Bank account saved ✅',
+                      context, 'Bank account saved',
                       isSuccess: true);
                 }
               } catch (_) {
@@ -688,7 +688,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'id', SupabaseService.currentUserId!);
               if (ctx.mounted) {
                 Navigator.pop(ctx);
-                GacomSnackbar.show(context, 'Verification request sent ✅',
+                GacomSnackbar.show(context, 'Verification request sent',
                     isSuccess: true);
                 await _loadProfile();
               }
@@ -784,7 +784,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 GacomSnackbar.show(
-                    context, 'Bug reported! Thanks 🐛',
+                    context, 'Bug reported! Thanks',
                     isSuccess: true);
               }
             },

@@ -142,7 +142,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
               backgroundColor: GacomColors.cardDark,
               onPressed: () => GacomSnackbar.show(
                 context,
-                '🔒 Get verified to create sub-communities. Go to Settings → Verification.',
+                'Get verified to create sub-communities. Go to Settings then Verification.',
               ),
               icon: const Icon(Icons.lock_outline_rounded, color: GacomColors.textMuted, size: 18),
               label: const Text('Get Verified',
@@ -296,7 +296,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
                     });
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
-                      GacomSnackbar.show(context, 'Sub-community created! 🎮', isSuccess: true);
+                      GacomSnackbar.show(context, 'Sub-community created!', isSuccess: true);
                       await _load();
                     }
                   } catch (e) {

@@ -210,7 +210,7 @@ class _UsersSectionState extends ConsumerState<_UsersSection> {
     try {
       await SupabaseService.client.from('profiles').update({'is_banned': !isBanned, 'ban_reason': isBanned ? null : 'Admin ban'}).eq('id', userId);
       await _load(_searchCtrl.text.isNotEmpty ? _searchCtrl.text : null);
-      GacomSnackbar.show(context, isBanned ? 'User unbanned ✅' : 'User banned', isSuccess: !isBanned);
+      GacomSnackbar.show(context, isBanned ? 'User unbanned' : 'User banned', isSuccess: !isBanned);
     } catch (e) { GacomSnackbar.show(context, 'Failed: $e', isError: true); }
   }
 
@@ -219,7 +219,7 @@ class _UsersSectionState extends ConsumerState<_UsersSection> {
       await SupabaseService.client.from('admin_permissions').upsert({
         'admin_id': userId, 'permission': AdminPermission.createCompetitions, 'granted_by': SupabaseService.currentUserId,
       }, onConflict: 'admin_id,permission');
-      GacomSnackbar.show(context, 'Competition permission granted ✅', isSuccess: true);
+      GacomSnackbar.show(context, 'Competition permission granted', isSuccess: true);
     } catch (e) { GacomSnackbar.show(context, 'Failed: $e', isError: true); }
   }
 
@@ -249,7 +249,7 @@ class _UsersSectionState extends ConsumerState<_UsersSection> {
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(u['display_name'] ?? '', style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15)),
                             Text('@${u['username'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-                            if (u['location'] != null) Text('📍 ${u['location']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                            if (u['location'] != null) Text(u['location'], style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
                           ])),
                           Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: (banned ? GacomColors.error : GacomColors.success).withOpacity(0.1), borderRadius: BorderRadius.circular(6)), child: Text(u['role']?.toString().toUpperCase() ?? 'USER', style: TextStyle(color: banned ? GacomColors.error : GacomColors.success, fontSize: 10, fontWeight: FontWeight.w700))),
                         ]),
@@ -303,7 +303,7 @@ class _CompetitionsAdminState extends ConsumerState<_CompetitionsAdminSection> {
           if (titleCtrl.text.isEmpty || gameCtrl.text.isEmpty || starts == null || ends == null) { GacomSnackbar.show(ctx, 'Fill all required fields', isError: true); return; }
           try {
             await SupabaseService.client.from('competitions').insert({'title': titleCtrl.text.trim(), 'game_name': gameCtrl.text.trim(), 'competition_type': type, 'prize_pool': double.tryParse(prizeCtrl.text) ?? 0, 'entry_fee': double.tryParse(entryCtrl.text) ?? 0, 'starts_at': starts!.toIso8601String(), 'ends_at': ends!.toIso8601String(), 'status': 'upcoming', 'created_by': SupabaseService.currentUserId, 'is_admin_created': true});
-            Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Competition created! ✅', isSuccess: true);
+            Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Competition created!', isSuccess: true);
           } catch (e) { GacomSnackbar.show(ctx, 'Error: $e', isError: true); }
         }, child: const Text('CREATE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))])));
   }
@@ -378,7 +378,7 @@ class _BlogAdminState extends ConsumerState<_BlogAdminSection> {
           try {
             final slug = titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-') + '-${DateTime.now().millisecondsSinceEpoch}';
             await SupabaseService.client.from('blog_posts').insert({'title': titleCtrl.text.trim(), 'slug': slug, 'excerpt': excerptCtrl.text.trim().isEmpty ? null : excerptCtrl.text.trim(), 'content': contentCtrl.text.trim(), 'category': categoryCtrl.text.trim().isEmpty ? 'Updates' : categoryCtrl.text.trim(), 'author_id': SupabaseService.currentUserId, 'is_published': true, 'published_at': DateTime.now().toIso8601String()});
-            Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Post published! ✅', isSuccess: true);
+            Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Post published!', isSuccess: true);
           } catch (e) { GacomSnackbar.show(ctx, 'Error: $e', isError: true); }
         }, child: const Text('PUBLISH', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))]));
   }
@@ -442,7 +442,7 @@ class _PaymentsSectionState extends State<_PaymentsSection> with SingleTickerPro
     try {
       final res = await SupabaseService.client.rpc('approve_withdrawal', params: {'p_request_id': id});
       if (res?['success'] == true) {
-        if (mounted) GacomSnackbar.show(context, 'Withdrawal approved ✅', isSuccess: true);
+        if (mounted) GacomSnackbar.show(context, 'Withdrawal approved', isSuccess: true);
         _load();
       } else {
         if (mounted) GacomSnackbar.show(context, res?['error']?.toString() ?? 'Approval failed', isError: true);
@@ -630,14 +630,14 @@ class _VerificationSectionState extends ConsumerState<_VerificationSection> {
   Future<void> _review(String id, String userId, bool approve) async {
     await SupabaseService.client.from('verification_requests').update({'status': approve ? 'verified' : 'rejected', 'reviewed_by': SupabaseService.currentUserId, 'reviewed_at': DateTime.now().toIso8601String()}).eq('id', id);
     if (approve) await SupabaseService.client.from('profiles').update({'verification_status': 'verified'}).eq('id', userId);
-    _load(); GacomSnackbar.show(context, approve ? 'User verified ✓' : 'Request rejected', isSuccess: approve);
+    _load(); GacomSnackbar.show(context, approve ? 'User verified' : 'Request rejected', isSuccess: approve);
   }
   @override
   Widget build(BuildContext context) {
     return Column(children: [
       const Padding(padding: EdgeInsets.all(20), child: Align(alignment: Alignment.centerLeft, child: Text('PENDING VERIFICATIONS', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)))),
       if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
-      else if (_requests.isEmpty) const Expanded(child: Center(child: Text('No pending verifications ✅', style: TextStyle(color: GacomColors.textMuted))))
+      else if (_requests.isEmpty) const Expanded(child: Center(child: Text('No pending verifications', style: TextStyle(color: GacomColors.textMuted))))
       else Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: _requests.length, itemBuilder: (_, i) {
         final r = _requests[i]; final user = r['user'] as Map? ?? {};
         return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.warning.withOpacity(0.3))),
@@ -712,7 +712,7 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
             .eq('id', userId);
       }
 
-      GacomSnackbar.show(context, 'Exco role removed ✅', isSuccess: true);
+      GacomSnackbar.show(context, 'Exco role removed', isSuccess: true);
       await _load();
     } catch (e) {
       GacomSnackbar.show(context, 'Failed to remove: $e', isError: true);
@@ -754,7 +754,7 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
       }
 
       _emailCtrl.clear();
-      GacomSnackbar.show(context, 'Exco assigned ✅', isSuccess: true);
+      GacomSnackbar.show(context, 'Exco assigned', isSuccess: true);
       await _load();
     } catch (e) {
       GacomSnackbar.show(context, 'Failed: ${e.toString()}', isError: true);

@@ -22,7 +22,7 @@ void main() async {
       alignment: Alignment.center,
       child: SingleChildScrollView(
         child: Text(
-          '⚠️ Something broke here:\n\n${details.exceptionAsString()}',
+          'Something broke here:\n\n${details.exceptionAsString()}',
           style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
         ),
       ),

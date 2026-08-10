@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Welcome Back, Gamer! 🎮',
+              'Welcome Back, Gamer!',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Rajdhani',

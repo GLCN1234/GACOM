@@ -149,7 +149,7 @@ class _CommunityDetailScreenState extends ConsumerState<CommunityDetailScreen>
                 Row(children: [
                   Expanded(
                     child: _isMember
-                        ? GacomButton(label: 'JOINED ✓', isOutlined: true, height: 44, onPressed: () {})
+                        ? GacomButton(label: 'JOINED', isOutlined: true, height: 44, onPressed: () {})
                         : GacomButton(label: 'JOIN COMMUNITY', height: 44, isLoading: _joining, onPressed: _join),
                   ),
                   if (_isMember) ...[

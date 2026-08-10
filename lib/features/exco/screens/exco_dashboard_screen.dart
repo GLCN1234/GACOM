@@ -234,7 +234,7 @@ class _BlogEditorViewState extends ConsumerState<_BlogEditorView> {
             final slug = '${titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${DateTime.now().millisecondsSinceEpoch}';
             await SupabaseService.client.from('blog_posts').insert({'title': titleCtrl.text.trim(), 'slug': slug, 'excerpt': excerptCtrl.text.trim().isEmpty ? null : excerptCtrl.text.trim(), 'content': contentCtrl.text.trim(), 'category': category, 'author_id': SupabaseService.currentUserId, 'is_published': true, 'published_at': DateTime.now().toIso8601String()});
             if (ctx.mounted) Navigator.pop(ctx);
-            GacomSnackbar.show(context, 'Published! ✅', isSuccess: true);
+            GacomSnackbar.show(context, 'Published!', isSuccess: true);
             _load();
           } catch (e) { GacomSnackbar.show(ctx, 'Failed: $e', isError: true); }
         }, child: const Text('PUBLISH', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))])));
@@ -291,14 +291,14 @@ class _FinanceTeamViewState extends ConsumerState<_FinanceTeamView> {
   }
   Future<void> _process(String id, bool approve) async {
     await SupabaseService.client.from('withdrawal_requests').update({'status': approve ? 'approved' : 'rejected', 'processed_by': SupabaseService.currentUserId, 'processed_at': DateTime.now().toIso8601String()}).eq('id', id);
-    _load(); GacomSnackbar.show(context, approve ? 'Withdrawal approved ✅' : 'Rejected', isSuccess: approve);
+    _load(); GacomSnackbar.show(context, approve ? 'Withdrawal approved' : 'Rejected', isSuccess: approve);
   }
   @override
   Widget build(BuildContext context) {
     return Column(children: [
       const Padding(padding: EdgeInsets.fromLTRB(20, 20, 20, 16), child: Align(alignment: Alignment.centerLeft, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('FINANCE TOOLS', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary)), Text('Process withdrawal requests', style: TextStyle(color: GacomColors.textMuted, fontSize: 13))]))),
       if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
-      else if (_withdrawals.isEmpty) const Expanded(child: Center(child: Text('No pending withdrawals ✅', style: TextStyle(color: GacomColors.textMuted))))
+      else if (_withdrawals.isEmpty) const Expanded(child: Center(child: Text('No pending withdrawals', style: TextStyle(color: GacomColors.textMuted))))
       else Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(20, 0, 20, 80), itemCount: _withdrawals.length, itemBuilder: (_, i) {
         final w = _withdrawals[i]; final user = w['user'] as Map? ?? {};
         return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16),

@@ -70,7 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         },
       );
       if (mounted) {
-        GacomSnackbar.show(context, 'Account created! Welcome to the arena 🎮');
+        GacomSnackbar.show(context, 'Account created! Welcome to the arena');
         context.go(AppConstants.homeRoute);
       }
     } on AuthException catch (e) {

@@ -293,7 +293,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               icon: Icons.reply_rounded,
               label: _fmt(shares),
               color: Colors.white,
-              onTap: () => Share.share('Check out this clip on Gacom! 🎮\n${widget.post['caption'] ?? ''}'),
+              onTap: () => Share.share('Check out this clip on Gacom!\n${widget.post['caption'] ?? ''}'),
               mirrorIcon: true,
             ),
             const SizedBox(height: 18),

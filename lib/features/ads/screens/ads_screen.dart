@@ -298,7 +298,7 @@ class _AdsScreenState extends ConsumerState<AdsScreen>
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       GacomSnackbar.show(context,
-                          'Campaign submitted for review! 🚀',
+                          'Campaign submitted for review!',
                           isSuccess: true);
                       setState(() => _loading = true);
                       await _loadCampaigns();

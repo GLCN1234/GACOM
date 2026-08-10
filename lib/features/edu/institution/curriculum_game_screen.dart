@@ -190,7 +190,7 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
-        title: Text(_isBossLevel ? '⚔ BOSS BATTLE' : _topic, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14), overflow: TextOverflow.ellipsis),
+        title: Text(_isBossLevel ? 'BOSS BATTLE' : _topic, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14), overflow: TextOverflow.ellipsis),
         backgroundColor: _isBossLevel ? GacomColors.deepOrange.withOpacity(0.15) : null,
         actions: [
           IconButton(icon: Icon(_ttsEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded, color: _ttsEnabled ? GacomColors.accentCyan : GacomColors.textMuted),

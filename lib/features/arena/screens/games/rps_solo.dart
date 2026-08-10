@@ -30,7 +30,7 @@ class _RpsSoloState extends State<RpsSoloScreen> {
     final ai = _choices[Random().nextInt(3)]['id'] as String;
     String result;
     if (choice == ai) result = 'Draw!';
-    else if (_beats(choice) == ai) { _myWins++; result = 'You win this round! 🎉'; }
+    else if (_beats(choice) == ai) { _myWins++; result = 'You win this round!'; }
     else { _aiWins++; result = 'Ryan wins this round!'; }
     setState(() { _myPick = choice; _aiPick = ai; _result = result; _revealed = true; });
     Future.delayed(const Duration(milliseconds: 1400), () {
@@ -39,7 +39,7 @@ class _RpsSoloState extends State<RpsSoloScreen> {
   }
 
   bool get _gameOver => _myWins >= 3 || _aiWins >= 3;
-  String get _finalResult => _myWins >= 3 ? 'You beat Ryan! 🏆' : 'Ryan wins! Better luck next time.';
+  String get _finalResult => _myWins >= 3 ? 'You beat Ryan!' : 'Ryan wins! Better luck next time.';
 
   void _reset() => setState(() { _myWins = 0; _aiWins = 0; _round = 1; _myPick = null; _aiPick = null; _result = null; _revealed = false; });
 

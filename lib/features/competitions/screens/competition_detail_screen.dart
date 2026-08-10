@@ -110,7 +110,7 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
 
       if (mounted) {
         setState(() { _isParticipant = true; _joining = false; });
-        GacomSnackbar.show(context, 'You\'re in! Good luck 🎮', isSuccess: true);
+        GacomSnackbar.show(context, 'You\'re in! Good luck', isSuccess: true);
         _load();
       }
     } catch (e) {

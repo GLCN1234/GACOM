@@ -89,7 +89,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
     } else if (mounted) {
       final refunded = result['refunded'] as bool?;
       final suffix = refunded == false
-          ? '\n\n⚠️ Your stake could NOT be refunded automatically — contact support with this error.'
+          ? '\n\nYour stake could NOT be refunded automatically — contact support with this error.'
           : (refunded == true ? '\n\nYour stake has been refunded.' : '');
       _showError('${result['error'] ?? 'Could not create match.'}$suffix');
     }
@@ -551,7 +551,7 @@ class _EduGamingScreen extends StatelessWidget {
       Container(width: double.infinity, padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.25))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [const Text('🎓', style: TextStyle(fontSize: 24)), const SizedBox(width: 10),
+          Row(children: [const Icon(Icons.school_outlined, size: 24, color: GacomColors.deepOrange), const SizedBox(width: 10),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('EDU GAMING', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.accentCyan, letterSpacing: 1)),
               const Text('Learn Through Play', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
@@ -587,11 +587,11 @@ class _EduGamingScreen extends StatelessWidget {
       Container(width: double.infinity, padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('🏆 DAILY CHALLENGES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+          const Text('DAILY CHALLENGES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
           const SizedBox(height: 8),
           const Text('Complete daily learning challenges to earn Gacom Coins and unlock exclusive badges.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12, height: 1.4)),
           const SizedBox(height: 12),
-          ...[['🧮 Daily Math Challenge', 'Speed'], ['📖 Daily Vocabulary', 'Words'], ['🧠 Daily Logic Puzzle', 'Logic']].map((d) =>
+          ...[['Daily Math Challenge', 'Speed'], ['Daily Vocabulary', 'Words'], ['Daily Logic Puzzle', 'Logic']].map((d) =>
             Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [
               Text(d[0], style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
               const Spacer(),
@@ -614,7 +614,7 @@ class _EduModeArenaDialogState extends State<_EduModeArenaDialog> {
     backgroundColor: GacomColors.cardDark,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Text('🎓', style: TextStyle(fontSize: 48)),
+      const Icon(Icons.school_outlined, size: 48, color: GacomColors.deepOrange),
       const SizedBox(height: 12),
       const Text('Switch to Edu Gaming?', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary), textAlign: TextAlign.center),
       const SizedBox(height: 8),

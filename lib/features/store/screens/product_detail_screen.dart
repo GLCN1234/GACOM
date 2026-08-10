@@ -177,7 +177,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: GacomColors.cardDark,
-            content: const Text('Added to cart! 🛍️',
+            content: const Text('Added to cart!',
                 style: TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
             action: SnackBarAction(
               label: 'VIEW CART',
@@ -427,7 +427,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   Row(children: [
                     Expanded(
                       child: GacomButton(
-                        label: _inCart ? 'IN CART ✓' : 'ADD TO CART',
+                        label: _inCart ? 'IN CART' : 'ADD TO CART',
                         isLoading: _addingToCart,
                         isOutlined: _inCart,
                         onPressed: _inCart ? null : _addToCart,

@@ -16,7 +16,7 @@ final _demoProfile = {
   'display_name': 'Ghost Striker',
   'username': 'ghost_striker99',
   'gamer_tag': 'GhostXPRO',
-  'bio': 'Top 1% PUBG Mobile player 🔥 | Nigeria #1 | Content Creator',
+  'bio': 'Top 1% PUBG Mobile player | Nigeria #1 | Content Creator',
   'avatar_url': null,
   'banner_url': null,
   'verification_status': 'verified',
@@ -165,7 +165,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     }).eq('id', SupabaseService.currentUserId!);
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
-                      GacomSnackbar.show(context, 'Profile updated! ✅', isSuccess: true);
+                      GacomSnackbar.show(context, 'Profile updated!', isSuccess: true);
                       setState(() => _loading = true);
                       await _load();
                     }

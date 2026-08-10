@@ -53,7 +53,7 @@ class _ArenaAdminSectionState extends State<ArenaAdminSection> {
     await ArenaService.resolveDispute(dispute['id'] as String, dispute['match_id'] as String, winnerId);
     await _load();
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(winnerId != null ? 'Winner awarded ✅' : 'Both players refunded ✅'), backgroundColor: GacomColors.success),
+      SnackBar(content: Text(winnerId != null ? 'Winner awarded' : 'Both players refunded'), backgroundColor: GacomColors.success),
     );
   }
 
@@ -159,7 +159,7 @@ class _ArenaAdminSectionState extends State<ArenaAdminSection> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border, width: 0.5)),
-          child: const Center(child: Text('No open disputes 🎉', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontSize: 16))),
+          child: const Center(child: Text('No open disputes', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontSize: 16))),
         )
       else
         ..._disputes.map((d) {

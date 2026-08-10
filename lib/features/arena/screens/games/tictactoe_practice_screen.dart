@@ -57,7 +57,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
     setState(() {
       _gameOver = true;
       if (winner == 'draw') { _draws++; _resultText = "It's a draw!"; }
-      else if (winner == 'X') { _wins++; _resultText = 'You win! 🎉'; }
+      else if (winner == 'X') { _wins++; _resultText = 'You win!'; }
       else { _losses++; _resultText = 'Ryan wins this one.'; }
     });
   }

@@ -52,7 +52,7 @@ Do not make up solutions. If unsure, suggest escalation.
     _messages.add(_ChatMessage(
       sender: 'bot',
       text:
-          "Yo! 👾 I'm GACOM's support AI. What's the issue? I can help with account, wallet, competitions, communities and more. Or type **agent** to speak with a human.",
+          "Yo! I'm GACOM's support AI. What's the issue? I can help with account, wallet, competitions, communities and more. Or type **agent** to speak with a human.",
       timestamp: DateTime.now(),
     ));
   }
@@ -190,8 +190,8 @@ Do not make up solutions. If unsure, suggest escalation.
         _messages.add(_ChatMessage(
           sender: 'system',
           text: agent != null
-              ? '✅ Connected to agent **${_agentName}**. They can see your chat history and will respond shortly.'
-              : '📋 Ticket created (ID: ${_ticketId?.substring(0, 8).toUpperCase()}). An agent will respond soon via notifications.',
+              ? 'Connected to agent **${_agentName}**. They can see your chat history and will respond shortly.'
+              : 'Ticket created (ID: ${_ticketId?.substring(0, 8).toUpperCase()}). An agent will respond soon via notifications.',
           timestamp: DateTime.now(),
         ));
       });
@@ -202,7 +202,7 @@ Do not make up solutions. If unsure, suggest escalation.
         _messages.add(_ChatMessage(
           sender: 'system',
           text:
-              '⚠️ Could not connect to agent right now. Email support@gacom.gg',
+              'Could not connect to agent right now. Email support@gacom.gg',
           timestamp: DateTime.now(),
         ));
       });

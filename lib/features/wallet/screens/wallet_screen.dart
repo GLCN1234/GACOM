@@ -354,7 +354,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   });
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
-                    GacomSnackbar.show(context, 'Withdrawal request submitted ✅', isSuccess: true);
+                    GacomSnackbar.show(context, 'Withdrawal request submitted', isSuccess: true);
                   }
                 } catch (_) {
                   GacomSnackbar.show(ctx, 'Failed. Try again later.', isError: true);

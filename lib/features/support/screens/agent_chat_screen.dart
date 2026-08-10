@@ -337,7 +337,7 @@ class _TicketCard extends StatelessWidget {
                     });
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
-                      GacomSnackbar.show(context, 'Reply sent ✅',
+                      GacomSnackbar.show(context, 'Reply sent',
                           isSuccess: true);
                     }
                   } catch (_) {

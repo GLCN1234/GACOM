@@ -69,7 +69,7 @@ class _GamingTeamsScreenState extends ConsumerState<GamingTeamsScreen>
     }
     try {
       await SupabaseService.client.from('team_members').insert({'team_id': teamId, 'user_id': userId, 'role': 'member'});
-      GacomSnackbar.show(context, 'Joined team! 🎮', isSuccess: true);
+      GacomSnackbar.show(context, 'Joined team!', isSuccess: true);
       _load();
     } catch (e) {
       GacomSnackbar.show(context, 'Failed to join team', isError: true);
@@ -121,7 +121,7 @@ class _GamingTeamsScreenState extends ConsumerState<GamingTeamsScreen>
                 'team_id': team['id'], 'user_id': userId, 'role': 'captain',
               });
               if (ctx.mounted) Navigator.pop(ctx);
-              GacomSnackbar.show(context, 'Team "$name" created! 🔥', isSuccess: true);
+              GacomSnackbar.show(context, 'Team "$name" created!', isSuccess: true);
               _load();
             } catch (e) {
               GacomSnackbar.show(ctx, 'Error: $e', isError: true);

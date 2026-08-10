@@ -680,7 +680,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
                       });
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
-                        GacomSnackbar.show(context, 'Product added to store! 🛍️',
+                        GacomSnackbar.show(context, 'Product added to store!',
                             isSuccess: true);
                         await _load();
                       }
@@ -1564,7 +1564,7 @@ class _DeliveryZonesSheetState
         'updated_by': SupabaseService.currentUserId,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', id);
-      GacomSnackbar.show(context, 'Saved ✅', isSuccess: true);
+      GacomSnackbar.show(context, 'Saved', isSuccess: true);
       await _load();
     } catch (e) {
       GacomSnackbar.show(context, 'Failed: $e', isError: true);
@@ -1738,7 +1738,7 @@ class _DeliveryZonesSheetState
                               SupabaseService.currentUserId,
                         });
                         GacomSnackbar.show(
-                            context, '$selectedState added ✅',
+                            context, '$selectedState added',
                             isSuccess: true);
                         await _load();
                       } catch (e) {
@@ -1824,7 +1824,7 @@ class _DeliveryZonesSheetState
               .toList(),
         );
       }
-      GacomSnackbar.show(context, '${toInsert.length} states added ✅',
+      GacomSnackbar.show(context, '${toInsert.length} states added',
           isSuccess: true);
       await _load();
     } catch (e) {

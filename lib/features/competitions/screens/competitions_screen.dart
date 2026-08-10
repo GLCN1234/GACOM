@@ -117,7 +117,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
               fontSize: 14),
           tabs: const [
             Tab(text: 'ALL'),
-            Tab(text: 'LIVE 🔴'),
+            Tab(text: 'LIVE'),
             Tab(text: 'UPCOMING')
           ],
           onTap: (i) => setState(() =>
@@ -454,7 +454,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
                         GacomSnackbar.show(context,
-                            'Competition created! 🏆',
+                            'Competition created!',
                             isSuccess: true);
                         setState(() => _loading = true);
                         await _loadCompetitions();

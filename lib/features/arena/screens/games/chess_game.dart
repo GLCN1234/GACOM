@@ -165,7 +165,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     if(!_hasAnyMove(nowWhite,board)){
       if(_inCheck(nowWhite,board)){
         final winner=whiteTurn?'White':'Black';
-        setState((){gameOver=true; status='$winner wins by checkmate! 🏆';
+        setState((){gameOver=true; status='$winner wins by checkmate!';
           if(whiteTurn)wScore++;else bScore++;});
       } else {
         setState((){gameOver=true; status='Stalemate — draw!';});
@@ -174,7 +174,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     }
     setState((){whiteTurn=nowWhite;});
     if(!whiteTurn){ // AI's turn
-      setState((){aiThinking=true; status='AI is thinking...';});
+      setState((){aiThinking=true; status='Ryan is thinking...';});
       Future.delayed(const Duration(milliseconds:400),_aiMove);
     } else {
       setState((){status='Your turn (White)';});
@@ -257,7 +257,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   Widget build(BuildContext ctx){
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
-      appBar: AppBar(title: const Text('CHESS VS AI'), actions:[
+      appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
         Text('W $wScore — B $bScore', style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.textSecondary)),
         const SizedBox(width:12),
       ]),

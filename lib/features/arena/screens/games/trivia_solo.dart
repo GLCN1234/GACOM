@@ -70,7 +70,7 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
   Widget build(BuildContext ctx) {
     if (_done) return Scaffold(backgroundColor: GacomColors.obsidian,
       body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Text('🎯 Quiz Complete!', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
+        const Text('Quiz Complete!', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
         const SizedBox(height: 12),
         Text('Score: $_score / ${_shuffled.length * 25}', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 20, color: GacomColors.deepOrange)),
         const SizedBox(height: 24),

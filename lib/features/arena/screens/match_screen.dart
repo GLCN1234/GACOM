@@ -84,7 +84,7 @@ class _MatchScreenState extends State<MatchScreen> {
         backgroundColor: GacomColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Row(children: [
-          Text(isWinner ? '🏆' : '😔', style: const TextStyle(fontSize: 32)),
+          Text(isWinner ? 'W' : 'L', style: const TextStyle(fontSize: 32)),
           const SizedBox(width: 12),
           Text(isWinner ? 'YOU WON!' : 'YOU LOST', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: isWinner ? GacomColors.success : GacomColors.error)),
         ]),

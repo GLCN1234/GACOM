@@ -176,7 +176,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: ['🔥', '🙌', '😂', '🐐', '🙏', '😡'].map((e) =>
+                children: ['+1', 'Nice', 'Haha', 'GOAT', 'Thanks', 'Angry'].map((e) =>
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);

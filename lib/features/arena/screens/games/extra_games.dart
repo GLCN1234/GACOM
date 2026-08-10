@@ -14,7 +14,7 @@ class ConnectFourGame extends StatefulWidget {
 class _ConnectFourState extends State<ConnectFourGame> {
   static const rows=6, cols=7;
   List<List<int>> board = List.generate(rows, (_)=>List.filled(cols,0));
-  int turn=1; String status='Your turn (🔴)'; bool over=false;
+  int turn=1; String status='Your turn'; bool over=false;
   int wScore=0,aScore=0;
 
   void _drop(int col){
@@ -22,7 +22,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
     for(int r=rows-1;r>=0;r--){
       if(board[r][col]==0){ board[r][col]=1; break; }
     }
-    if(_checkWin(1)){setState((){status='You win! 🔴'; over=true; wScore++;}); return;}
+    if(_checkWin(1)){setState((){status='You win!'; over=true; wScore++;}); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); return;}
     setState((){turn=2; status='AI thinking...';});
     Future.delayed(const Duration(milliseconds:350),_aiMove);
@@ -39,9 +39,9 @@ class _ConnectFourState extends State<ConnectFourGame> {
     }
     if(best<0){for(int c=0;c<cols;c++){if(_canDrop(c)){best=c;break;}}}
     _doMove(board,best,2);
-    if(_checkWin(2)){setState((){status='AI wins! 🔵'; over=true; aScore++;}); return;}
+    if(_checkWin(2)){setState((){status='AI wins!'; over=true; aScore++;}); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); return;}
-    setState((){turn=1; status='Your turn (🔴)';});
+    setState((){turn=1; status='Your turn';});
   }
 
   bool _canDrop(int c)=>board[0][c]==0;
@@ -67,7 +67,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
     }
     return false;
   }
-  void _reset(){setState((){board=List.generate(rows,(_)=>List.filled(cols,0));turn=1;over=false;status='Your turn (🔴)';});}
+  void _reset(){setState((){board=List.generate(rows,(_)=>List.filled(cols,0));turn=1;over=false;status='Your turn';});}
 
   @override
   Widget build(BuildContext ctx)=>Scaffold(
@@ -183,9 +183,9 @@ class _ReversiState extends State<ReversiGame>{
     final w=board.where((x)=>x==2).length;
     if(over||_valid(board,1).isEmpty&&_valid(board,2).isEmpty){
       over=true;
-      status=b>w?'You win! ⚫ $b — $w 🔵':b<w?'AI wins! $b — $w':'Draw! $b — $w';
+      status=b>w?'You win! $b — $w':b<w?'AI wins! $b — $w':'Draw! $b — $w';
     } else {
-      status=playerBlack?'Your turn ⚫ | You $b — AI $w':'AI thinking... ⚫ $b — 🔵 $w';
+      status=playerBlack?'Your turn | You $b — AI $w':'AI thinking... $b — $w';
     }
   }
 
@@ -266,7 +266,7 @@ class _MemoryMatchState extends State<MemoryMatchGame>{
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Moves: $moves  Pairs: $pairs/12',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
     ]),
     body: Column(children:[
-      if(pairs==12) Padding(padding: const EdgeInsets.all(16),child: Text('🎉 Solved in $moves moves!',style:const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:18,color:GacomColors.deepOrange),textAlign:TextAlign.center)),
+      if(pairs==12) Padding(padding: const EdgeInsets.all(16),child: Text('Solved in $moves moves!',style:const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:18,color:GacomColors.deepOrange),textAlign:TextAlign.center)),
       Expanded(child: GridView.builder(
         padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:4,crossAxisSpacing:8,mainAxisSpacing:8),
@@ -309,10 +309,10 @@ class _WordScrambleState extends State<WordScrambleGame>{
   void _check(){
     if(_ctrl.text.toUpperCase()==word){
       score+=10+streak*2; streak++;
-      setState((){msg='✅ Correct! +${10+streak*2} pts';});
+      setState((){msg='Correct! +${10+streak*2} pts';});
       Future.delayed(const Duration(milliseconds:800),_next);
     } else {
-      streak=0; setState((){msg='❌ Try again!';});
+      streak=0; setState((){msg='Try again!';});
     }
   }
   @override
@@ -334,7 +334,7 @@ class _WordScrambleState extends State<WordScrambleGame>{
         decoration: InputDecoration(hintText:'TYPE HERE',hintStyle: const TextStyle(color:GacomColors.textMuted),
           filled:true,fillColor:GacomColors.elevatedCard,border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),borderSide: const BorderSide(color:GacomColors.border)))),
       const SizedBox(height:16),
-      if(msg.isNotEmpty) Text(msg,style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:16,color:msg.startsWith('✅')?GacomColors.success:GacomColors.error)),
+      if(msg.isNotEmpty) Text(msg,style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:16,color:msg.startsWith('Correct')?GacomColors.success:GacomColors.error)),
       const SizedBox(height:16),
       SizedBox(width:double.infinity,child: ElevatedButton(onPressed:_check,
         style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,padding: const EdgeInsets.symmetric(vertical:16),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
@@ -562,7 +562,7 @@ class _SpeedMathState extends State<SpeedMathGame>{
     appBar: AppBar(title: const Text('SPEED MATH')),
     body: Padding(padding: const EdgeInsets.all(16),child: Column(mainAxisAlignment:MainAxisAlignment.center,children:[
       if(!started)...[
-        const Text('⚡ Speed Math',style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:28,color:GacomColors.deepOrange)),
+        const Text('Speed Math',style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:28,color:GacomColors.deepOrange)),
         const SizedBox(height:8),
         Text('Score: $score',style: const TextStyle(fontFamily:'Rajdhani',fontSize:18,color:GacomColors.textSecondary)),
         const SizedBox(height:32),
@@ -644,7 +644,7 @@ class _SimonSaysState extends State<SimonSaysGame>{
     ]),
     body: Padding(padding: const EdgeInsets.all(24),child: Column(mainAxisAlignment:MainAxisAlignment.center,children:[
       if(!started)...[
-        const Text('👁 Simon Says',style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:28,color:GacomColors.deepOrange)),
+        const Text('Simon Says',style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:28,color:GacomColors.deepOrange)),
         const SizedBox(height:8),
         Text('Last score: $score',style: const TextStyle(color:GacomColors.textMuted)),
         const SizedBox(height:32),
@@ -727,7 +727,7 @@ class _MinesweeperState extends State<MinesweeperGame>{
       IconButton(icon: const Icon(Icons.refresh_rounded,color:GacomColors.deepOrange),onPressed:_reset),
     ]),
     body: Column(children:[
-      Padding(padding: const EdgeInsets.all(12),child: Text(over?'💥 Game Over!':won?'🎉 You won!':'💣 Find all mines',
+      Padding(padding: const EdgeInsets.all(12),child: Text(over?'Game Over!':won?'You won!':'Find all mines',
         style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:16,color:GacomColors.textPrimary),textAlign:TextAlign.center)),
       Expanded(child: Center(child: AspectRatio(aspectRatio:1,child: GridView.builder(
         padding: const EdgeInsets.all(4),
@@ -746,7 +746,7 @@ class _MinesweeperState extends State<MinesweeperGame>{
                 borderRadius: BorderRadius.circular(3),
                 border: Border.all(color: r?GacomColors.border:GacomColors.textMuted.withOpacity(0.3))),
               child: Center(child: Text(
-                f?'🚩':r?(m?'💣':adj>0?'$adj':''):'',
+                f?'F':r?(m?'X':adj>0?'$adj':''):'',
                 style: TextStyle(fontSize:11,fontWeight:FontWeight.w800,color:_numColor(adj))))));
         },
       )))),
@@ -800,7 +800,7 @@ class _BlackjackState extends State<BlackjackGame>{
     dRevealed=true;
     while(_val(dHand)<17)dHand.add(deck.removeLast());
     final pv=_val(pHand),dv=_val(dHand);
-    if(dv>21||pv>dv){pScore++;msg='You win! $pv vs $dv 🎉';}
+    if(dv>21||pv>dv){pScore++;msg='You win! $pv vs $dv';}
     else if(pv==dv){msg='Push! $pv vs $dv';}
     else{dScore++;msg='Dealer wins. $pv vs $dv';}
     setState((){playing=false;});
@@ -933,7 +933,7 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
         Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
       ]),
       body: Column(children:[
-        Padding(padding: const EdgeInsets.all(12),child: Text(over?(pScore>aScore?'You win! 🎉':pScore==aScore?'Draw!':'AI wins 🤖'):(turn==1?'Your turn':'AI thinking...'),
+        Padding(padding: const EdgeInsets.all(12),child: Text(over?(pScore>aScore?'You win!':pScore==aScore?'Draw!':'AI wins'):(turn==1?'Your turn':'AI thinking...'),
           style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:16,color:GacomColors.textPrimary),textAlign:TextAlign.center)),
         Expanded(child: Center(child: SizedBox(width:w*(n+0.5),height:w*(n+0.5),
           child: CustomPaint(painter:_DotsPainter(hLines,vLines,boxes,w),
@@ -1015,15 +1015,15 @@ class _NumberQuizState extends State<NumberQuizGame>{
     _ctrl.clear();answered=false;msg='';
     // AI answers in 2-4 seconds
     final delay=Duration(milliseconds:2000+Random().nextInt(2000));
-    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='⚡ AI answered first!';answered=true;});Future.delayed(const Duration(milliseconds:1200),_next);}});
+    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='AI answered first!';answered=true;});Future.delayed(const Duration(milliseconds:1200),_next);}});
     setState((){});
   }
 
   void _submit(){
     if(answered)return;
     final v=int.tryParse(_ctrl.text);
-    if(v==answer){_aiTimer?.cancel();answered=true;pScore++;setState((){msg='✅ You got it first!';});Future.delayed(const Duration(milliseconds:1000),_next);}
-    else{setState((){msg='❌ Wrong!';_ctrl.clear();});}
+    if(v==answer){_aiTimer?.cancel();answered=true;pScore++;setState((){msg='You got it first!';});Future.delayed(const Duration(milliseconds:1000),_next);}
+    else{setState((){msg='Wrong!';_ctrl.clear();});}
   }
 
   @override
