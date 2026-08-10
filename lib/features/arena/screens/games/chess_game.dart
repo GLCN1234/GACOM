@@ -11,6 +11,63 @@ const bP=-1;const bN=-2;const bB=-3;const bR=-4;const bQ=-5;const bK=-6;
 // ── Piece value table for AI evaluation ──────────────────────────────────────
 const _pieceVal = {wP:100,wN:320,wB:330,wR:500,wQ:900,wK:20000,
   bP:-100,bN:-320,bB:-330,bR:-500,bQ:-900,bK:-20000};
+// ── Piece-square tables — positional evaluation, not just material count.
+// Indexed a8=0..h1=63 (matches this board's layout). Standard, widely-used
+// values (chessprogramming.org simplified evaluation function).
+const _pawnPST=[
+  0,0,0,0,0,0,0,0,
+  50,50,50,50,50,50,50,50,
+  10,10,20,30,30,20,10,10,
+  5,5,10,25,25,10,5,5,
+  0,0,0,20,20,0,0,0,
+  5,-5,-10,0,0,-10,-5,5,
+  5,10,10,-20,-20,10,10,5,
+  0,0,0,0,0,0,0,0];
+const _knightPST=[
+  -50,-40,-30,-30,-30,-30,-40,-50,
+  -40,-20,0,0,0,0,-20,-40,
+  -30,0,10,15,15,10,0,-30,
+  -30,5,15,20,20,15,5,-30,
+  -30,0,15,20,20,15,0,-30,
+  -30,5,10,15,15,10,5,-30,
+  -40,-20,0,5,5,0,-20,-40,
+  -50,-40,-30,-30,-30,-30,-40,-50];
+const _bishopPST=[
+  -20,-10,-10,-10,-10,-10,-10,-20,
+  -10,0,0,0,0,0,0,-10,
+  -10,0,5,10,10,5,0,-10,
+  -10,5,5,10,10,5,5,-10,
+  -10,0,10,10,10,10,0,-10,
+  -10,10,10,10,10,10,10,-10,
+  -10,5,0,0,0,0,5,-10,
+  -20,-10,-10,-10,-10,-10,-10,-20];
+const _rookPST=[
+  0,0,0,0,0,0,0,0,
+  5,10,10,10,10,10,10,5,
+  -5,0,0,0,0,0,0,-5,
+  -5,0,0,0,0,0,0,-5,
+  -5,0,0,0,0,0,0,-5,
+  -5,0,0,0,0,0,0,-5,
+  -5,0,0,0,0,0,0,-5,
+  0,0,0,5,5,0,0,0];
+const _queenPST=[
+  -20,-10,-10,-5,-5,-10,-10,-20,
+  -10,0,0,0,0,0,0,-10,
+  -10,0,5,5,5,5,0,-10,
+  -5,0,5,5,5,5,0,-5,
+  0,0,5,5,5,5,0,-5,
+  -10,5,5,5,5,5,0,-10,
+  -10,0,5,0,0,0,0,-10,
+  -20,-10,-10,-5,-5,-10,-10,-20];
+const _kingPST=[
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -30,-40,-40,-50,-50,-40,-40,-30,
+  -20,-30,-30,-40,-40,-30,-30,-20,
+  -10,-20,-20,-20,-20,-20,-20,-10,
+  20,20,0,0,0,0,20,20,
+  20,30,10,0,0,10,30,20];
 
 class ChessPracticeScreen extends StatefulWidget {
   const ChessPracticeScreen({super.key});
@@ -183,11 +240,19 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
 
   // ── Alpha-beta AI ───────────────────────────────────────────────────────────
   void _aiMove(){
-    final move=_bestMove(board,false,3);
+    final move=_bestMove(board,false,4);
     if(move!=null){_makeMove(move.$1,move.$2);}
     setState((){aiThinking=false;});
   }
 
+  List<(int,int)> _orderMoves(List<(int,int)> moves, List<int> b){
+    moves.sort((a,c){
+      final av=b[a.$2]!=empty?(_pieceVal[b[a.$2]]?.abs()??0):0;
+      final cv=b[c.$2]!=empty?(_pieceVal[b[c.$2]]?.abs()??0):0;
+      return cv.compareTo(av);
+    });
+    return moves;
+  }
   (int,int)? _bestMove(List<int> b, bool white, int depth){
     List<(int,int)> moves=[];
     for(int sq=0;sq<64;sq++){
@@ -197,6 +262,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
       for(final t in _legalMoves(sq,b,white)){moves.add((sq,t));}
     }
     if(moves.isEmpty)return null;
+    moves=_orderMoves(moves,b);
     int best=white?-999999:999999;
     (int,int)? bestMove;
     for(final m in moves){
@@ -210,7 +276,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   }
 
   int _alphabeta(List<int> b, int depth, bool white, int alpha, int beta){
-    if(depth==0)return _evaluate(b);
+    if(depth==0)return _quiescence(b,white,alpha,beta);
     List<(int,int)> moves=[];
     for(int sq=0;sq<64;sq++){
       final p=b[sq]; if(p==empty)continue;
@@ -219,6 +285,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
       for(final t in _legalMoves(sq,b,white)){moves.add((sq,t));}
     }
     if(moves.isEmpty)return white?-30000:30000;
+    moves=_orderMoves(moves,b);
     if(white){
       int val=-999999;
       for(final m in moves){
@@ -242,9 +309,57 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     }
   }
 
+  int _quiescence(List<int> b, bool white, int alpha, int beta){
+    final standPat=_evaluate(b);
+    if(white){
+      if(standPat>=beta)return beta;
+      if(standPat>alpha)alpha=standPat;
+    } else {
+      if(standPat<=alpha)return alpha;
+      if(standPat<beta)beta=standPat;
+    }
+    List<(int,int)> captures=[];
+    for(int sq=0;sq<64;sq++){
+      final p=b[sq]; if(p==empty)continue;
+      if(white&&p<0)continue;
+      if(!white&&p>0)continue;
+      for(final t in _legalMoves(sq,b,white)){
+        if(b[t]!=empty)captures.add((sq,t));
+      }
+    }
+    captures=_orderMoves(captures,b);
+    for(final m in captures){
+      final nb=List<int>.from(b);
+      nb[m.$2]=nb[m.$1]; nb[m.$1]=empty;
+      final score=_quiescence(nb,!white,alpha,beta);
+      if(white){
+        if(score>alpha)alpha=score;
+        if(alpha>=beta)return beta;
+      } else {
+        if(score<beta)beta=score;
+        if(beta<=alpha)return alpha;
+      }
+    }
+    return white?alpha:beta;
+  }
   int _evaluate(List<int> b){
     int score=0;
-    for(final p in b){ score+=_pieceVal[p]??0; }
+    for(int sq=0;sq<64;sq++){
+      final p=b[sq]; if(p==empty)continue;
+      score+=_pieceVal[p]??0;
+      final white=p>0;
+      final pstSq=white?sq:63-sq;
+      int pstVal;
+      switch(p.abs()){
+        case 1: pstVal=_pawnPST[pstSq]; break;
+        case 2: pstVal=_knightPST[pstSq]; break;
+        case 3: pstVal=_bishopPST[pstSq]; break;
+        case 4: pstVal=_rookPST[pstSq]; break;
+        case 5: pstVal=_queenPST[pstSq]; break;
+        default: pstVal=_kingPST[pstSq];
+      }
+      score+=white?pstVal:-pstVal;
+    }
     return score;
   }
 
