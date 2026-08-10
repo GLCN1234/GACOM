@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../../../edu/edu_progress_recorder.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -84,6 +85,12 @@ class _AlgebraGameState extends State<AlgebraGame> {
         _feedback = 'Answer: ${_q['answer']}';
       }
     });
+    EduProgressRecorder.recordSession(
+      subject: 'algebra',
+      xpEarned: correct ? 10 : 0,
+      questionsAnswered: 1,
+      correctAnswers: correct ? 1 : 0,
+    );
     Future.delayed(const Duration(milliseconds: 1800), _next);
   }
 

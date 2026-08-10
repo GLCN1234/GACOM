@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../edu/edu_progress_recorder.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -87,6 +88,12 @@ class _PhysicsGameState extends State<PhysicsGame> {
     final correct = _ctrl.text.trim() == _q['answer'];
     if (correct) _score += 10;
     setState(() { _answered = true; _feedback = correct ? 'Correct!' : 'Answer: ${_q['answer']}'; });
+    EduProgressRecorder.recordSession(
+      subject: 'physics',
+      xpEarned: correct ? 10 : 0,
+      questionsAnswered: 1,
+      correctAnswers: correct ? 1 : 0,
+    );
     Future.delayed(const Duration(milliseconds: 2200), () {
       if (mounted) setState(() { _qIdx++; _ctrl.clear(); _answered = false; _showHint = false; _feedback = ''; });
     });

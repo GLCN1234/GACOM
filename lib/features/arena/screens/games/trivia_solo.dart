@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../edu/edu_progress_recorder.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,6 +49,12 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
     final correct = opt == _shuffled[_idx]['a'];
     if (correct) _score += 10 + _timeLeft;
     setState(() { _selected = opt; _answered = true; });
+    EduProgressRecorder.recordSession(
+      subject: 'logic',
+      xpEarned: correct ? 10 : 0,
+      questionsAnswered: 1,
+      correctAnswers: correct ? 1 : 0,
+    );
     Future.delayed(const Duration(milliseconds: 1000), _nextQ);
   }
 
