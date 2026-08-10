@@ -11,6 +11,7 @@ class _EduProfileState extends State<EduProfileScreen> {
   Map<String,dynamic>? _profile;
   List<Map<String,dynamic>> _progress = [];
   bool _loading = true;
+  int? _institutionRank, _institutionTotal, _globalRank, _globalTotal;
 
   static const _subjectMeta = {
     'math':        {'icon': Icons.calculate_outlined, 'label': 'Mathematics', 'color': 0xFFFF6A00},
@@ -57,7 +58,19 @@ class _EduProfileState extends State<EduProfileScreen> {
         final rows = await SupabaseService.client.from('edu_progress').select('*').eq('user_id', uid);
         prog = List<Map<String,dynamic>>.from(rows as List);
       } catch (_) {}
-      if (mounted) setState(() { _profile = p; _progress = prog; _loading = false; });
+      int? iRank, iTotal, gRank, gTotal;
+      try {
+        final rankRows = await SupabaseService.client.rpc('get_student_rankings', params: {'p_user_id': uid});
+        final rankRow = (rankRows as List).isNotEmpty ? rankRows.first as Map<String,dynamic> : null;
+        iRank = rankRow?['institution_rank'] as int?;
+        iTotal = rankRow?['institution_total'] as int?;
+        gRank = rankRow?['global_rank'] as int?;
+        gTotal = rankRow?['global_total'] as int?;
+      } catch (_) {}
+      if (mounted) setState(() {
+        _profile = p; _progress = prog; _loading = false;
+        _institutionRank = iRank; _institutionTotal = iTotal; _globalRank = gRank; _globalTotal = gTotal;
+      });
     } catch (_) { if (mounted) setState(() => _loading = false); }
   }
 
@@ -99,6 +112,24 @@ class _EduProfileState extends State<EduProfileScreen> {
                       Text('Top ${_avgAccuracy}% accuracy · $_maxStreak day streak', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
                     ])),
                   ]),
+                  if (_institutionRank != null || _globalRank != null) ...[
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      if (_institutionRank != null)
+                        Expanded(child: Container(padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
+                          child: Column(children: [
+                            Text('#$_institutionRank', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.deepOrange)),
+                            Text('of $_institutionTotal in school', style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+                          ]))),
+                      if (_institutionRank != null && _globalRank != null) const SizedBox(width: 10),
+                      if (_globalRank != null)
+                        Expanded(child: Container(padding: const EdgeInsets.symmetric(vertical: 10), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
+                          child: Column(children: [
+                            Text('#$_globalRank', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.accentCyan)),
+                            Text('of $_globalTotal globally', style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+                          ]))),
+                    ]),
+                  ],
                   const SizedBox(height: 16),
                   ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: (_totalXp % 1000) / 1000.0, backgroundColor: GacomColors.elevatedCard, valueColor: const AlwaysStoppedAnimation(GacomColors.deepOrange), minHeight: 8)),
                   const SizedBox(height: 4),
