@@ -13,17 +13,25 @@ class _EduProfileState extends State<EduProfileScreen> {
   bool _loading = true;
 
   static const _subjectMeta = {
-    'math':        {'icon': Icons.calculate_outlined, 'label': 'Mathematics',       'color': 0xFFFF6A00},
-    'science':     {'icon': Icons.science_outlined, 'label': 'Science',            'color': 0xFF00C2A8},
-    'english':     {'icon': Icons.translate_outlined, 'label': 'English',            'color': 0xFF3D8BFF},
-    'logic':       {'icon': Icons.psychology_outlined, 'label': 'Logic & IQ',         'color': 0xFFE85B8A},
-    'geography':   {'icon': Icons.public_outlined, 'label': 'Geography',          'color': 0xFF34D399},
-    'history':     {'icon': Icons.history_edu_outlined, 'label': 'History',            'color': 0xFFFF8A33},
-    'coding':      {'icon': Icons.code_outlined, 'label': 'Coding',             'color': 0xFF8B5CF6},
-    'languages':   {'icon': Icons.language_outlined, 'label': 'Languages',          'color': 0xFF00E5FF},
-    'finance':     {'icon': Icons.paid_outlined, 'label': 'Finance',            'color': 0xFF34D399},
-    'engineering': {'icon': Icons.engineering_outlined,  'label': 'Engineering',        'color': 0xFF3D8BFF},
-    'creativity':  {'icon': Icons.brush_outlined, 'label': 'Creativity',         'color': 0xFFFF6A00},
+    'math':        {'icon': Icons.calculate_outlined, 'label': 'Mathematics', 'color': 0xFFFF6A00},
+    'algebra':     {'icon': Icons.functions_rounded, 'label': 'Algebra', 'color': 0xFFFF8A33},
+    'geometry':    {'icon': Icons.gesture_rounded, 'label': 'Geometry', 'color': 0xFFE85B8A},
+    'statistics':  {'icon': Icons.show_chart_rounded, 'label': 'Statistics', 'color': 0xFF3D8BFF},
+    'simultaneous':{'icon': Icons.swap_horiz_rounded, 'label': 'Simultaneous Eqns', 'color': 0xFF8B5CF6},
+    'physics':     {'icon': Icons.science_outlined, 'label': 'Physics', 'color': 0xFF00C2A8},
+    'chemistry':   {'icon': Icons.biotech_outlined, 'label': 'Chemistry', 'color': 0xFF8B5CF6},
+    'biology':     {'icon': Icons.eco_outlined, 'label': 'Biology', 'color': 0xFF34D399},
+    'bst':         {'icon': Icons.precision_manufacturing_outlined, 'label': 'Basic Science and Technology', 'color': 0xFF00C2A8},
+    'english':     {'icon': Icons.translate_outlined, 'label': 'English Language', 'color': 0xFF3D8BFF},
+    'literature':  {'icon': Icons.record_voice_over_outlined, 'label': 'Literature', 'color': 0xFFFF8A33},
+    'geography':   {'icon': Icons.public_outlined, 'label': 'Geography', 'color': 0xFF34D399},
+    'history':     {'icon': Icons.history_edu_outlined, 'label': 'History', 'color': 0xFFFF8A33},
+    'economics':   {'icon': Icons.account_balance_outlined, 'label': 'Economics', 'color': 0xFF34D399},
+    'civics':      {'icon': Icons.groups_outlined, 'label': 'Civic Education', 'color': 0xFFFF6A00},
+    'coding':      {'icon': Icons.code_outlined, 'label': 'Computer Science', 'color': 0xFF8B5CF6},
+    'logic':       {'icon': Icons.psychology_outlined, 'label': 'Logic & IQ', 'color': 0xFFE85B8A},
+    'finance':     {'icon': Icons.paid_outlined, 'label': 'Financial Literacy', 'color': 0xFF34D399},
+    'engineering': {'icon': Icons.engineering_outlined, 'label': 'Engineering', 'color': 0xFF3D8BFF},
   };
 
   static const _allBadges = [
