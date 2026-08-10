@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../edu_progress_recorder.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -121,6 +122,15 @@ class _CurriculumGameState extends State<CurriculumGameScreen> {
         'completed_at': DateTime.now().toIso8601String(),
       }, onConflict: 'student_id,curriculum_id');
     } catch (_) {}
+    // Feed this completed topic into the student's overall academic
+    // profile — XP, accuracy, and streak — alongside built-in game results.
+    final topicQuestionCount = _levelQuestions.length * 5;
+    await EduProgressRecorder.recordSession(
+      subject: EduProgressRecorder.subjectIdFromLabel(_subject),
+      xpEarned: topicQuestionCount * 10,
+      questionsAnswered: topicQuestionCount,
+      correctAnswers: (finalAccuracy * topicQuestionCount).round(),
+    );
   }
 
   void _advanceLevel() {
