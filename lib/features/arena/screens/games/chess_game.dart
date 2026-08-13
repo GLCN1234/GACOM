@@ -292,9 +292,10 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     if(learnMode&&wasStudentMove){
       lastExplanation='Ryan is thinking about how to explain this...';
       _fetchTutorExplanation(beforeBoard,from,to,nb);
-    } else {
-      lastExplanation=null;
     }
+    // Ryan's own reply move deliberately does NOT clear lastExplanation —
+    // the student needs time to actually read it before it's replaced by
+    // their next move's explanation.
     setState((){board=nb; selected=null; legalMoves=[];});
     final nowWhite=!whiteTurn;
     if(!_hasAnyMove(nowWhite,board)){
@@ -592,7 +593,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
           ),
         )))),
         Padding(padding: const EdgeInsets.all(16), child: Row(children:[
-          Expanded(child: OutlinedButton(onPressed: _reset,
+          Expanded(child: OutlinedButton(onPressed: () => setState((){ _reset(); }),
             style: OutlinedButton.styleFrom(side: const BorderSide(color:GacomColors.deepOrange),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('NEW GAME', style: TextStyle(color:GacomColors.deepOrange,fontFamily:'Rajdhani',fontWeight:FontWeight.w800)))),
         ])),
