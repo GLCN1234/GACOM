@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/supabase_service.dart';
 
 // ── Chess piece constants ─────────────────────────────────────────────────────
 const empty = 0;
@@ -86,6 +87,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   bool learnMode=true;
   bool voiceEnabled=true;
   String? lastExplanation;
+  int moveCount=0;
 
   @override void initState(){
     super.initState();
@@ -256,7 +258,8 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     if(nb[to]==wP&&to<8){nb[to]=wQ;}
     if(nb[to]==bP&&to>=56){nb[to]=bQ;}
     if(learnMode&&wasStudentMove){
-      lastExplanation=_explainMove(beforeBoard,from,to,nb);
+      lastExplanation='Ryan is thinking about how to explain this...';
+      _fetchTutorExplanation(beforeBoard,from,to,nb);
     } else {
       lastExplanation=null;
     }
@@ -385,6 +388,28 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
       }
     }
     return white?alpha:beta;
+  }
+  Future<void> _fetchTutorExplanation(List<int> before, int from, int to, List<int> after) async {
+    moveCount++;
+    final movedPiece=before[from];
+    final capturedPiece=before[to];
+    final isHangingNow=_isHanging(to,after);
+    final isCheckNow=_inCheck(false,after);
+    try {
+      final res = await SupabaseService.client.functions.invoke('chess-tutor', body: {
+        'pieceName': _pieceName(movedPiece),
+        'fromSquare': _sqName(from),
+        'toSquare': _sqName(to),
+        'capturedPiece': capturedPiece!=empty ? _pieceName(capturedPiece) : null,
+        'moveNumber': moveCount,
+        'isHanging': isHangingNow,
+        'isCheck': isCheckNow,
+      });
+      final explanation = (res.data as Map?)?['explanation'] as String?;
+      if(mounted) setState((){ lastExplanation = explanation ?? 'Good move \u2014 keep going!'; });
+    } catch (_) {
+      if(mounted) setState((){ lastExplanation = null; });
+    }
   }
   String _sqName(int sq){
     final file=String.fromCharCode(97+sq%8);
