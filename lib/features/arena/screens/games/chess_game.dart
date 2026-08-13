@@ -250,7 +250,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
 
   // ── Alpha-beta AI ───────────────────────────────────────────────────────────
   void _aiMove(){
-    final move=_bestMove(board,false,4);
+    final move=_bestMove(board,false,3);
     if(move!=null){_makeMove(move.$1,move.$2);}
     setState((){aiThinking=false;});
   }
@@ -319,7 +319,8 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     }
   }
 
-  int _quiescence(List<int> b, bool white, int alpha, int beta){
+  int _quiescence(List<int> b, bool white, int alpha, int beta, [int depth=0]){
+    if(depth>=4)return _evaluate(b);
     final standPat=_evaluate(b);
     if(white){
       if(standPat>=beta)return beta;
@@ -341,7 +342,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     for(final m in captures){
       final nb=List<int>.from(b);
       nb[m.$2]=nb[m.$1]; nb[m.$1]=empty;
-      final score=_quiescence(nb,!white,alpha,beta);
+      final score=_quiescence(nb,!white,alpha,beta,depth+1);
       if(white){
         if(score>alpha)alpha=score;
         if(alpha>=beta)return beta;
