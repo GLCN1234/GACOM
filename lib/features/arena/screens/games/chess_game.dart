@@ -430,12 +430,30 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
+        IconButton(
+          icon: Icon(learnMode?Icons.school_rounded:Icons.emoji_events_rounded, color: GacomColors.deepOrange),
+          tooltip: learnMode?'Learn mode — tap to switch to real play':'Play mode — tap to switch to Learn mode',
+          onPressed: (){
+            setState((){learnMode=!learnMode; lastExplanation=null;});
+            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+              content: Text(learnMode?'Learn mode — Ryan will explain your moves':'Play mode — full-strength Ryan, no hints'),
+              duration: const Duration(seconds:2)));
+          },
+        ),
         Text('W $wScore — B $bScore', style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.textSecondary)),
         const SizedBox(width:12),
       ]),
       body: Column(children:[
         Container(padding: const EdgeInsets.all(12),
           child: Text(status, style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:15,color:GacomColors.textPrimary), textAlign: TextAlign.center)),
+        if(learnMode&&lastExplanation!=null)
+          Container(margin: const EdgeInsets.symmetric(horizontal:16,vertical:4), padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.3))),
+            child: Row(children:[
+              const Icon(Icons.lightbulb_outline_rounded, color: GacomColors.accentCyan, size: 18),
+              const SizedBox(width:8),
+              Expanded(child: Text(lastExplanation!, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+            ])),
         Expanded(child: Center(child: AspectRatio(aspectRatio:1,child:Padding(
           padding: const EdgeInsets.symmetric(horizontal:8),
           child: GridView.builder(
