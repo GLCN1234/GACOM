@@ -83,6 +83,9 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   bool gameOver=false;
   int wScore=0,bScore=0;
   bool aiThinking=false;
+  bool learnMode=true;
+  bool voiceEnabled=true;
+  String? lastExplanation;
 
   @override void initState(){ super.initState(); _reset(); }
 
@@ -212,11 +215,18 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
 
   void _makeMove(int from, int to){
     HapticFeedback.lightImpact();
+    final wasStudentMove=whiteTurn;
+    final beforeBoard=List<int>.from(board);
     final nb=List<int>.from(board);
     nb[to]=nb[from]; nb[from]=empty;
     // pawn promotion
     if(nb[to]==wP&&to<8){nb[to]=wQ;}
     if(nb[to]==bP&&to>=56){nb[to]=bQ;}
+    if(learnMode&&wasStudentMove){
+      lastExplanation=_explainMove(beforeBoard,from,to,nb);
+    } else {
+      lastExplanation=null;
+    }
     setState((){board=nb; selected=null; legalMoves=[];});
     final nowWhite=!whiteTurn;
     if(!_hasAnyMove(nowWhite,board)){
@@ -341,6 +351,53 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
       }
     }
     return white?alpha:beta;
+  }
+  String _explainMove(List<int> before, int from, int to, List<int> after){
+    final movedPiece=before[from];
+    final capturedPiece=before[to];
+    final best=_bestMove(before,true,2);
+    final actualEval=_evaluate(after);
+    int bestEval=actualEval;
+    if(best!=null&&best!=(from,to)){
+      final nb2=List<int>.from(before);
+      nb2[best.$2]=nb2[best.$1]; nb2[best.$1]=empty;
+      bestEval=_evaluate(nb2);
+    }
+    final gap=bestEval-actualEval;
+    final hanging=_isHanging(to,after);
+    if(hanging&&gap>150){
+      return "That leaves your ${_pieceName(movedPiece)} undefended \u2014 Ryan could capture it next turn.";
+    }
+    if(capturedPiece!=empty&&(_pieceVal[capturedPiece]?.abs()??0)>=300){
+      return "Nice capture! You're gaining material.";
+    }
+    if(gap>=300){
+      return "There was a much stronger move available here.";
+    }
+    if(gap>=100){
+      return "A decent move, but a better option existed.";
+    }
+    final toRow=to~/8, toCol=to%8;
+    if((toRow==3||toRow==4)&&(toCol==3||toCol==4)&&movedPiece.abs()==1){
+      return "Good \u2014 controlling the center gives you more options.";
+    }
+    return "Good move!";
+  }
+  bool _isHanging(int sq, List<int> b){
+    final p=b[sq]; if(p==empty)return false;
+    final white=p>0;
+    for(int s=0;s<64;s++){
+      final q=b[s]; if(q==empty)continue;
+      if(white&&q>0)continue; if(!white&&q<0)continue;
+      if(_movesFor(s,b).contains(sq))return true;
+    }
+    return false;
+  }
+  String _pieceName(int p){
+    switch(p.abs()){
+      case 1: return 'pawn'; case 2: return 'knight'; case 3: return 'bishop';
+      case 4: return 'rook'; case 5: return 'queen'; default: return 'king';
+    }
   }
   int _evaluate(List<int> b){
     int score=0;
