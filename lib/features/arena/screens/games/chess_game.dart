@@ -353,6 +353,11 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     }
     return white?alpha:beta;
   }
+  String _sqName(int sq){
+    final file=String.fromCharCode(97+sq%8);
+    final rank=8-sq~/8;
+    return '$file$rank';
+  }
   String _explainMove(List<int> before, int from, int to, List<int> after){
     final movedPiece=before[from];
     final capturedPiece=before[to];
@@ -366,23 +371,33 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     }
     final gap=bestEval-actualEval;
     final hanging=_isHanging(to,after);
+    final fromRank=from~/8;
+    final isDevelopingMove=(movedPiece.abs()==2||movedPiece.abs()==3)&&fromRank==7;
+    final isEarlyQueenMove=movedPiece.abs()==5&&fromRank==7;
+
     if(hanging&&gap>150){
-      return "That leaves your ${_pieceName(movedPiece)} undefended \u2014 Ryan could capture it next turn.";
+      return "That leaves your ${_pieceName(movedPiece)} on ${_sqName(to)} undefended \u2014 Ryan could capture it next turn.";
     }
     if(capturedPiece!=empty&&(_pieceVal[capturedPiece]?.abs()??0)>=300){
-      return "Nice capture! You're gaining material.";
+      return "Nice capture! You took Ryan's ${_pieceName(capturedPiece)}, and you're ahead in material now.";
     }
-    if(gap>=300){
-      return "There was a much stronger move available here.";
+    if(gap>=300&&best!=null){
+      return "There was a much stronger move here \u2014 moving your ${_pieceName(before[best.$1])} to ${_sqName(best.$2)} would have been better.";
     }
-    if(gap>=100){
-      return "A decent move, but a better option existed.";
+    if(gap>=100&&best!=null){
+      return "Decent, but ${_sqName(best.$2)} would have been a slightly stronger square for your ${_pieceName(before[best.$1])}.";
+    }
+    if(isEarlyQueenMove){
+      return "Careful \u2014 moving your queen out this early can expose her to attack. Try developing your knights and bishops first.";
+    }
+    if(isDevelopingMove){
+      return "Good \u2014 developing your ${_pieceName(movedPiece)} early gets your pieces active.";
     }
     final toRow=to~/8, toCol=to%8;
     if((toRow==3||toRow==4)&&(toCol==3||toCol==4)&&movedPiece.abs()==1){
-      return "Good \u2014 controlling the center gives you more options.";
+      return "Good \u2014 controlling the center with a pawn gives you more options later.";
     }
-    return "Good move!";
+    return "Solid move \u2014 no immediate problems. Keep building your position.";
   }
   bool _isHanging(int sq, List<int> b){
     final p=b[sq]; if(p==empty)return false;
@@ -441,10 +456,10 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
               duration: const Duration(seconds:2)));
           },
         ),
-        Text('W $wScore — B $bScore', style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.textSecondary)),
-        const SizedBox(width:12),
       ]),
       body: Column(children:[
+        Padding(padding: const EdgeInsets.only(top:8), child: Center(
+          child: Text('W $wScore — B $bScore', style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.textSecondary)))),
         Container(padding: const EdgeInsets.all(12),
           child: Text(status, style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:15,color:GacomColors.textPrimary), textAlign: TextAlign.center)),
         if(learnMode&&lastExplanation!=null)
