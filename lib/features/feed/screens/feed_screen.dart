@@ -1029,18 +1029,18 @@ class _EduModeDialogState extends State<_EduModeDialog> {
           const SizedBox(height: 20),
 
           // Icon
-          Text(page['icon']!, style: const TextStyle(fontSize: 52)),
+          Icon(page['icon']! as IconData, size: 52, color: GacomColors.deepOrange),
           const SizedBox(height: 16),
 
           // Title + subtitle
-          Text(page['title']!, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary), textAlign: TextAlign.center),
+          Text(page['title']! as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: GacomColors.textPrimary), textAlign: TextAlign.center),
           const SizedBox(height: 4),
-          Text(page['subtitle']!, style: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(page['subtitle']! as String, style: const TextStyle(color: GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 16),
 
           // Body
           Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
-            child: Text(page['body']!, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5))),
+            child: Text(page['body']! as String, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5))),
           const SizedBox(height: 20),
 
           // Terms on last page
