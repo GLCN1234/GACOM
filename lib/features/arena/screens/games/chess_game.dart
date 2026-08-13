@@ -98,31 +98,63 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     showDialog(context: context, builder: (dialogCtx) => AlertDialog(
       backgroundColor: GacomColors.cardDark,
       title: const Text('Welcome to Chess with Ryan', style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:GacomColors.textPrimary)),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('The goal is to checkmate your opponent\'s king \u2014 trap it so it cannot escape capture. Here is how each piece moves:',
+      content: SizedBox(width: 320, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('The goal is to checkmate your opponent\'s king \u2014 trap it so it cannot escape capture. The highlighted squares below show exactly where each piece can move:',
           style: TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
-        const SizedBox(height: 12),
-        _rulePoint('Pawn', 'Moves straight ahead one square (two on its very first move), but captures diagonally.'),
-        _rulePoint('Knight', 'Moves in an L-shape \u2014 two squares one way, then one square sideways. It can jump over other pieces.'),
-        _rulePoint('Bishop', 'Moves any distance, but only diagonally.'),
-        _rulePoint('Rook', 'Moves any distance in a straight line \u2014 forward, back, left, or right.'),
-        _rulePoint('Queen', 'The most powerful piece \u2014 moves any distance in any direction.'),
-        _rulePoint('King', 'Moves only one square in any direction. Keep it safe \u2014 losing it means losing the game.'),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+        _pieceLesson(wP, 'Pawn', 'Moves straight ahead one square (two on its very first move). It captures only diagonally, shown here by the highlighted squares.'),
+        _pieceLesson(wN, 'Knight', 'Moves in an L-shape and can jump over other pieces \u2014 the only piece that can do that.'),
+        _pieceLesson(wB, 'Bishop', 'Moves any distance, but only along diagonal lines.'),
+        _pieceLesson(wR, 'Rook', 'Moves any distance in a straight line \u2014 forward, back, left, or right.'),
+        _pieceLesson(wQ, 'Queen', 'The most powerful piece \u2014 moves any distance in any direction.'),
+        _pieceLesson(wK, 'King', 'Moves only one square in any direction. Keep it safe \u2014 losing it means losing the game.'),
+        const SizedBox(height: 8),
         const Text('Play your move whenever you\'re ready, and Ryan will explain what happened after every move you make.',
           style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-      ])),
+      ]))),
       actions: [
         TextButton(onPressed: () => Navigator.pop(dialogCtx),
           child: const Text('Let\'s Play!', style: TextStyle(color: GacomColors.deepOrange, fontFamily:'Rajdhani',fontWeight:FontWeight.w800))),
       ],
     ));
   }
-  static Widget _rulePoint(String piece, String rule) => Padding(padding: const EdgeInsets.only(bottom:8),
-    child: RichText(text: TextSpan(children: [
-      TextSpan(text: '$piece: ', style: const TextStyle(color: GacomColors.deepOrange, fontFamily:'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
-      TextSpan(text: rule, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
-    ])));
+  Widget _pieceLesson(int pieceType, String name, String rule) => Padding(padding: const EdgeInsets.only(bottom:14),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _pieceDemoBoard(pieceType),
+      const SizedBox(width: 10),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(name, style: const TextStyle(color: GacomColors.deepOrange, fontFamily:'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
+        const SizedBox(height: 4),
+        Text(rule, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
+      ])),
+    ]));
+  Widget _pieceDemoBoard(int pieceType){
+    final demoBoard = List<int>.filled(64, empty);
+    int centerSq = 27;
+    if(pieceType==wP){
+      centerSq = 52;
+      demoBoard[52]=wP;
+      demoBoard[43]=bP;
+      demoBoard[45]=bP;
+    } else {
+      demoBoard[centerSq]=pieceType;
+    }
+    final moves=_movesFor(centerSq,demoBoard);
+    return SizedBox(width:104, height:104, child: GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:8),
+      itemCount:64,
+      itemBuilder:(_, i){
+        final light=((i~/8)+(i%8))%2==0;
+        Color bg;
+        if(i==centerSq) bg=GacomColors.deepOrange;
+        else if(moves.contains(i)) bg=GacomColors.accentCyan.withOpacity(0.6);
+        else bg=light?const Color(0xFFF0D9B5):const Color(0xFFB58863);
+        return Container(color:bg,
+          child: i==centerSq?Center(child:Text(_pieceGlyph[pieceType]??'',style:const TextStyle(fontSize:9,color:Colors.white))):null);
+      },
+    ));
+  }
 
   void _reset(){
     board=List<int>.from(_startBoard);
