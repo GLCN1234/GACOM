@@ -447,7 +447,11 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
         IconButton(
-          icon: Icon(learnMode?Icons.school_rounded:Icons.emoji_events_rounded, color: GacomColors.deepOrange),
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: GacomColors.deepOrange, shape: BoxShape.circle),
+            child: Icon(learnMode?Icons.school_rounded:Icons.emoji_events_rounded, color: Colors.white, size: 18),
+          ),
           tooltip: learnMode?'Learn mode — tap to switch to real play':'Play mode — tap to switch to Learn mode',
           onPressed: (){
             setState((){learnMode=!learnMode; lastExplanation=null;});
