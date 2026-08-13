@@ -87,7 +87,40 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   bool voiceEnabled=true;
   String? lastExplanation;
 
-  @override void initState(){ super.initState(); _reset(); }
+  @override void initState(){
+    super.initState();
+    _reset();
+    WidgetsBinding.instance.addPostFrameCallback((_){ if(learnMode&&mounted) _showWelcomeDialog(); });
+  }
+  void _showWelcomeDialog(){
+    showDialog(context: context, builder: (dialogCtx) => AlertDialog(
+      backgroundColor: GacomColors.cardDark,
+      title: const Text('Welcome to Chess with Ryan', style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:GacomColors.textPrimary)),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('The goal is to checkmate your opponent\'s king \u2014 trap it so it cannot escape capture. Here is how each piece moves:',
+          style: TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+        const SizedBox(height: 12),
+        _rulePoint('Pawn', 'Moves straight ahead one square (two on its very first move), but captures diagonally.'),
+        _rulePoint('Knight', 'Moves in an L-shape \u2014 two squares one way, then one square sideways. It can jump over other pieces.'),
+        _rulePoint('Bishop', 'Moves any distance, but only diagonally.'),
+        _rulePoint('Rook', 'Moves any distance in a straight line \u2014 forward, back, left, or right.'),
+        _rulePoint('Queen', 'The most powerful piece \u2014 moves any distance in any direction.'),
+        _rulePoint('King', 'Moves only one square in any direction. Keep it safe \u2014 losing it means losing the game.'),
+        const SizedBox(height: 12),
+        const Text('Play your move whenever you\'re ready, and Ryan will explain what happened after every move you make.',
+          style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+      ])),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogCtx),
+          child: const Text('Let\'s Play!', style: TextStyle(color: GacomColors.deepOrange, fontFamily:'Rajdhani',fontWeight:FontWeight.w800))),
+      ],
+    ));
+  }
+  static Widget _rulePoint(String piece, String rule) => Padding(padding: const EdgeInsets.only(bottom:8),
+    child: RichText(text: TextSpan(children: [
+      TextSpan(text: '$piece: ', style: const TextStyle(color: GacomColors.deepOrange, fontFamily:'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
+      TextSpan(text: rule, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+    ])));
 
   void _reset(){
     board=List<int>.from(_startBoard);
