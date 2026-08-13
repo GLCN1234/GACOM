@@ -504,19 +504,20 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
-        IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: GacomColors.deepOrange, shape: BoxShape.circle),
-            child: Icon(learnMode?Icons.school_rounded:Icons.emoji_events_rounded, color: Colors.white, size: 18),
-          ),
-          tooltip: learnMode?'Learn mode — tap to switch to real play':'Play mode — tap to switch to Learn mode',
-          onPressed: (){
+        GestureDetector(
+          onTap: (){
             setState((){learnMode=!learnMode; lastExplanation=null;});
             ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
               content: Text(learnMode?'Learn mode — Ryan will explain your moves':'Play mode — full-strength Ryan, no hints'),
               duration: const Duration(seconds:2)));
           },
+          child: Container(margin: const EdgeInsets.only(right:8), padding: const EdgeInsets.symmetric(horizontal:12,vertical:6),
+            decoration: BoxDecoration(color: GacomColors.deepOrange, borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children:[
+              Icon(learnMode?Icons.school_rounded:Icons.emoji_events_rounded, color: Colors.white, size: 16),
+              const SizedBox(width:6),
+              Text(learnMode?'LEARN':'PLAY', style: const TextStyle(color: Colors.white, fontFamily:'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12)),
+            ])),
         ),
       ]),
       body: Column(children:[
@@ -526,11 +527,12 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
           child: Text(status, style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:15,color:GacomColors.textPrimary), textAlign: TextAlign.center)),
         if(learnMode&&lastExplanation!=null)
           Container(margin: const EdgeInsets.symmetric(horizontal:16,vertical:4), padding: const EdgeInsets.all(12),
+            constraints: const BoxConstraints(maxHeight: 90),
             decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.3))),
-            child: Row(children:[
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children:[
               const Icon(Icons.lightbulb_outline_rounded, color: GacomColors.accentCyan, size: 18),
               const SizedBox(width:8),
-              Expanded(child: Text(lastExplanation!, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+              Expanded(child: SingleChildScrollView(child: Text(lastExplanation!, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)))),
             ])),
         Expanded(child: Center(child: AspectRatio(aspectRatio:1,child:Padding(
           padding: const EdgeInsets.symmetric(horizontal:8),
