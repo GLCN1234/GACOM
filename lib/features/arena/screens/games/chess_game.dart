@@ -88,28 +88,111 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
   bool voiceEnabled=true;
   String? lastExplanation;
   int moveCount=0;
+  int currentLesson=1;
+  bool _lessonLoaded=false;
 
   @override void initState(){
     super.initState();
     _reset();
-    WidgetsBinding.instance.addPostFrameCallback((_){ if(learnMode&&mounted) _showWelcomeDialog(); });
+    _loadLessonProgress();
   }
+  Future<void> _loadLessonProgress() async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) { _lessonLoaded=true; return; }
+    try {
+      final row = await SupabaseService.client.from('chess_lesson_progress')
+          .select('current_lesson').eq('student_id', uid).maybeSingle();
+      if (row != null) currentLesson = row['current_lesson'] as int? ?? 1;
+    } catch (_) {}
+    _lessonLoaded=true;
+    if(mounted) WidgetsBinding.instance.addPostFrameCallback((_){ if(learnMode&&mounted) _showWelcomeDialog(); });
+  }
+  Future<void> _advanceLessonIfComplete() async {
+    if(!learnMode) return;
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) return;
+    final nextLesson = currentLesson < 8 ? currentLesson + 1 : 8;
+    try {
+      await SupabaseService.client.from('chess_lesson_progress').upsert({
+        'student_id': uid,
+        'current_lesson': nextLesson,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'student_id');
+      if(mounted) setState((){ currentLesson = nextLesson; });
+    } catch (_) {}
+  }
+  static const _lessonTitles = {
+    1: 'How Each Piece Moves', 2: 'Check and Checkmate', 3: 'Controlling the Center',
+    4: 'Developing Your Pieces', 5: 'Keeping Your King Safe', 6: 'Piece Safety and Trades',
+    7: 'Simple Tactics: Forks and Pins', 8: 'Basic Checkmate Patterns',
+  };
+  static const _lessonFocus = {
+    1: 'how each piece is allowed to move', 2: 'protecting the king \u2014 what check and checkmate mean',
+    3: 'controlling the center squares', 4: 'developing knights and bishops early instead of moving one piece repeatedly',
+    5: 'king safety and castling', 6: 'not losing pieces for free and making fair trades',
+    7: 'spotting simple forks and pins', 8: 'finishing a winning position with basic checkmate patterns',
+  };
+  static const _lessonPoints = {
+    2: [
+      'Check means the king is under direct attack right now and must be dealt with immediately.',
+      'You can escape check by moving the king to safety, blocking the attack, or capturing the attacking piece.',
+      'Checkmate means the king is in check with no way to escape at all \u2014 that instantly ends the game.',
+    ],
+    3: [
+      'The four center squares are the most valuable space on the board.',
+      'Pieces placed in the center can reach far more squares than pieces stuck on the edge.',
+      'A strong opening move is almost always pushing a center pawn forward.',
+    ],
+    4: [
+      'Developing means bringing your knights and bishops out from the back row early.',
+      'Avoid moving the same piece twice in the opening \u2014 get everyone into the game first.',
+      'Don\'t bring your queen out too early \u2014 she can get chased around and cost you time.',
+    ],
+    5: [
+      'Castling moves your king two squares toward a rook, and that rook jumps beside the king \u2014 all in one move.',
+      'It only works if neither piece has moved yet and nothing stands between them.',
+      'Castling gets your king safely behind a wall of pawns, away from the fighting in the center.',
+    ],
+    6: [
+      'Every piece has a rough value: pawn = 1, knight or bishop = 3, rook = 5, queen = 9.',
+      'Before moving, check whether a piece will be safely defended or left free to capture.',
+      'A fair trade swaps similar values \u2014 losing a knight to win a rook is good; losing a queen for a pawn is a disaster.',
+    ],
+    7: [
+      'A fork is one move that attacks two enemy pieces at the same time \u2014 they can only save one.',
+      'A pin means a piece can\'t safely move because something more valuable stands directly behind it.',
+      'Learning to spot these patterns is how you start winning material.',
+    ],
+    8: [
+      'With a king and queen against a lone king, you can force checkmate by squeezing the enemy king to the board\'s edge.',
+      'A back-rank mate happens when a king is trapped behind its own pawns with no escape square.',
+      'Recognizing these patterns turns a winning position into an actual win.',
+    ],
+  };
   void _showWelcomeDialog(){
+    final lessonNum = currentLesson.clamp(1, 8);
     showDialog(context: context, builder: (dialogCtx) => AlertDialog(
       backgroundColor: GacomColors.cardDark,
-      title: const Text('Welcome to Chess with Ryan', style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:GacomColors.textPrimary)),
+      title: Text('Lesson $lessonNum: ${_lessonTitles[lessonNum]}', style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:GacomColors.textPrimary)),
       content: SizedBox(width: 320, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('The goal is to checkmate your opponent\'s king \u2014 trap it so it cannot escape capture. The highlighted squares below show exactly where each piece can move:',
-          style: TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
-        const SizedBox(height: 14),
-        _pieceLesson(wP, 'Pawn', 'Moves straight ahead one square (two on its very first move). It captures only diagonally, shown here by the highlighted squares.'),
-        _pieceLesson(wN, 'Knight', 'Moves in an L-shape and can jump over other pieces \u2014 the only piece that can do that.'),
-        _pieceLesson(wB, 'Bishop', 'Moves any distance, but only along diagonal lines.'),
-        _pieceLesson(wR, 'Rook', 'Moves any distance in a straight line \u2014 forward, back, left, or right.'),
-        _pieceLesson(wQ, 'Queen', 'The most powerful piece \u2014 moves any distance in any direction.'),
-        _pieceLesson(wK, 'King', 'Moves only one square in any direction. Keep it safe \u2014 losing it means losing the game.'),
+        if(lessonNum==1) ...[
+          const Text('The goal is to checkmate your opponent\'s king \u2014 trap it so it cannot escape capture. The highlighted squares below show exactly where each piece can move:',
+            style: TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+          const SizedBox(height: 14),
+          _pieceLesson(wP, 'Pawn', 'Moves straight ahead one square (two on its very first move). It captures only diagonally, shown here by the highlighted squares.'),
+          _pieceLesson(wN, 'Knight', 'Moves in an L-shape and can jump over other pieces \u2014 the only piece that can do that.'),
+          _pieceLesson(wB, 'Bishop', 'Moves any distance, but only along diagonal lines.'),
+          _pieceLesson(wR, 'Rook', 'Moves any distance in a straight line \u2014 forward, back, left, or right.'),
+          _pieceLesson(wQ, 'Queen', 'The most powerful piece \u2014 moves any distance in any direction.'),
+          _pieceLesson(wK, 'King', 'Moves only one square in any direction. Keep it safe \u2014 losing it means losing the game.'),
+        ] else
+          ...(_lessonPoints[lessonNum] ?? []).map((point) => Padding(padding: const EdgeInsets.only(bottom:10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('\u2022 ', style: TextStyle(color: GacomColors.deepOrange, fontWeight: FontWeight.w800)),
+              Expanded(child: Text(point, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+            ]))),
         const SizedBox(height: 8),
-        const Text('Play your move whenever you\'re ready, and Ryan will explain what happened after every move you make.',
+        const Text('Play your move whenever you\'re ready, and Ryan will guide you as you play.',
           style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
       ]))),
       actions: [
