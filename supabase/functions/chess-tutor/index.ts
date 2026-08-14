@@ -10,7 +10,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
   try {
-    const { pieceName, fromSquare, toSquare, capturedPiece, moveNumber, isHanging, isCheck } = await req.json()
+    const { pieceName, fromSquare, toSquare, capturedPiece, moveNumber, isHanging, isCheck, lessonFocus } = await req.json()
 
     const apiKey = Deno.env.get('GEMINI_API_KEY')
     if (!apiKey) {
@@ -36,6 +36,7 @@ The student just made a move. Explain it in ONE short sentence \u2014 never more
       capturedPiece ? `This move captured a ${capturedPiece}` : `No capture happened`,
       isHanging ? `Warning: this piece is now undefended and could be captured next turn` : ``,
       isCheck ? `This move puts the opponent in check` : ``,
+      lessonFocus ? `The student is currently learning about: ${lessonFocus}. Prioritize tying your feedback to this specific lesson focus when relevant.` : ``,
     ].filter(Boolean).join('. ')
 
     const geminiRes = await fetch(

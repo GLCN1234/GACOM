@@ -386,8 +386,10 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
         final winner=whiteTurn?'White':'Black';
         setState((){gameOver=true; status='$winner wins by checkmate!';
           if(whiteTurn)wScore++;else bScore++;});
+        _advanceLessonIfComplete();
       } else {
         setState((){gameOver=true; status='Stalemate — draw!';});
+        _advanceLessonIfComplete();
       }
       return;
     }
@@ -520,6 +522,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
         'moveNumber': moveCount,
         'isHanging': isHangingNow,
         'isCheck': isCheckNow,
+        'lessonFocus': _lessonFocus[currentLesson.clamp(1,8)],
       });
       final explanation = (res.data as Map?)?['explanation'] as String?;
       if(mounted) setState((){ lastExplanation = explanation ?? 'Good move \u2014 keep going!'; });
