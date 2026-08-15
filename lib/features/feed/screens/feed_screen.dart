@@ -28,7 +28,7 @@ final _demoTrending = [
 
 // ── Algorithm engine ──────────────────────────────────────────────────────────
 class _AlgorithmEngine {
-  static double score({required Map<String, dynamic> post, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0}) {
+  static double score({required Map<String, dynamic> post, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0, DateTime? seenAt}) {
     final likes = (post['likes_count'] as int? ?? 0).toDouble();
     final comments = (post['comments_count'] as int? ?? 0).toDouble();
     final shares = (post['shares_count'] as int? ?? 0).toDouble();
@@ -45,12 +45,17 @@ class _AlgorithmEngine {
     final postId = (post['id'] ?? '').toString();
     final combined = (postId.hashCode ^ sessionSeed) & 0x7fffffff;
     final jitter = (combined % 1000) / 1000.0 * 0.15;
-    return (engScore * 0.40) + (recency * 0.35) + (math.min(social, 1.0) * 0.25) + jitter;
+    double seenPenalty = 0.0;
+    if (seenAt != null) {
+      final hoursSinceSeen = DateTime.now().difference(seenAt).inMinutes / 60.0;
+      seenPenalty = -0.35 * math.exp(-hoursSinceSeen / 8.0);
+    }
+    return (engScore * 0.40) + (recency * 0.35) + (math.min(social, 1.0) * 0.25) + jitter + seenPenalty;
   }
 
-  static List<Map<String, dynamic>> rank({required List<Map<String, dynamic>> posts, required List<Map<String, dynamic>> discoveryPool, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0}) {
+  static List<Map<String, dynamic>> rank({required List<Map<String, dynamic>> posts, required List<Map<String, dynamic>> discoveryPool, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0, Map<String, DateTime> seenPosts=const {}}) {
     if (posts.isEmpty) return posts;
-    final scored = posts.map((p) => {...p, '_score': score(post: p, followedIds: followedIds, likedAuthorIds: likedAuthorIds, sessionSeed: sessionSeed)}).toList()
+    final scored = posts.map((p) => {...p, '_score': score(post: p, followedIds: followedIds, likedAuthorIds: likedAuthorIds, sessionSeed: sessionSeed, seenAt: seenPosts[(p['id'] ?? '').toString()])}).toList()
       ..sort((a, b) => (b['_score'] as double).compareTo(a['_score'] as double));
     final result = <Map<String, dynamic>>[];
     int di = 0;
@@ -326,9 +331,22 @@ class _PostListState extends ConsumerState<_PostList> {
   // gives the feed natural reshuffling on return without breaking real ranking quality.
   final int _sessionSeed = math.Random().nextInt(1 << 20);
   Set<String> _followedIds = {}; Set<String> _likedAuthorIds = {}; List<Map<String, dynamic>> _discoveryPool = [];
+  Map<String, DateTime> _seenPosts = {};
 
   @override void initState() { super.initState(); _loadContext().then((_) => _load()); }
 
+  Future<void> _markPostsSeen(List<Map<String, dynamic>> posts) async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null || posts.isEmpty) return;
+    try {
+      final rows = posts.map((p) => {
+        'user_id': uid,
+        'post_id': p['id'],
+        'viewed_at': DateTime.now().toIso8601String(),
+      }).toList();
+      await SupabaseService.client.from('post_views').upsert(rows, onConflict: 'user_id,post_id');
+    } catch (_) {}
+  }
   Future<void> _loadContext() async {
     final uid = SupabaseService.currentUserId; if (uid == null) return;
     try {
@@ -340,6 +358,8 @@ class _PostListState extends ConsumerState<_PostList> {
         final discovery = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status)').eq('is_deleted', false).order('likes_count', ascending: false).limit(20);
         _discoveryPool = List<Map<String, dynamic>>.from(discovery);
       }
+      final views = await SupabaseService.client.from('post_views').select('post_id,viewed_at').eq('user_id', uid).order('viewed_at', ascending: false).limit(300);
+      _seenPosts = { for (final v in (views as List)) v['post_id'] as String: DateTime.tryParse(v['viewed_at'] as String? ?? '') ?? DateTime.now() };
     } catch (_) {}
   }
 
@@ -353,7 +373,8 @@ class _PostListState extends ConsumerState<_PostList> {
         rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status), is_liked:post_likes(user_id)').eq('is_deleted', false).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize * 3, (_page + 1) * AppConstants.feedPageSize * 3 - 1);
       }
       final typed = List<Map<String, dynamic>>.from(rawPosts);
-      final ranked = _AlgorithmEngine.rank(posts: typed, discoveryPool: _discoveryPool, followedIds: _followedIds, likedAuthorIds: _likedAuthorIds, sessionSeed: _sessionSeed);
+      final ranked = _AlgorithmEngine.rank(posts: typed, discoveryPool: _discoveryPool, followedIds: _followedIds, likedAuthorIds: _likedAuthorIds, sessionSeed: _sessionSeed, seenPosts: _seenPosts);
+      _markPostsSeen(typed);
       if (mounted) setState(() {
         if (_page == 0 && typed.isEmpty) { _posts = List.from(_demoPosts); }
         else { _posts.addAll(ranked); }
