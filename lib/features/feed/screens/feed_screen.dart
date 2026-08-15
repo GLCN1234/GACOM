@@ -28,7 +28,7 @@ final _demoTrending = [
 
 // ── Algorithm engine ──────────────────────────────────────────────────────────
 class _AlgorithmEngine {
-  static double score({required Map<String, dynamic> post, required Set<String> followedIds, required Set<String> likedAuthorIds}) {
+  static double score({required Map<String, dynamic> post, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0}) {
     final likes = (post['likes_count'] as int? ?? 0).toDouble();
     final comments = (post['comments_count'] as int? ?? 0).toDouble();
     final shares = (post['shares_count'] as int? ?? 0).toDouble();
@@ -42,12 +42,15 @@ class _AlgorithmEngine {
     if (followedIds.contains(authorId)) social += 0.4;
     if (likedAuthorIds.contains(authorId)) social += 0.2;
     if ((post['author'] as Map?)?['verification_status'] == 'verified') social += 0.1;
-    return (engScore * 0.40) + (recency * 0.35) + (math.min(social, 1.0) * 0.25);
+    final postId = (post['id'] ?? '').toString();
+    final combined = (postId.hashCode ^ sessionSeed) & 0x7fffffff;
+    final jitter = (combined % 1000) / 1000.0 * 0.15;
+    return (engScore * 0.40) + (recency * 0.35) + (math.min(social, 1.0) * 0.25) + jitter;
   }
 
-  static List<Map<String, dynamic>> rank({required List<Map<String, dynamic>> posts, required List<Map<String, dynamic>> discoveryPool, required Set<String> followedIds, required Set<String> likedAuthorIds}) {
+  static List<Map<String, dynamic>> rank({required List<Map<String, dynamic>> posts, required List<Map<String, dynamic>> discoveryPool, required Set<String> followedIds, required Set<String> likedAuthorIds, int sessionSeed=0}) {
     if (posts.isEmpty) return posts;
-    final scored = posts.map((p) => {...p, '_score': score(post: p, followedIds: followedIds, likedAuthorIds: likedAuthorIds)}).toList()
+    final scored = posts.map((p) => {...p, '_score': score(post: p, followedIds: followedIds, likedAuthorIds: likedAuthorIds, sessionSeed: sessionSeed)}).toList()
       ..sort((a, b) => (b['_score'] as double).compareTo(a['_score'] as double));
     final result = <Map<String, dynamic>>[];
     int di = 0;
@@ -319,6 +322,9 @@ class _PostList extends ConsumerStatefulWidget {
 
 class _PostListState extends ConsumerState<_PostList> {
   List<Map<String, dynamic>> _posts = []; bool _loading = true; bool _hasMore = true; int _page = 0;
+  // Fresh random seed each time this screen mounts (i.e. each visit/session) —
+  // gives the feed natural reshuffling on return without breaking real ranking quality.
+  final int _sessionSeed = math.Random().nextInt(1 << 20);
   Set<String> _followedIds = {}; Set<String> _likedAuthorIds = {}; List<Map<String, dynamic>> _discoveryPool = [];
 
   @override void initState() { super.initState(); _loadContext().then((_) => _load()); }
@@ -347,7 +353,7 @@ class _PostListState extends ConsumerState<_PostList> {
         rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status), is_liked:post_likes(user_id)').eq('is_deleted', false).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize * 3, (_page + 1) * AppConstants.feedPageSize * 3 - 1);
       }
       final typed = List<Map<String, dynamic>>.from(rawPosts);
-      final ranked = _AlgorithmEngine.rank(posts: typed, discoveryPool: _discoveryPool, followedIds: _followedIds, likedAuthorIds: _likedAuthorIds);
+      final ranked = _AlgorithmEngine.rank(posts: typed, discoveryPool: _discoveryPool, followedIds: _followedIds, likedAuthorIds: _likedAuthorIds, sessionSeed: _sessionSeed);
       if (mounted) setState(() {
         if (_page == 0 && typed.isEmpty) { _posts = List.from(_demoPosts); }
         else { _posts.addAll(ranked); }
