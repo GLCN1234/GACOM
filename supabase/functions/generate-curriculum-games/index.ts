@@ -5,8 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const GROQ_MODEL = 'llama-3.3-70b-versatile'
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GEMINI_MODEL = 'gemini-flash-lite-latest'
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const BATCH_SIZE = 15
 const QUESTIONS_PER_LEVEL = 60
 const BATCHES_PER_LEVEL = QUESTIONS_PER_LEVEL / BATCH_SIZE
@@ -50,38 +50,37 @@ Every question must still be a real, gradeable academic question underneath. Nev
 
 CRITICAL: Respond with ONLY a raw JSON object as instructed in each request. No markdown code fences, no explanation text before or after.`
 
-async function callGroq(apiKey: string, prompt: string, maxTokens: number, attempt = 1): Promise<string> {
-  const response = await fetch(GROQ_ENDPOINT, {
+async function callGemini(apiKey: string, prompt: string, maxTokens: number, attempt = 1): Promise<string> {
+  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [
-        { role: 'system', content: GACOM_GAME_DESIGNER_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: maxTokens,
-      temperature: 0.8,
+      systemInstruction: { parts: [{ text: GACOM_GAME_DESIGNER_SYSTEM_PROMPT }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.8 },
     }),
   })
 
-  if (response.status === 429 && attempt <= 2) {
-    const retryAfter = response.headers.get('retry-after')
-    const waitMs = retryAfter ? parseFloat(retryAfter) * 1000 : 4000
+  if (response.status === 429 && attempt <= 3) {
+    // Gemini free tier is per-minute/per-day RPM-limited, not a hard daily
+    // token wall — a short backoff is usually enough to recover.
+    const waitMs = attempt * 5000
     await new Promise(r => setTimeout(r, waitMs))
-    return callGroq(apiKey, prompt, maxTokens, attempt + 1)
+    return callGemini(apiKey, prompt, maxTokens, attempt + 1)
   }
 
   if (!response.ok) {
     const err = await response.text()
-    if (err.includes('rate_limit_exceeded') && err.includes('tokens per day')) {
+    if (response.status === 429 || /quota|RESOURCE_EXHAUSTED/i.test(err)) {
       throw new Error(`DAILY_QUOTA_EXCEEDED: ${err}`)
     }
-    throw new Error(`Groq API error: ${err}`)
+    throw new Error(`Gemini API error: ${err}`)
   }
 
   const data = await response.json()
-  return data.choices[0].message.content.trim()
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`)
+  return text.trim()
 }
 
 function parseBatchJSON(rawText: string, levelLabel: string): { questions: any[]; chapterUpdate: string } {
@@ -141,7 +140,7 @@ Rules:
 Respond with ONLY this JSON object, nothing else:
 {"questions":[{"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A. ...","steps":["Step 1: ...","Step 2: ..."],"narrative_success":"...","narrative_failure":"...","concept":"..."}],"chapter_update":"One or two sentences: what this stretch of the adventure just accomplished, to carry forward into the next chapter."}`
 
-  const rawText = await callGroq(apiKey, prompt, 4096)
+  const rawText = await callGemini(apiKey, prompt, 4096)
   const { questions, chapterUpdate } = parseBatchJSON(rawText, level.label)
   const tagged = questions.map((q: any) => ({ ...q, level: level.key, level_label: level.label, world_theme: worldTheme }))
   return { questions: tagged, chapterUpdate }
@@ -151,7 +150,7 @@ async function generateStoryIntro(apiKey: string, subject: string, topic: string
   const prompt = `Write a short (3-4 sentence) adventure story intro that frames the topic "${topic}" (subject: ${subject}) as a "${worldTheme}"-themed quest. Shown to the student before they start playing — hook them immediately like the opening of a game.
 
 Respond with ONLY the story text, no JSON, no quotes, no extra formatting.`
-  try { return await callGroq(apiKey, prompt, 300) }
+  try { return await callGemini(apiKey, prompt, 300) }
   catch { return `Your adventure into ${topic} begins now!` }
 }
 
@@ -174,11 +173,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const groqKey = Deno.env.get('GROQ_API_KEY')
-    if (!groqKey) throw new Error('GROQ_API_KEY not configured')
+    const geminiKey = Deno.env.get('GEMINI_API_KEY')
+    if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
 
     if (body.mode === 'advance_queue') {
-      return await handleAdvanceQueue(supabase, groqKey)
+      return await handleAdvanceQueue(supabase, geminiKey)
     }
 
     if (batch_number === 0) {
@@ -200,7 +199,7 @@ Deno.serve(async (req) => {
       }
 
       const worldTheme = WORLD_THEMES[Math.floor(Math.random() * WORLD_THEMES.length)]
-      const storyIntro = await generateStoryIntro(groqKey, subject, topic, worldTheme)
+      const storyIntro = await generateStoryIntro(geminiKey, subject, topic, worldTheme)
 
       await supabase.from('institution_curricula').update({
         world_theme: worldTheme,
@@ -227,7 +226,7 @@ Deno.serve(async (req) => {
     const currentQuestions = Array.isArray(existing?.generated_questions) ? existing.generated_questions : []
 
     const { questions: newQuestions, chapterUpdate } = await generateQuestionBatch(
-      groqKey, subject, class_level, topic, content, level, worldTheme,
+      geminiKey, subject, class_level, topic, content, level, worldTheme,
       existing?.story_intro || '', existing?.story_progress || '',
     )
     if (newQuestions.length > 0) newQuestions[newQuestions.length - 1].chapter_update = chapterUpdate
@@ -283,7 +282,7 @@ Deno.serve(async (req) => {
 const MAX_BATCHES_PER_TICK = 6
 const TIME_BUDGET_MS = 100_000
 
-async function handleAdvanceQueue(supabase: any, groqKey: string): Promise<Response> {
+async function handleAdvanceQueue(supabase: any, geminiKey: string): Promise<Response> {
   const startTime = Date.now()
   const results: any[] = []
 
@@ -294,7 +293,7 @@ async function handleAdvanceQueue(supabase: any, groqKey: string): Promise<Respo
     if (claimError) { console.error('claim error:', claimError); break }
     if (!claimed || claimed.length === 0) break
 
-    const result = await processOneBatch(supabase, groqKey, claimed[0])
+    const result = await processOneBatch(supabase, geminiKey, claimed[0])
     results.push(result)
     if (result.quota_exceeded) break
   }
@@ -303,14 +302,14 @@ async function handleAdvanceQueue(supabase: any, groqKey: string): Promise<Respo
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
-async function processOneBatch(supabase: any, groqKey: string, row: any): Promise<any> {
+async function processOneBatch(supabase: any, geminiKey: string, row: any): Promise<any> {
   const curriculumId = row.id as string
   const nextBatch = row.next_batch_number as number
 
   try {
     if (nextBatch === 0) {
       const worldTheme = WORLD_THEMES[Math.floor(Math.random() * WORLD_THEMES.length)]
-      const storyIntro = await generateStoryIntro(groqKey, row.subject, row.topic, worldTheme)
+      const storyIntro = await generateStoryIntro(geminiKey, row.subject, row.topic, worldTheme)
 
       await supabase.from('institution_curricula').update({
         world_theme: worldTheme, story_intro: storyIntro, story_progress: '',
@@ -331,7 +330,7 @@ async function processOneBatch(supabase: any, groqKey: string, row: any): Promis
     const currentQuestions = Array.isArray(existing?.generated_questions) ? existing.generated_questions : []
 
     const { questions: newQuestions, chapterUpdate } = await generateQuestionBatch(
-      groqKey, row.subject, row.class_level, row.topic, row.content, level, worldTheme,
+      geminiKey, row.subject, row.class_level, row.topic, row.content, level, worldTheme,
       existing?.story_intro || '', existing?.story_progress || '',
     )
     if (newQuestions.length > 0) newQuestions[newQuestions.length - 1].chapter_update = chapterUpdate
@@ -352,7 +351,7 @@ async function processOneBatch(supabase: any, groqKey: string, row: any): Promis
     const message = (error as Error).message
     console.error(`advance_queue error on ${curriculumId}, batch ${nextBatch}:`, error)
     if (message.startsWith('DAILY_QUOTA_EXCEEDED')) {
-      // Not this topic's fault — Groq's free daily token cap was hit.
+      // Not this topic's fault — Gemini's rate/quota limit was hit.
       // Don't count it as a strike, just release the lock so cron
       // picks this same topic back up once quota resets.
       await supabase.from('institution_curricula').update({ processing_locked_at: null }).eq('id', curriculumId)
