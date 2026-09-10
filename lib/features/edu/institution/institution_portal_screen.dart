@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'curriculum_uploader_widget.dart';
 import 'bulk_curriculum_uploader_widget.dart';
@@ -20,9 +21,22 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
   List<Map<String,dynamic>> _students = [];
   List<Map<String,dynamic>> _curricula = [];
   bool _loading = true;
+  Timer? _pollTimer;
 
   @override void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _load(); }
-  @override void dispose() { _tab.dispose(); super.dispose(); }
+  @override void dispose() { _pollTimer?.cancel(); _tab.dispose(); super.dispose(); }
+
+  // While any curriculum is still generating, poll every 8s so status/
+  // progress updates appear live instead of requiring a manual refresh.
+  void _syncPolling() {
+    final anyProcessing = _curricula.any((c) => (c['status'] as String? ?? '') == 'processing');
+    if (anyProcessing && _pollTimer == null) {
+      _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) => _load());
+    } else if (!anyProcessing && _pollTimer != null) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
+  }
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -74,12 +88,15 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
         curricula = List<Map<String,dynamic>>.from(c as List);
       } catch (_) {}
 
-      if (mounted) setState(() {
-        _institution = inst;
-        _students = students;
-        _curricula = curricula;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _institution = inst;
+          _students = students;
+          _curricula = curricula;
+          _loading = false;
+        });
+        _syncPolling();
+      }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
     }
@@ -181,22 +198,56 @@ class _InstitutionPortalState extends State<InstitutionPortalScreen> with Single
     : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _curricula.length, itemBuilder: (_, i) {
         final c = _curricula[i];
         final status = c['status'] as String? ?? 'pending';
-        final statusColor = status == 'ready' ? GacomColors.success : status == 'processing' ? GacomColors.accentCyan : status == 'failed' ? GacomColors.error : GacomColors.textMuted;
+        final errorMessage = c['error_message'] as String?;
+        final isFailed = status == 'failed';
+        final statusColor = status == 'ready' ? GacomColors.success : status == 'processing' ? GacomColors.accentCyan : isFailed ? GacomColors.error : GacomColors.textMuted;
         return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
-          child: Row(children: [
-            Container(width: 36, height: 36, decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.description_outlined, color: GacomColors.accentCyan, size: 18)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(c['topic'] as String? ?? 'Topic', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
-              Text('${c['subject']} · ${c['class_level']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-            ])),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
-              child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+          decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: isFailed ? GacomColors.error.withOpacity(0.4) : GacomColors.border)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 36, height: 36, decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                child: status == 'processing'
+                  ? const Padding(padding: EdgeInsets.all(9), child: CircularProgressIndicator(strokeWidth: 2, color: GacomColors.accentCyan))
+                  : const Icon(Icons.description_outlined, color: GacomColors.accentCyan, size: 18)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c['topic'] as String? ?? 'Topic', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary)),
+                Text('${c['subject']} · ${c['class_level']}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              ])),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+            ]),
+            if (errorMessage != null && errorMessage.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(width: double.infinity, padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(isFailed ? Icons.error_outline_rounded : Icons.info_outline_rounded, size: 14, color: statusColor),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(errorMessage, style: TextStyle(color: statusColor, fontSize: 11, height: 1.3))),
+                ])),
+              if (isFailed) ...[
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                  onPressed: () => _retryCurriculum(c['id'] as String),
+                  icon: const Icon(Icons.refresh_rounded, size: 14),
+                  label: const Text('Retry generation', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12)),
+                  style: OutlinedButton.styleFrom(foregroundColor: GacomColors.error, side: const BorderSide(color: GacomColors.error)))),
+              ],
+            ],
           ]));
       });
+
+  Future<void> _retryCurriculum(String curriculumId) async {
+    try {
+      await SupabaseService.client.from('institution_curricula').update({
+        'status': 'processing', 'batch_error_count': 0, 'processing_locked_at': null,
+        'error_message': 'Retry queued — will resume shortly.',
+      }).eq('id', curriculumId);
+      await _load();
+    } catch (_) {}
+  }
 
   Widget _buildUpload() => Column(children: [
     _AiPlanCard(institution: _institution),
@@ -411,7 +462,7 @@ class _CurriculumUploaderState extends State<_CurriculumUploader> {
       });
 
       if (mounted) {
-        setState(() { _uploading = false; _status = 'Games generated successfully!'; });
+        setState(() { _uploading = false; _status = 'Queued! Check the Curriculum tab — generation runs in the background and usually takes a few minutes.'; });
         _subjectCtrl.clear(); _topicCtrl.clear(); _contentCtrl.clear(); _classLevel = null;
         widget.onUploaded();
       }

@@ -191,7 +191,10 @@ Deno.serve(async (req) => {
           const used = institution.ai_calls_used ?? 0
           const limit = institution.ai_calls_limit ?? 50
           if (used >= limit) {
-            await supabase.from('institution_curricula').update({ status: 'failed' }).eq('id', curriculum_id)
+            await supabase.from('institution_curricula').update({
+              status: 'failed',
+              error_message: 'Institution AI plan limit reached — upgrade your plan or contact GACOM to generate more topics.',
+            }).eq('id', curriculum_id)
             return new Response(JSON.stringify({ error: 'AI generation limit reached. Please upgrade your institution plan.' }),
               { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
           }
@@ -315,6 +318,7 @@ async function processOneBatch(supabase: any, geminiKey: string, row: any): Prom
         world_theme: worldTheme, story_intro: storyIntro, story_progress: '',
         generated_questions: [], status: 'processing', total_questions: 0,
         next_batch_number: 1, batch_error_count: 0, processing_locked_at: null,
+        error_message: null,
       }).eq('id', curriculumId)
 
       return { curriculum_id: curriculumId, batch: 0, progress_label: 'Story written' }
@@ -339,13 +343,15 @@ async function processOneBatch(supabase: any, geminiKey: string, row: any): Prom
     const rollingProgress = `${existing?.story_progress || ''}\n${chapterUpdate}`.split('\n').filter(Boolean).slice(-3).join('\n')
     const isLastBatch = nextBatch === TOTAL_BATCHES - 1
 
+    const progressLabel = `${level.label} — batch ${batchInLevel + 1}/${BATCHES_PER_LEVEL}`
     await supabase.from('institution_curricula').update({
       generated_questions: allQuestions, total_questions: allQuestions.length,
       story_progress: rollingProgress, status: isLastBatch ? 'ready' : 'processing',
       next_batch_number: nextBatch + 1, batch_error_count: 0, processing_locked_at: null,
+      error_message: isLastBatch ? null : `Generating… ${progressLabel} (${allQuestions.length}/${TOTAL_BATCHES * BATCH_SIZE} questions so far)`,
     }).eq('id', curriculumId)
 
-    return { curriculum_id: curriculumId, batch: nextBatch, done: isLastBatch, progress_label: `${level.label} — batch ${batchInLevel + 1}/${BATCHES_PER_LEVEL}` }
+    return { curriculum_id: curriculumId, batch: nextBatch, done: isLastBatch, progress_label: progressLabel }
 
   } catch (error) {
     const message = (error as Error).message
@@ -354,14 +360,21 @@ async function processOneBatch(supabase: any, geminiKey: string, row: any): Prom
       // Not this topic's fault — Gemini's rate/quota limit was hit.
       // Don't count it as a strike, just release the lock so cron
       // picks this same topic back up once quota resets.
-      await supabase.from('institution_curricula').update({ processing_locked_at: null }).eq('id', curriculumId)
+      await supabase.from('institution_curricula').update({
+        processing_locked_at: null,
+        error_message: 'Paused — AI provider rate limit reached. Will resume automatically within a few minutes.',
+      }).eq('id', curriculumId)
       return { curriculum_id: curriculumId, batch: nextBatch, quota_exceeded: true }
     }
     const newErrorCount = (row.batch_error_count ?? 0) + 1
+    const failed = newErrorCount >= 3
     await supabase.from('institution_curricula').update({
       batch_error_count: newErrorCount,
-      status: newErrorCount >= 3 ? 'failed' : 'processing',
+      status: failed ? 'failed' : 'processing',
       processing_locked_at: null,
+      error_message: failed
+        ? `Generation failed after 3 attempts: ${message}`
+        : `Temporary error (attempt ${newErrorCount}/3), will retry automatically: ${message}`,
     }).eq('id', curriculumId)
     return { curriculum_id: curriculumId, batch: nextBatch, error: message }
   }
