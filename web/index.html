@@ -96,6 +96,11 @@
   <!-- Paystack Popup JS (for web payment) -->
   <script src="https://js.paystack.co/v1/inline.js"></script>
 
+  <!-- model_viewer_plus REQUIRED setup: the package needs this loaded manually,
+       it does not inject itself. Using the package's own bundled copy (not an
+       external CDN) so 3D rendering never depends on outside network reachability. -->
+  <script type="module" src="./assets/packages/model_viewer_plus/assets/model-viewer.min.js" defer></script>
+
   <script>
     // ── Round favicon via canvas ──────────────────────────────────────────────
     window.addEventListener('load', function () {
