@@ -83,7 +83,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
   static const _tournamentDismissKey = 'dismissed_tournament_gacom_championship_s1';
 
   @override
-  void initState() { super.initState(); _tab = TabController(length: 3, vsync: this); _loadProfile(); _loadDismissState(); }
+  void initState() { super.initState(); _tab = TabController(length: 2, vsync: this); _loadProfile(); _loadDismissState(); }
 
   Future<void> _loadDismissState() async {
     final prefs = await SharedPreferences.getInstance();
