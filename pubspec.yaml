@@ -40,6 +40,7 @@ dependencies:
   dio: ^5.4.3
   connectivity_plus: ^6.0.3
   flame: ^1.18.0
+  model_viewer_plus: ^1.7.0
 
 dev_dependencies:
   flutter_test:
@@ -52,5 +53,6 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/models_3d/
 dependency_overrides:
   web: ^1.1.0
