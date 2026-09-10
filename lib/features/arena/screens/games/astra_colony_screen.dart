@@ -23,6 +23,11 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
   late AstraColonyGame _game;
   int? _selectedAnswer;
   bool _wrongFlash = false;
+  // Tracked separately from Flame's internal component state — never read
+  // _game.solarArray.repaired directly from a Flutter build() call, since
+  // that field is only set inside Flame's async onLoad() and may not be
+  // initialized yet on an early frame (this caused a LateInitializationError).
+  bool _solarArrayRepaired = false;
 
   // The puzzle: two damaged panels' readouts. The correct action is their
   // sum — this IS the addition being taught, framed as routing power
@@ -43,7 +48,7 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
     if (value == _correctTotal) {
       _game.solarArray.repaired = true;
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 25, questionsAnswered: 1, correctAnswers: 1);
-      setState(() => _phase = _MissionPhase.complete);
+      setState(() { _solarArrayRepaired = true; _phase = _MissionPhase.complete; });
     } else {
       setState(() => _wrongFlash = true);
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
@@ -97,8 +102,8 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
     decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [GacomColors.obsidian.withOpacity(0.9), Colors.transparent])),
     child: Row(children: [
-      Text(_game.solarArray.repaired ? '⚡ POWER: RESTORED' : '⚡ POWER: 12%',
-        style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: _game.solarArray.repaired ? GacomColors.success : GacomColors.error)),
+      Text(_solarArrayRepaired ? '⚡ POWER: RESTORED' : '⚡ POWER: 12%',
+        style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: _solarArrayRepaired ? GacomColors.success : GacomColors.error)),
       const Spacer(),
       const Text('MISSION 1 · ARRIVAL', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
     ]),
