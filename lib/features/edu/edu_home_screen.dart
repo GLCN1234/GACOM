@@ -44,6 +44,7 @@ class _EduHomeState extends State<EduHomeScreen> {
 
   final _quickGames = [
     {'name': 'Astra Colony (Beta)', 'icon': Icons.explore_rounded, 'route': '/arena/practice/astracolony'},
+    {'name': 'Field Trial (Beta)', 'icon': Icons.grid_view_rounded, 'route': '/arena/practice/spatialquiz'},
     {'name': 'Colony Siege', 'icon': Icons.view_in_ar_rounded,   'route': '/arena/practice/colonybuilder'},
     {'name': 'Arena Gauntlet',    'icon': Icons.shield_rounded, 'route': '/arena/practice/weaponduel'},
     {'name': 'Speed Math',    'icon': Icons.bolt_rounded,          'route': '/arena/practice/speedmath'},
