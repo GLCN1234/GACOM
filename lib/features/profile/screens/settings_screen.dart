@@ -62,6 +62,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildProfileCard(email),
 
           const SizedBox(height: 24),
+          _SectionLabel('DEV TESTING'),
+          _SettingsGroup([
+            _Tile(
+              icon: Icons.view_in_ar_rounded,
+              label: '🔨 Test 3D Asset Rendering',
+              subtitle: 'Tap to open the isolated 3D model viewer',
+              color: GacomColors.deepOrange,
+              onTap: () => context.push('/poc-3d'),
+            ),
+          ]),
+
+          const SizedBox(height: 24),
           _SectionLabel('ACCOUNT'),
           _SettingsGroup([
             _Tile(

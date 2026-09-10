@@ -17,7 +17,7 @@ class Poc3dTestApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     home: Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.red,
       appBar: AppBar(title: const Text('Isolated 3D Test — no app, no auth, just this')),
       body: Column(children: [
         Container(
@@ -25,14 +25,15 @@ class Poc3dTestApp extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           color: Colors.grey[900],
           child: const Text(
-            'If this hangs or errors, the problem is the 3D asset/package itself — '
-            'not Supabase, not auth, not the router. That narrows things down fast.',
+            'Background is RED on purpose right now — this is a diagnostic step. '
+            'If you see red, the app renders fine and the 3D model specifically is '
+            'the problem. If you still see black, the 3D component never loaded at all.',
             style: TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ),
         Expanded(
           child: ModelViewer(
-            backgroundColor: Colors.black,
+            backgroundColor: Colors.blue,
             src: 'assets/models_3d/hammer_1.glb',
             alt: 'A low-poly hammer model',
             ar: false,
