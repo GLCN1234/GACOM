@@ -388,6 +388,31 @@ class _BlogAdminState extends ConsumerState<_BlogAdminSection> {
     await _load();
   }
 
+  void _showEditPost(Map<String, dynamic> post) {
+    final titleCtrl = TextEditingController(text: post['title'] as String? ?? '');
+    final excerptCtrl = TextEditingController(text: post['excerpt'] as String? ?? '');
+    final contentCtrl = TextEditingController(text: post['content'] as String? ?? '');
+    final categoryCtrl = TextEditingController(text: post['category'] as String? ?? '');
+    final isAi = post['is_ai_generated'] as bool? ?? false;
+    showDialog(context: context, builder: (ctx) => AlertDialog(backgroundColor: GacomColors.cardDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(children: [
+        const Text('EDIT POST', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+        if (isAi) ...[const SizedBox(width: 8), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.15), borderRadius: BorderRadius.circular(20)), child: const Text('AI DRAFT', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10)))],
+      ]),
+      content: SizedBox(width: 400, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (isAi) Padding(padding: const EdgeInsets.only(bottom: 12), child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(8)), child: const Row(children: [Icon(Icons.auto_awesome_rounded, size: 14, color: GacomColors.accentCyan), SizedBox(width: 6), Expanded(child: Text('AI-drafted. Review and edit before publishing.', style: TextStyle(color: GacomColors.accentCyan, fontSize: 11)))]))),
+        _AdminField(titleCtrl, 'Title *'), const SizedBox(height: 12), _AdminField(excerptCtrl, 'Excerpt / Summary', maxLines: 2), const SizedBox(height: 12), _AdminField(contentCtrl, 'Full Content *', maxLines: 10), const SizedBox(height: 12), _AdminField(categoryCtrl, 'Category (e.g. Announcements)'),
+      ]))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('CANCEL', style: TextStyle(color: GacomColors.textMuted))),
+        ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () async {
+          if (titleCtrl.text.isEmpty || contentCtrl.text.isEmpty) { GacomSnackbar.show(ctx, 'Title and content required', isError: true); return; }
+          try {
+            await SupabaseService.client.from('blog_posts').update({'title': titleCtrl.text.trim(), 'excerpt': excerptCtrl.text.trim().isEmpty ? null : excerptCtrl.text.trim(), 'content': contentCtrl.text.trim(), 'category': categoryCtrl.text.trim().isEmpty ? 'Updates' : categoryCtrl.text.trim()}).eq('id', post['id']);
+            Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Post updated!', isSuccess: true);
+          } catch (e) { GacomSnackbar.show(ctx, 'Error: $e', isError: true); }
+        }, child: const Text('SAVE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))]));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(children: [
@@ -397,9 +422,15 @@ class _BlogAdminState extends ConsumerState<_BlogAdminSection> {
       if (_loading) const Expanded(child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange)))
       else if (_posts.isEmpty) const Expanded(child: Center(child: Text('No blog posts yet.', style: TextStyle(color: GacomColors.textMuted))))
       else Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 20), itemCount: _posts.length, itemBuilder: (_, i) {
-        final p = _posts[i]; final author = p['author'] as Map? ?? {}; final isPublished = p['is_published'] as bool? ?? false;
-        return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-          child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(p['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)), Text('By ${author['display_name'] ?? 'Unknown'} · ${p['category'] ?? 'Updates'}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11))])),
+        final p = _posts[i]; final author = p['author'] as Map? ?? {}; final isPublished = p['is_published'] as bool? ?? false; final isAi = p['is_ai_generated'] as bool? ?? false;
+        return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: isAi && !isPublished ? GacomColors.accentCyan.withOpacity(0.4) : GacomColors.border)),
+          child: Row(children: [Expanded(child: GestureDetector(onTap: () => _showEditPost(p), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(child: Text(p['title'] ?? '', overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary))),
+              if (isAi) Padding(padding: const EdgeInsets.only(left: 6), child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.15), borderRadius: BorderRadius.circular(20)), child: const Text('AI DRAFT', style: TextStyle(color: GacomColors.accentCyan, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 9)))),
+            ]),
+            Text('By ${author['display_name'] ?? (isAi ? 'GACOM AI' : 'Unknown')} · ${p['category'] ?? 'Updates'} · tap to edit', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+          ]))),
           GestureDetector(onTap: () => _togglePublish(p['id'], isPublished), child: Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: (isPublished ? GacomColors.success : GacomColors.textMuted).withOpacity(0.12), borderRadius: BorderRadius.circular(50), border: Border.all(color: (isPublished ? GacomColors.success : GacomColors.textMuted).withOpacity(0.4))), child: Text(isPublished ? 'LIVE' : 'DRAFT', style: TextStyle(color: isPublished ? GacomColors.success : GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11))))]));
       })),
     ]);
