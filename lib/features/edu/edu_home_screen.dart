@@ -43,6 +43,8 @@ class _EduHomeState extends State<EduHomeScreen> {
   ];
 
   final _quickGames = [
+    {'name': 'Colony Builder', 'icon': Icons.view_in_ar_rounded,   'route': '/arena/practice/colonybuilder'},
+    {'name': 'Weapon Duel',    'icon': Icons.shield_rounded, 'route': '/arena/practice/weaponduel'},
     {'name': 'Speed Math',    'icon': Icons.bolt_rounded,          'route': '/arena/practice/speedmath'},
     {'name': 'Word Scramble', 'icon': Icons.spellcheck_rounded,    'route': '/arena/practice/wordscramble'},
     {'name': 'Chess',         'icon': Icons.extension_rounded,     'route': '/arena/practice/chess'},
