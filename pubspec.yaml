@@ -54,5 +54,9 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/models_3d/
+    - assets/models_3d/hammer/
+    - assets/models_3d/dagger/
+    - assets/models_3d/shield/
+    - assets/models_3d/colony/
 dependency_overrides:
   web: ^1.1.0
