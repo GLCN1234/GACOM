@@ -31,7 +31,13 @@ class Poc3dScreen extends StatelessWidget {
       Expanded(
         child: ModelViewer(
           backgroundColor: GacomColors.obsidian,
-          src: 'assets/models_3d/hammer_1.glb',
+          // Flutter web serves declared assets under a DOUBLED 'assets/'
+          // prefix, and model_viewer_plus renders inside an iframe where a
+          // relative path resolves against the iframe's own blank document,
+          // not the page — so this MUST be an absolute URL, resolved
+          // against the page's own location, or the model silently fails
+          // to load (the component still renders, just with nothing in it).
+          src: Uri.base.resolve('assets/assets/models_3d/hammer_1.glb').toString(),
           alt: 'A low-poly hammer model',
           ar: false,
           autoRotate: true,

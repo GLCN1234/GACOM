@@ -34,7 +34,7 @@ class Poc3dTestApp extends StatelessWidget {
         Expanded(
           child: ModelViewer(
             backgroundColor: Colors.blue,
-            src: 'assets/models_3d/hammer_1.glb',
+            src: Uri.base.resolve('assets/assets/models_3d/hammer_1.glb').toString(),
             alt: 'A low-poly hammer model',
             ar: false,
             autoRotate: true,
