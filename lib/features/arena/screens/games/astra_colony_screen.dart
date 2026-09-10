@@ -7,9 +7,10 @@ import '../../../edu/edu_progress_recorder.dart';
 import '../../games/astra_colony/astra_colony_game.dart';
 import '../../games/astra_colony/virtual_joystick_widget.dart';
 
-/// Mission 1: "Arrival" — Quizzy: The Last Colony. Joystick-driven
-/// exploration, a context-sensitive interact prompt, and a math puzzle
-/// framed as an in-world console readout rather than a quiz card.
+/// Mission 1: "Arrival" — Quizzy: The Last Colony. Power cells are
+/// physical, collectible objects in the world. There is no quiz popup
+/// anywhere in this screen — the math is walking, choosing which cells to
+/// collect, and depositing them at the console.
 class AstraColonyScreen extends StatefulWidget {
   const AstraColonyScreen({super.key, this.subject = 'math'});
   final String subject;
@@ -18,48 +19,46 @@ class AstraColonyScreen extends StatefulWidget {
   State<AstraColonyScreen> createState() => _AstraColonyScreenState();
 }
 
-enum _MissionPhase { intro, playing, repairConsole, complete }
+enum _MissionPhase { intro, playing, complete }
 
 class _AstraColonyScreenState extends State<AstraColonyScreen> {
+  static const int _requiredTotal = 15;
+
   _MissionPhase _phase = _MissionPhase.intro;
   late AstraColonyGame _game;
-  bool _wrongFlash = false;
-  bool _isNearSolarArray = false;
-  bool _solarArrayRepaired = false;
-
-  // Panel A is already online. The reactor needs a fixed total. The player
-  // determines the MISSING amount Panel B must contribute — matches the
-  // brief's addition/subtraction example exactly, framed as a decision
-  // about the world's state, not "what is 27 + 15?".
-  static const int _panelAOutput = 27, _reactorRequirement = 42;
-  static const int _missingAmount = _reactorRequirement - _panelAOutput; // 15
+  bool _isNearConsole = false;
+  bool _overloadFlash = false;
+  List<int> _heldCells = [];
+  int _receivedTotal = 0;
 
   @override
   void initState() {
     super.initState();
-    _game = AstraColonyGame(onProximityChanged: (near) {
-      if (mounted) setState(() => _isNearSolarArray = near);
-    });
+    _game = AstraColonyGame(
+      requiredTotal: _requiredTotal,
+      onNearConsoleChanged: (near) { if (mounted) setState(() => _isNearConsole = near); },
+      onHeldCellsChanged: (held) { if (mounted) setState(() => _heldCells = held); },
+      onReceivedTotalChanged: (total) { if (mounted) setState(() => _receivedTotal = total); },
+      onOverload: () {
+        if (!mounted) return;
+        HapticFeedback.heavyImpact();
+        setState(() => _overloadFlash = true);
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted) setState(() => _overloadFlash = false);
+        });
+      },
+      onMissionComplete: () {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 25, questionsAnswered: 1, correctAnswers: 1);
+        setState(() => _phase = _MissionPhase.complete);
+      },
+    );
   }
 
   void _onJoystickDirection(Offset dir) => _game.setMoveDirection(Vector2(dir.dx, dir.dy));
-
-  void _openConsole() => setState(() => _phase = _MissionPhase.repairConsole);
-
-  void _submitAnswer(int value) {
-    HapticFeedback.mediumImpact();
-    if (value == _missingAmount) {
-      _game.solarArray.repaired = true;
-      EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 25, questionsAnswered: 1, correctAnswers: 1);
-      setState(() { _solarArrayRepaired = true; _phase = _MissionPhase.complete; });
-    } else {
-      setState(() => _wrongFlash = true);
-      EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) setState(() => _wrongFlash = false);
-      });
-    }
-  }
+  void _deposit() { if (_heldCells.isNotEmpty) _game.depositHeldCells(); }
 
   @override
   Widget build(BuildContext context) {
@@ -71,20 +70,17 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
       body: Stack(children: [
         GameWidget(game: _game),
         Positioned(top: 0, left: 0, right: 0, child: SafeArea(bottom: false, child: _topHud())),
-        if (_phase == _MissionPhase.playing) ...[
-          Positioned(left: 20, bottom: 28, child: VirtualJoystickWidget(onDirectionChanged: _onJoystickDirection)),
-          Positioned(right: 24, bottom: 40, child: _interactButton()),
-        ],
-        if (_phase == _MissionPhase.repairConsole) _consolePanel(),
+        Positioned(left: 20, bottom: 28, child: VirtualJoystickWidget(onDirectionChanged: _onJoystickDirection)),
+        Positioned(right: 24, bottom: 40, child: _actionButton()),
       ]),
     );
   }
 
-  // ── Top HUD: portrait/level/XP left, mission tracker center, resources right ──
+  // ── Top HUD ──────────────────────────────────────────────────────────
   Widget _topHud() => Padding(
     padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
     child: Column(children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
         _glassPanel(child: Row(children: [
           Container(width: 36, height: 36, decoration: BoxDecoration(shape: BoxShape.circle, color: GacomColors.deepOrange.withOpacity(0.25), border: Border.all(color: GacomColors.deepOrange, width: 1.5)),
             child: const Center(child: Icon(Icons.person_rounded, color: GacomColors.deepOrange, size: 18))),
@@ -95,102 +91,82 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
           ]),
         ])),
         const Spacer(),
-        _glassPanel(child: Row(children: [
-          _resourcePip('⚡', _solarArrayRepaired ? '100%' : '12%', _solarArrayRepaired ? GacomColors.success : GacomColors.error),
+        _glassPanel(child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('⚡ ${_receivedTotal >= _requiredTotal ? "100%" : "12%"}',
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: _receivedTotal >= _requiredTotal ? GacomColors.success : GacomColors.error)),
           const SizedBox(width: 10),
           const Icon(Icons.settings_rounded, color: Colors.white70, size: 18),
         ])),
       ]),
       const SizedBox(height: 8),
-      _glassPanel(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Text('MISSION 1 · ARRIVAL', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: GacomColors.deepOrange, letterSpacing: 1)),
-        Text(_solarArrayRepaired ? 'Solar Array restored' : 'Restore the Solar Array', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      // Persistent, non-blocking console gauge — visible at all times,
+      // the world keeps moving behind it. No popup, ever.
+      _glassPanel(borderColor: _overloadFlash ? GacomColors.error : null, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.settings_input_component_rounded, color: GacomColors.accentCyan, size: 13),
+          const SizedBox(width: 5),
+          Text(_overloadFlash ? 'OVERLOAD — CELLS RESET' : 'REACTOR: $_receivedTotal / $_requiredTotal UNITS',
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: _overloadFlash ? GacomColors.error : GacomColors.accentCyan, letterSpacing: 0.5)),
+        ]),
+        const SizedBox(height: 4),
+        SizedBox(width: 160, child: ClipRRect(borderRadius: BorderRadius.circular(3),
+          child: LinearProgressIndicator(value: (_receivedTotal / _requiredTotal).clamp(0, 1), minHeight: 5, backgroundColor: Colors.white12,
+            valueColor: AlwaysStoppedAnimation(_overloadFlash ? GacomColors.error : GacomColors.accentCyan)))),
       ])),
     ]),
   );
 
-  Widget _resourcePip(String icon, String value, Color color) => Row(mainAxisSize: MainAxisSize.min, children: [
-    Text(icon, style: const TextStyle(fontSize: 13)),
-    const SizedBox(width: 3),
-    Text(value, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: color)),
-  ]);
-
-  Widget _glassPanel({required Widget child}) => Container(
+  Widget _glassPanel({required Widget child, Color? borderColor}) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
       color: Colors.black.withOpacity(0.45),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.white.withOpacity(0.12)),
+      border: Border.all(color: borderColor ?? Colors.white.withOpacity(0.12), width: borderColor != null ? 1.5 : 1),
     ),
     child: child,
   );
 
-  Widget _interactButton() => AnimatedOpacity(
-    opacity: _isNearSolarArray ? 1 : 0,
-    duration: const Duration(milliseconds: 200),
-    child: IgnorePointer(
-      ignoring: !_isNearSolarArray,
-      child: GestureDetector(
-        onTap: _openConsole,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: GacomColors.deepOrange,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.5), blurRadius: 12)],
+  // ── Held cells + context action button ──────────────────────────────
+  Widget _actionButton() {
+    final holding = _heldCells.isNotEmpty;
+    final canDeposit = holding && _isNearConsole;
+    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      if (holding) Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Text('HOLDING ', style: TextStyle(color: Colors.white70, fontSize: 10)),
+          ..._heldCells.map((v) => Container(margin: const EdgeInsets.only(left: 3), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(color: const Color(0xFF3DD6FF).withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+            child: Text('$v', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF3DD6FF))))),
+        ]),
+      ),
+      AnimatedOpacity(
+        opacity: canDeposit ? 1 : 0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          ignoring: !canDeposit,
+          child: GestureDetector(
+            onTap: _deposit,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: GacomColors.deepOrange,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.5), blurRadius: 12)],
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 6),
+                Text('DEPOSIT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
+              ]),
+            ),
           ),
-          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 6),
-            Text('INTERACT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
-          ]),
         ),
       ),
-    ),
-  );
-
-  // ── Diegetic math console — a glass panel, world stays visible behind it ──
-  Widget _consolePanel() => Positioned.fill(child: Container(
-    color: Colors.black.withOpacity(0.4),
-    child: Center(child: AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.all(28),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _wrongFlash ? GacomColors.error : GacomColors.accentCyan, width: 1.5),
-        boxShadow: [BoxShadow(color: (_wrongFlash ? GacomColors.error : GacomColors.accentCyan).withOpacity(0.25), blurRadius: 16)],
-      ),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.settings_input_component_rounded, color: GacomColors.accentCyan, size: 16),
-          SizedBox(width: 6),
-          Text('REACTOR LINK CONSOLE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.accentCyan, letterSpacing: 1)),
-        ]),
-        const SizedBox(height: 14),
-        _consoleReadout('PANEL A — ONLINE', '$_panelAOutput units', GacomColors.success),
-        _consoleReadout('REACTOR REQUIREMENT', '$_reactorRequirement units', Colors.white70),
-        const Divider(color: Colors.white24, height: 22),
-        const Text('Panel B is offline. How many more units must it contribute\nto reach the reactor requirement?',
-          style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
-        const SizedBox(height: 14),
-        Wrap(spacing: 10, runSpacing: 10, children: {_missingAmount, _missingAmount + 4, _missingAmount - 6, _missingAmount + 9}.map((v) => GestureDetector(
-          onTap: () => _submitAnswer(v),
-          child: Container(width: 70, height: 48, alignment: Alignment.center,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white24)),
-            child: Text('$v', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 17, color: Colors.white))),
-        )).toList()),
-        if (_wrongFlash) const Padding(padding: EdgeInsets.only(top: 12), child: Text('⚠ Link rejected — recalculate.', style: TextStyle(color: GacomColors.error, fontSize: 12))),
-      ]),
-    )),
-  ));
-
-  Widget _consoleReadout(String label, String value, Color valueColor) => Padding(padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 0.5)),
-      Text(value, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: valueColor)),
-    ]));
+    ]);
+  }
 
   Widget _introScreen() => Scaffold(
     backgroundColor: GacomColors.obsidian,
@@ -201,14 +177,14 @@ class _AstraColonyScreenState extends State<AstraColonyScreen> {
       const Text('ARRIVAL', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 30, color: GacomColors.textPrimary)),
       const SizedBox(height: 20),
       const Text(
-        'You are the Cadet Commander of the Astra Recovery Initiative. This colony has been dark for months. '
-        'Power: 12%. The Solar Array is damaged — restore it to bring the colony back online.',
+        'The Solar Array needs 15 more units to reach reactor capacity. Power cells are scattered nearby — '
+        'collect the right ones and deposit them at the array. Overshoot the target and the console overloads.',
         style: TextStyle(color: GacomColors.textSecondary, fontSize: 15, height: 1.5)),
       const SizedBox(height: 28),
       Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
         child: const Row(children: [
           Icon(Icons.gamepad_rounded, color: GacomColors.deepOrange, size: 20), SizedBox(width: 10),
-          Expanded(child: Text('Use the joystick to walk. Get close to the Solar Array to INTERACT.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
+          Expanded(child: Text('Walk over a cell to collect it. Get close to the array and tap DEPOSIT.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
         ])),
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, child: ElevatedButton(
