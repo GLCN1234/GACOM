@@ -1,48 +1,53 @@
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-/// The Cadet Commander. Moves toward [targetPosition] at a fixed speed,
-/// set by tapping anywhere in the world. Deliberately implemented with
-/// plain vector math in [update] rather than Flame's effects package, to
-/// keep this on the most stable, predictable part of the Flame API.
+/// The Cadet Commander. Moves continuously in [moveDirection] (set every
+/// frame from the virtual joystick), clamped to stay inside [worldBounds].
+/// Plain vector math only — no Flame effects/animation package dependency.
 class PlayerComponent extends PositionComponent {
-  PlayerComponent({required Vector2 startPosition})
-      : super(position: startPosition, size: Vector2(28, 28), anchor: Anchor.center);
+  PlayerComponent({required Vector2 startPosition, required this.worldBounds})
+      : super(position: startPosition, size: Vector2(30, 30), anchor: Anchor.center);
 
-  Vector2? targetPosition;
-  VoidCallback? onArrive;
-  static const double speed = 130; // pixels per second
+  final Vector2 worldBounds;
+  Vector2 moveDirection = Vector2.zero();
+  static const double speed = 140; // pixels per second
+  static const double _deadzone = 0.12;
 
   @override
   void update(double dt) {
     super.update(dt);
-    final target = targetPosition;
-    if (target == null) return;
-    final diff = target - position;
-    final dist = diff.length;
-    if (dist < 4) {
-      position = target;
-      targetPosition = null;
-      final cb = onArrive;
-      onArrive = null;
-      cb?.call();
-    } else {
-      final dir = diff / dist;
-      position += dir * speed * dt;
-    }
+    if (moveDirection.length <= _deadzone) return;
+    final normalized = moveDirection.normalized();
+    position += normalized * speed * dt;
+    position.x = position.x.clamp(size.x / 2, worldBounds.x - size.x / 2);
+    position.y = position.y.clamp(size.y / 2, worldBounds.y - size.y / 2);
   }
 
   @override
   void render(Canvas canvas) {
-    // Simple placeholder mark — a solid circle with a directional notch —
-    // stands in for real character sprite art until that asset exists.
+    // Placeholder mark standing in for real character art — a glowing
+    // core with a directional facing notch, at least reads as "a unit"
+    // rather than a bare debug shape.
+    final center = Offset(size.x / 2, size.y / 2);
+    final glow = Paint()
+      ..color = const Color(0xFF3DD6FF).withOpacity(0.25)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(center, size.x / 2 + 4, glow);
+
     final body = Paint()..color = const Color(0xFFFF6B1A);
+    canvas.drawCircle(center, size.x / 2, body);
+
     final outline = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    final center = Offset(size.x / 2, size.y / 2);
-    canvas.drawCircle(center, size.x / 2, body);
     canvas.drawCircle(center, size.x / 2, outline);
+
+    if (moveDirection.length > _deadzone) {
+      final dir = moveDirection.normalized();
+      final tip = center + Offset(dir.x, dir.y) * (size.x / 2 + 6);
+      final facing = Paint()..color = const Color(0xFF3DD6FF);
+      canvas.drawCircle(tip, 3, facing);
+    }
   }
 }

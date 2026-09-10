@@ -1,48 +1,54 @@
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
-import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
 import 'player_component.dart';
 import 'solar_array_component.dart';
+import 'environment_component.dart';
 
-/// The "Arrival" mission world: a small, non-scrolling colony area (kept
-/// deliberately simple for this first playable slice — camera-follow and
-/// a larger scrolling map are natural next steps once this is validated).
-/// Tap anywhere to walk there; tap near the Solar Array to walk to it and
-/// trigger the repair sequence once you arrive.
-class AstraColonyGame extends FlameGame with TapCallbacks {
-  AstraColonyGame({required this.onReachSolarArray});
+/// The "Arrival" mission world. The player walks freely via a virtual
+/// joystick; getting close to the Solar Array surfaces a context-sensitive
+/// INTERACT prompt (handled by the hosting screen) instead of the old
+/// tap-to-walk-and-auto-trigger pattern.
+class AstraColonyGame extends FlameGame {
+  AstraColonyGame({required this.onProximityChanged});
 
-  final VoidCallback onReachSolarArray;
+  /// Called only when "near the Solar Array" actually changes, not every
+  /// frame — avoids spamming the hosting widget's setState.
+  final void Function(bool isNear) onProximityChanged;
+
   late final PlayerComponent player;
   late final SolarArrayComponent solarArray;
+  bool _wasNear = false;
 
-  static const double _interactionRadius = 46;
-
-  @override
-  Color backgroundColor() => const Color(0xFF0B0B0F);
+  static const double _interactionRadius = 60;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    solarArray = SolarArrayComponent(position: Vector2(size.x * 0.6, size.y * 0.3));
-    player = PlayerComponent(startPosition: Vector2(size.x * 0.3, size.y * 0.7));
+    final worldSize = size.clone();
+    add(EnvironmentComponent(worldSize: worldSize));
+    solarArray = SolarArrayComponent(position: Vector2(worldSize.x * 0.6, worldSize.y * 0.32));
+    player = PlayerComponent(startPosition: Vector2(worldSize.x * 0.3, worldSize.y * 0.78), worldBounds: worldSize);
     add(solarArray);
     add(player);
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
-    super.onTapDown(event);
-    final tapPos = event.localPosition;
-    final distToArray = (tapPos - solarArray.position).length;
+  void setMoveDirection(Vector2 direction) {
+    // Guard: the joystick can send input before Flame's async onLoad()
+    // has finished setting up `player` — this is the same class of bug
+    // that caused an earlier LateInitializationError crash. isLoaded is
+    // Flame's own built-in readiness flag.
+    if (!isLoaded) return;
+    player.moveDirection = direction;
+  }
 
-    if (distToArray < _interactionRadius && !solarArray.repaired) {
-      player.targetPosition = solarArray.position.clone();
-      player.onArrive = onReachSolarArray;
-    } else {
-      player.targetPosition = tapPos.clone();
-      player.onArrive = null;
+  @override
+  void update(double dt) {
+    super.update(dt);
+    final isNear = (player.position - solarArray.position).length < _interactionRadius && !solarArray.repaired;
+    if (isNear != _wasNear) {
+      _wasNear = isNear;
+      onProximityChanged(isNear);
     }
   }
 }
