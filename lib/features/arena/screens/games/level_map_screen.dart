@@ -13,6 +13,21 @@ class LevelMapScreen extends StatefulWidget {
 
   @override
   State<LevelMapScreen> createState() => _LevelMapScreenState();
+
+  // These must live on the PUBLIC widget class (not the private State
+  // class) so other game screens can call LevelMapScreen.difficultyFor(...)
+  // and LevelMapScreen.unlockNext(...) directly.
+  static String difficultyFor(int level) => level <= 7 ? 'Easy' : level <= 14 ? 'Medium' : 'Hard';
+  static Color colorFor(String difficulty) => difficulty == 'Easy' ? GacomColors.success : difficulty == 'Medium' ? GacomColors.info : GacomColors.error;
+
+  /// Call after a level is completed successfully to unlock the next one.
+  static Future<void> unlockNext(String gameKey, int completedLevel) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getInt('level_unlocked_$gameKey') ?? 1;
+    if (completedLevel + 1 > current) {
+      await prefs.setInt('level_unlocked_$gameKey', completedLevel + 1);
+    }
+  }
 }
 
 class _LevelMapScreenState extends State<LevelMapScreen> {
@@ -26,9 +41,6 @@ class _LevelMapScreenState extends State<LevelMapScreen> {
     if (mounted) setState(() => _unlocked = prefs.getInt('level_unlocked_${widget.gameKey}') ?? 1);
   }
 
-  static String difficultyFor(int level) => level <= 7 ? 'Easy' : level <= 14 ? 'Medium' : 'Hard';
-  static Color colorFor(String difficulty) => difficulty == 'Easy' ? GacomColors.success : difficulty == 'Medium' ? GacomColors.info : GacomColors.error;
-
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: GacomColors.obsidian,
@@ -39,8 +51,8 @@ class _LevelMapScreenState extends State<LevelMapScreen> {
       itemBuilder: (_, i) {
         final level = i + 1;
         final locked = level > _unlocked;
-        final difficulty = difficultyFor(level);
-        final color = colorFor(difficulty);
+        final difficulty = LevelMapScreen.difficultyFor(level);
+        final color = LevelMapScreen.colorFor(difficulty);
         final isBoundary = level == 1 || level == 8 || level == 15;
         return Column(children: [
           if (isBoundary) Padding(
@@ -76,13 +88,4 @@ class _LevelMapScreenState extends State<LevelMapScreen> {
       },
     ),
   );
-
-  /// Call after a level is completed successfully to unlock the next one.
-  static Future<void> unlockNext(String gameKey, int completedLevel) async {
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt('level_unlocked_$gameKey') ?? 1;
-    if (completedLevel + 1 > current) {
-      await prefs.setInt('level_unlocked_$gameKey', completedLevel + 1);
-    }
-  }
 }
