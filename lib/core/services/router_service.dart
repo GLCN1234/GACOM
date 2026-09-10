@@ -44,6 +44,8 @@ import '../../features/arena/screens/games/chess_game.dart';
 import '../../features/arena/screens/games/extra_games.dart';
 import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
+import '../../features/arena/screens/games/colony_builder_game.dart';
+import '../../features/arena/screens/games/weapon_duel_game.dart';
 import '../../features/arena/screens/games/reaction_solo.dart';
 import '../../features/arena/screens/games/algebra_game.dart';
 import '../../features/arena/screens/games/physics_game.dart';
@@ -214,6 +216,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/chess', builder: (_, __) => const ChessPracticeScreen()),
               GoRoute(path: 'practice/rps', builder: (_, __) => const RpsSoloScreen()),
               GoRoute(path: 'practice/trivia', builder: (_, __) => const TriviaSoloScreen()),
+              GoRoute(path: 'practice/colonybuilder', builder: (_, __) => const ColonyBuilderScreen()),
+              GoRoute(path: 'practice/weaponduel', builder: (_, __) => const WeaponDuelScreen()),
               GoRoute(path: 'practice/reaction', builder: (_, __) => const ReactionSoloScreen()),
               GoRoute(path: 'practice/algebra', builder: (_, __) => const AlgebraGame()),
               GoRoute(path: 'practice/physics', builder: (_, __) => const PhysicsGame()),

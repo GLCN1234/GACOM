@@ -560,6 +560,34 @@ class _EduGamingScreen extends StatelessWidget {
           const Text('Play educational games across 12 subjects. Build real academic skills while competing on leaderboards.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
         ])),
       const SizedBox(height: 20),
+      const Text('NEW · 3D GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.deepOrange, letterSpacing: 1.2)),
+      const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: GestureDetector(
+          onTap: () => context.push('/arena/practice/colonybuilder'),
+          child: Container(padding: const EdgeInsets.all(14), height: 130,
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('🏗️', style: TextStyle(fontSize: 26)),
+              const SizedBox(height: 6),
+              const Text('Colony Builder', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+              const Spacer(),
+              const Text('Answer to build — real 3D', style: TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+            ])))),
+        const SizedBox(width: 10),
+        Expanded(child: GestureDetector(
+          onTap: () => context.push('/arena/practice/weaponduel'),
+          child: Container(padding: const EdgeInsets.all(14), height: 130,
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('⚔️', style: TextStyle(fontSize: 26)),
+              const SizedBox(height: 6),
+              const Text('Weapon Duel', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+              const Spacer(),
+              const Text('Answer to strike — real 3D', style: TextStyle(color: GacomColors.textMuted, fontSize: 10)),
+            ])))),
+      ]),
+      const SizedBox(height: 20),
       const Text('SUBJECTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1.2)),
       const SizedBox(height: 12),
       GridView.builder(
