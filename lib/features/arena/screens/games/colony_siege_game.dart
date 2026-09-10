@@ -1,15 +1,18 @@
-import 'dart:async';
-import 'dart:math';
+import 'package:flame/game.dart';
+import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../games/astra_colony/colony_siege_game.dart';
+import '../../games/astra_colony/virtual_joystick_widget.dart';
 import 'level_map_screen.dart';
 
-/// Colony Siege — answer correctly to earn resources, then actively CHOOSE
-/// which building to construct and where. Reach the target colony value
-/// before you run out of questions. Real strategic choice, not autopilot.
+/// Colony Siege, fully rebuilt: pick a level from the map (1-20, Easy/
+/// Medium/Hard, difficulty-scaled reactor targets), then collect fuel
+/// pods scattered in the world and deliver them to the Reactor Core.
+/// Exact match powers it; overshoot vents steam and resets the pods.
+/// No popup, no multiple-choice card, anywhere in this flow.
 class ColonySiegeScreen extends StatefulWidget {
   const ColonySiegeScreen({super.key, this.subject = 'logic'});
   final String subject;
@@ -18,247 +21,184 @@ class ColonySiegeScreen extends StatefulWidget {
   State<ColonySiegeScreen> createState() => _ColonySiegeScreenState();
 }
 
-class _Building {
-  final String id, name, glb, emoji;
-  final int cost, unlockLevel;
-  const _Building(this.id, this.name, this.glb, this.emoji, this.cost, this.unlockLevel);
-}
-
-const _roster = [
-  _Building('Solar_panel', 'Solar Array', 'colony/colony_Solar_panel.glb', '☀️', 15, 1),
-  _Building('Farm', 'Farm Module', 'colony/colony_Farm.glb', '🌾', 20, 1),
-  _Building('Home_colonists', 'Colonist Bay', 'colony/colony_Home_colonists.glb', '👥', 25, 1),
-  _Building('Resource_warehouse', 'Warehouse', 'colony/colony_Resource_warehouse.glb', '📦', 35, 4),
-  _Building('Research_center', 'Research Lab', 'colony/colony_Research_center.glb', '🔬', 40, 4),
-  _Building('Drone_control_center', 'Drone Control', 'colony/colony_Drone_control_center.glb', '🛰️', 45, 4),
-  _Building('Reactor', 'Reactor Core', 'colony/colony_Reactor.glb', '☢️', 60, 9),
-  _Building('Geothermal_generator', 'Geo Generator', 'colony/colony_Geothermal_generator.glb', '⚡', 70, 9),
-  _Building('Machine_building_plant', 'Factory', 'colony/colony_Machine_building_plant.glb', '🏭', 75, 9),
-  _Building('Decontamination_section', 'Decon Bay', 'colony/colony_Decontamination_section.glb', '🧪', 90, 14),
-  _Building('Section', 'Habitat Section', 'colony/colony_Section.glb', '🔷', 100, 14),
-];
-
-const _easyQ = [
-  {'q': 'What is 12 + 15?', 'a': '27', 'opts': ['25', '27', '29', '30']},
-  {'q': 'What is the capital of Nigeria?', 'a': 'Abuja', 'opts': ['Lagos', 'Abuja', 'Kano', 'Ibadan']},
-  {'q': 'What planet do we live on?', 'a': 'Earth', 'opts': ['Mars', 'Earth', 'Venus', 'Jupiter']},
-  {'q': 'What is 5 × 6?', 'a': '30', 'opts': ['25', '28', '30', '35']},
-  {'q': 'How many days in a week?', 'a': '7', 'opts': ['5', '6', '7', '8']},
-  {'q': 'What color is the sky on a clear day?', 'a': 'Blue', 'opts': ['Green', 'Blue', 'Red', 'Yellow']},
-  {'q': 'What is 20 - 8?', 'a': '12', 'opts': ['10', '11', '12', '14']},
-  {'q': 'Which animal is known as "man\'s best friend"?', 'a': 'Dog', 'opts': ['Cat', 'Dog', 'Horse', 'Bird']},
-];
-const _mediumQ = [
-  {'q': 'What is the powerhouse of the cell?', 'a': 'Mitochondria', 'opts': ['Nucleus', 'Mitochondria', 'Ribosome', 'Golgi Body']},
-  {'q': 'What is 15% of 200?', 'a': '30', 'opts': ['20', '25', '30', '35']},
-  {'q': 'Who wrote "Things Fall Apart"?', 'a': 'Chinua Achebe', 'opts': ['Wole Soyinka', 'Chinua Achebe', 'Chimamanda Adichie', 'Ben Okri']},
-  {'q': 'What gas do plants absorb from the air?', 'a': 'Carbon Dioxide', 'opts': ['Oxygen', 'Nitrogen', 'Carbon Dioxide', 'Hydrogen']},
-  {'q': 'What is the square root of 144?', 'a': '12', 'opts': ['10', '11', '12', '14']},
-  {'q': 'What is the largest ocean on Earth?', 'a': 'Pacific Ocean', 'opts': ['Atlantic Ocean', 'Indian Ocean', 'Pacific Ocean', 'Arctic Ocean']},
-  {'q': 'What does "www" stand for?', 'a': 'World Wide Web', 'opts': ['World Wide Web', 'World Web Wide', 'Wide World Web', 'Web World Wide']},
-  {'q': 'Which organ pumps blood through the body?', 'a': 'Heart', 'opts': ['Lungs', 'Heart', 'Liver', 'Kidney']},
-];
-const _hardQ = [
-  {'q': 'What is the chemical symbol for gold?', 'a': 'Au', 'opts': ['Ag', 'Au', 'Gd', 'Go']},
-  {'q': 'What is 17 × 13?', 'a': '221', 'opts': ['211', '221', '231', '241']},
-  {'q': 'Who developed the theory of relativity?', 'a': 'Albert Einstein', 'opts': ['Isaac Newton', 'Albert Einstein', 'Niels Bohr', 'Galileo Galilei']},
-  {'q': 'What is the derivative of x²?', 'a': '2x', 'opts': ['x', '2x', 'x²', '2x²']},
-  {'q': 'Which African country was formerly called Abyssinia?', 'a': 'Ethiopia', 'opts': ['Kenya', 'Ethiopia', 'Sudan', 'Somalia']},
-  {'q': 'What is the SI unit of electric current?', 'a': 'Ampere', 'opts': ['Volt', 'Watt', 'Ampere', 'Ohm']},
-  {'q': 'What is the value of π to 2 decimal places?', 'a': '3.14', 'opts': ['3.12', '3.14', '3.16', '3.18']},
-  {'q': 'Who was the first Secretary-General of the United Nations?', 'a': 'Trygve Lie', 'opts': ['Kofi Annan', 'Trygve Lie', 'U Thant', 'Dag Hammarskjöld']},
-];
+enum _Phase { levelMap, intro, playing, complete }
 
 class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
+  _Phase _phase = _Phase.levelMap;
   int? _level;
   String _difficulty = 'Easy';
-  late List<Map<String, dynamic>> _questions;
-  int _qIdx = 0, _resources = 0, _colonyValue = 0, _target = 0, _questionBudget = 15;
-  final List<_Building> _placed = [];
-  String? _selected;
-  bool _answered = false, _levelOver = false, _won = false;
-  final _rand = Random();
-  Timer? _timer;
-  int _timeLeft = 12;
+  int _requiredTotal = 15;
+  late ColonySiegeGame _game;
+  bool _isNearReactor = false;
+  bool _overloadFlash = false;
+  List<int> _heldPods = [];
+  int _received = 0;
 
-  void _startLevel(int level, String difficulty) {
-    final bank = difficulty == 'Easy' ? _easyQ : difficulty == 'Medium' ? _mediumQ : _hardQ;
-    setState(() {
-      _level = level; _difficulty = difficulty;
-      _questions = ([..._easyQ, ...bank, ...bank]..shuffle());
-      _qIdx = 0; _resources = 0; _colonyValue = 0; _placed.clear();
-      _target = 80 + (level - 1) * 15;
-      _questionBudget = 15;
-      _selected = null; _answered = false; _levelOver = false; _won = false;
-    });
-    _startTimer();
+  void _selectLevel(int level, String difficulty) {
+    final target = 10 + level * 3; // scales from ~13 at level 1 to ~70 at level 20
+    setState(() { _level = level; _difficulty = difficulty; _requiredTotal = target; _phase = _Phase.intro; });
   }
 
-  void _startTimer() {
-    _timer?.cancel();
-    _timeLeft = 12;
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      if (_timeLeft <= 1) { setState(() => _answered = true); _timer?.cancel(); _nextQuestion(auto: true); }
-      else setState(() => _timeLeft--);
-    });
-  }
-
-  List<_Building> get _unlockedRoster => _roster.where((b) => b.unlockLevel <= (_level ?? 1)).toList();
-
-  void _answer(String opt) {
-    if (_answered) return;
-    HapticFeedback.lightImpact();
-    _timer?.cancel();
-    final correct = opt == _questions[_qIdx]['a'];
-    setState(() { _selected = opt; _answered = true; });
-    if (correct) _resources += 15 + _timeLeft;
-
-    EduProgressRecorder.recordSession(
-      subject: widget.subject, xpEarned: correct ? 10 : 0,
-      questionsAnswered: 1, correctAnswers: correct ? 1 : 0,
+  void _beginLevel() {
+    _game = ColonySiegeGame(
+      requiredTotal: _requiredTotal,
+      onNearReactorChanged: (near) { if (mounted) setState(() => _isNearReactor = near); },
+      onHeldPodsChanged: (held) { if (mounted) setState(() => _heldPods = held); },
+      onReceivedChanged: (total) { if (mounted) setState(() => _received = total); },
+      onOverload: () {
+        if (!mounted) return;
+        HapticFeedback.heavyImpact();
+        setState(() => _overloadFlash = true);
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
+        Future.delayed(const Duration(milliseconds: 700), () { if (mounted) setState(() => _overloadFlash = false); });
+      },
+      onLevelComplete: () {
+        if (!mounted) return;
+        HapticFeedback.mediumImpact();
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 20 + _level! * 2, questionsAnswered: 1, correctAnswers: 1);
+        LevelMapScreen.unlockNext('colony_siege_v2', _level!);
+        setState(() => _phase = _Phase.complete);
+      },
     );
-    Future.delayed(const Duration(milliseconds: 700), () => _nextQuestion());
+    setState(() { _isNearReactor = false; _heldPods = []; _received = 0; _phase = _Phase.playing; });
   }
 
-  void _nextQuestion({bool auto = false}) {
-    if (_colonyValue >= _target) { setState(() { _levelOver = true; _won = true; }); return; }
-    _questionBudget--;
-    if (_questionBudget <= 0) { setState(() { _levelOver = true; _won = _colonyValue >= _target; }); return; }
-    setState(() { _qIdx = (_qIdx + 1) % _questions.length; _selected = null; _answered = false; });
-    _startTimer();
-  }
-
-  void _build(_Building b) {
-    if (_resources < b.cost) return;
-    HapticFeedback.mediumImpact();
-    setState(() { _resources -= b.cost; _colonyValue += b.cost; _placed.add(b); });
-    if (_colonyValue >= _target) {
-      _timer?.cancel();
-      LevelMapScreen.unlockNext('colony_siege', _level!);
-      setState(() { _levelOver = true; _won = true; });
-    }
-  }
-
-  void _viewBuilding(_Building b) {
-    showModalBottomSheet(context: context, backgroundColor: GacomColors.cardDark, isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SizedBox(height: 380, child: Column(children: [
-        Padding(padding: const EdgeInsets.all(16), child: Text('${b.emoji} ${b.name}',
-          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.textPrimary))),
-        Expanded(child: ModelViewer(backgroundColor: GacomColors.obsidian,
-          src: Uri.base.resolve('assets/assets/models_3d/${b.glb}').toString(),
-          alt: b.name, ar: false, autoRotate: true, cameraControls: true, disableZoom: false)),
-      ])));
-  }
-
-  @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void _onJoystickDirection(Offset dir) => _game.setMoveDirection(Vector2(dir.dx, dir.dy));
+  void _deliver() { if (_heldPods.isNotEmpty) _game.deliverHeldPods(); }
 
   @override
   Widget build(BuildContext context) {
-    if (_level == null) {
-      return LevelMapScreen(gameKey: 'colony_siege', title: 'Colony Siege', onPlayLevel: _startLevel);
-    }
-
-    if (_levelOver) return Scaffold(backgroundColor: GacomColors.obsidian,
-      body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(_won ? '🏗️ Colony Complete!' : '⏳ Out of Time', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: _won ? GacomColors.success : GacomColors.error)),
-        const SizedBox(height: 8),
-        Text('Colony value: $_colonyValue / $_target', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 16, color: GacomColors.deepOrange)),
-        const SizedBox(height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          OutlinedButton(onPressed: () => setState(() => _level = null), style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border)),
-            child: const Text('LEVEL MAP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
-          const SizedBox(width: 12),
-          if (_won) ElevatedButton(onPressed: () => _startLevel(_level! + 1 > 20 ? _level! : _level! + 1, LevelMapScreen.difficultyFor(_level! + 1 > 20 ? _level! : _level! + 1)),
-            style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('NEXT LEVEL', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))
-          else ElevatedButton(onPressed: () => _startLevel(_level!, _difficulty), style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('RETRY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white))),
-        ]),
-      ])));
-
-    final q = _questions[_qIdx];
-    final opts = List<String>.from(q['opts'] as List);
+    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'colony_siege_v2', title: 'Colony Siege', onPlayLevel: _selectLevel);
+    if (_phase == _Phase.intro) return _introScreen();
+    if (_phase == _Phase.complete) return _completeScreen();
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
-      appBar: AppBar(title: Text('LEVEL $_level · $_difficulty'), actions: [
-        Padding(padding: const EdgeInsets.only(right: 12), child: Center(child: Text('⏱ $_questionBudget left',
-          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textMuted)))),
+      body: Stack(children: [
+        GameWidget(game: _game),
+        Positioned(top: 0, left: 0, right: 0, child: SafeArea(bottom: false, child: _topHud())),
+        Positioned(left: 20, bottom: 28, child: VirtualJoystickWidget(onDirectionChanged: _onJoystickDirection)),
+        Positioned(right: 24, bottom: 40, child: _actionArea()),
       ]),
-      body: SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Resources + colony progress
-        Row(children: [
-          Expanded(child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('RESOURCES', style: TextStyle(color: GacomColors.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
-              Text('⚡ $_resources', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.deepOrange)),
-            ]))),
-          const SizedBox(width: 10),
-          Expanded(child: Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12)),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('COLONY VALUE', style: TextStyle(color: GacomColors.textMuted, fontSize: 10, fontWeight: FontWeight.w700)),
-              Text('$_colonyValue / $_target', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: GacomColors.success)),
-            ]))),
-        ]),
-        const SizedBox(height: 12),
-        ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: (_colonyValue / _target).clamp(0, 1), backgroundColor: GacomColors.elevatedCard, valueColor: const AlwaysStoppedAnimation(GacomColors.success))),
-        const SizedBox(height: 16),
-
-        // Build bar — real player choice, spend resources when YOU want
-        const Text('BUILD (tap to construct)', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
-        const SizedBox(height: 8),
-        SizedBox(height: 74, child: ListView(scrollDirection: Axis.horizontal, children: _unlockedRoster.map((b) {
-          final affordable = _resources >= b.cost;
-          return GestureDetector(onTap: affordable ? () => _build(b) : null,
-            child: Container(width: 84, margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: affordable ? GacomColors.deepOrange.withOpacity(0.12) : GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: affordable ? GacomColors.deepOrange.withOpacity(0.5) : GacomColors.border)),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text(b.emoji, style: const TextStyle(fontSize: 20)),
-                Text(b.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: GacomColors.textPrimary)),
-                Text('⚡${b.cost}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: affordable ? GacomColors.deepOrange : GacomColors.textMuted)),
-              ])));
-        }).toList())),
-        const SizedBox(height: 16),
-
-        // Placed buildings — tap for real 3D view
-        if (_placed.isNotEmpty) ...[
-          const Text('YOUR COLONY (tap to view in 3D)', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: _placed.map((b) => GestureDetector(onTap: () => _viewBuilding(b),
-            child: Container(width: 46, height: 46, decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(10), border: Border.all(color: GacomColors.border)),
-              child: Center(child: Text(b.emoji, style: const TextStyle(fontSize: 20)))))).toList()),
-          const SizedBox(height: 16),
-        ],
-
-        // Question
-        Row(children: [
-          Text('Q ${16 - _questionBudget}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-          const Spacer(),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(color: _timeLeft <= 4 ? GacomColors.error.withOpacity(0.15) : GacomColors.elevatedCard, borderRadius: BorderRadius.circular(50)),
-            child: Text('⏱ ${_timeLeft}s', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: _timeLeft <= 4 ? GacomColors.error : GacomColors.textPrimary))),
-        ]),
-        const SizedBox(height: 8),
-        Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
-          child: Text(q['q'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary, height: 1.4))),
-        const SizedBox(height: 12),
-        ...opts.map((opt) {
-          Color borderColor = GacomColors.border, bgColor = GacomColors.cardDark;
-          if (_answered && _selected == opt) {
-            borderColor = opt == q['a'] ? GacomColors.success : GacomColors.error;
-            bgColor = opt == q['a'] ? GacomColors.success.withOpacity(0.1) : GacomColors.error.withOpacity(0.1);
-          } else if (_answered && opt == q['a']) {
-            borderColor = GacomColors.success; bgColor = GacomColors.success.withOpacity(0.08);
-          }
-          return GestureDetector(onTap: () => _answer(opt),
-            child: AnimatedContainer(duration: const Duration(milliseconds: 200), margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10), border: Border.all(color: borderColor, width: 1.2)),
-              child: Text(opt, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w600, fontSize: 14, color: GacomColors.textPrimary))));
-        }),
-      ])),
     );
   }
+
+  Widget _topHud() => Padding(
+    padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+    child: Column(children: [
+      Row(children: [
+        _pill('LEVEL $_level · $_difficulty', GacomColors.deepOrange),
+        const Spacer(),
+        _pill(_received >= _requiredTotal ? '⚡ POWERED' : '⚡ ${_received}/${_requiredTotal}', _received >= _requiredTotal ? GacomColors.success : GacomColors.accentCyan),
+      ]),
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: _overloadFlash ? GacomColors.error : Colors.white.withOpacity(0.12), width: _overloadFlash ? 1.5 : 1),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.bolt_rounded, color: GacomColors.accentCyan, size: 13),
+          const SizedBox(width: 5),
+          Text(_overloadFlash ? 'REACTOR OVERLOAD — PODS RESET' : 'REACTOR TARGET: $_requiredTotal UNITS',
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: _overloadFlash ? GacomColors.error : GacomColors.accentCyan, letterSpacing: 0.5)),
+        ]),
+      ),
+    ]),
+  );
+
+  Widget _pill(String text, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withOpacity(0.4))),
+    child: Text(text, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: color)),
+  );
+
+  Widget _actionArea() {
+    final holding = _heldPods.isNotEmpty;
+    final canDeliver = holding && _isNearReactor;
+    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      if (holding) Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Text('CARRYING ', style: TextStyle(color: Colors.white70, fontSize: 10)),
+          ..._heldPods.map((v) => Container(margin: const EdgeInsets.only(left: 3), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(color: const Color(0xFF3DD6FF).withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+            child: Text('$v', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF3DD6FF))))),
+        ]),
+      ),
+      AnimatedOpacity(
+        opacity: canDeliver ? 1 : 0,
+        duration: const Duration(milliseconds: 200),
+        child: IgnorePointer(
+          ignoring: !canDeliver,
+          child: GestureDetector(
+            onTap: _deliver,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: GacomColors.deepOrange,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.5), blurRadius: 12)],
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 6),
+                Text('DELIVER', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _introScreen() => Scaffold(
+    backgroundColor: GacomColors.obsidian,
+    appBar: AppBar(title: Text('LEVEL $_level · $_difficulty')),
+    body: SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(
+      mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('POWER THE REACTOR', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
+      const SizedBox(height: 16),
+      Text('The Reactor Core needs exactly $_requiredTotal units. Fuel pods are scattered nearby — collect the right combination '
+        'and deliver them. Overshoot the target and the reactor vents steam, resetting the pods.',
+        style: const TextStyle(color: GacomColors.textSecondary, fontSize: 15, height: 1.5)),
+      const SizedBox(height: 28),
+      Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+        child: const Row(children: [
+          Icon(Icons.gamepad_rounded, color: GacomColors.deepOrange, size: 20), SizedBox(width: 10),
+          Expanded(child: Text('Walk over a pod to collect it. Get close to the reactor and tap DELIVER.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
+        ])),
+      const SizedBox(height: 24),
+      SizedBox(width: double.infinity, child: ElevatedButton(
+        onPressed: _beginLevel,
+        style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        child: const Text('BEGIN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white, letterSpacing: 1)))),
+    ]))));
+
+  Widget _completeScreen() => Scaffold(
+    backgroundColor: GacomColors.obsidian,
+    body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Text('⚡', style: TextStyle(fontSize: 48)),
+      const SizedBox(height: 12),
+      const Text('REACTOR POWERED', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: GacomColors.success)),
+      const SizedBox(height: 8),
+      Text('Level $_level complete. Energy surges through the colony.', textAlign: TextAlign.center, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 14, height: 1.5)),
+      const SizedBox(height: 20),
+      Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12)),
+        child: Text('+${20 + _level! * 2} XP', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: GacomColors.deepOrange))),
+      const SizedBox(height: 24),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        OutlinedButton(onPressed: () => setState(() => _phase = _Phase.levelMap), style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.border)),
+          child: const Text('LEVEL MAP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
+        const SizedBox(width: 12),
+        ElevatedButton(onPressed: () => _selectLevel((_level! + 1).clamp(1, 20), LevelMapScreen.difficultyFor((_level! + 1).clamp(1, 20))),
+          style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          child: const Text('NEXT LEVEL', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white))),
+      ]),
+    ]))),
+  );
 }
