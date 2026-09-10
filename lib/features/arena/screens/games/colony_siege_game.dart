@@ -8,11 +8,11 @@ import '../../games/astra_colony/colony_siege_game.dart';
 import '../../games/astra_colony/virtual_joystick_widget.dart';
 import 'level_map_screen.dart';
 
-/// Colony Siege, fully rebuilt: pick a level from the map (1-20, Easy/
-/// Medium/Hard, difficulty-scaled reactor targets), then collect fuel
-/// pods scattered in the world and deliver them to the Reactor Core.
-/// Exact match powers it; overshoot vents steam and resets the pods.
-/// No popup, no multiple-choice card, anywhere in this flow.
+/// Colony Siege v3: collect fuel pods, physically bring them to the
+/// Transporter and LOAD it (distinct from collecting), then LAUNCH it —
+/// the Transporter drives itself to the Reactor and delivers on arrival.
+/// A genuinely different rhythm from Field Trial's instant-deposit, not a
+/// reskin of it.
 class ColonySiegeScreen extends StatefulWidget {
   const ColonySiegeScreen({super.key, this.subject = 'logic'});
   final String subject;
@@ -29,21 +29,25 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
   String _difficulty = 'Easy';
   int _requiredTotal = 15;
   late ColonySiegeGame _game;
-  bool _isNearReactor = false;
+  bool _isNearTransporter = false;
+  bool _isDriving = false;
   bool _overloadFlash = false;
   List<int> _heldPods = [];
+  int _transporterLoad = 0;
   int _received = 0;
 
   void _selectLevel(int level, String difficulty) {
-    final target = 10 + level * 3; // scales from ~13 at level 1 to ~70 at level 20
+    final target = 10 + level * 3;
     setState(() { _level = level; _difficulty = difficulty; _requiredTotal = target; _phase = _Phase.intro; });
   }
 
   void _beginLevel() {
     _game = ColonySiegeGame(
       requiredTotal: _requiredTotal,
-      onNearReactorChanged: (near) { if (mounted) setState(() => _isNearReactor = near); },
+      onNearTransporterChanged: (near) { if (mounted) setState(() => _isNearTransporter = near); },
       onHeldPodsChanged: (held) { if (mounted) setState(() => _heldPods = held); },
+      onTransporterLoadChanged: (load) { if (mounted) setState(() => _transporterLoad = load); },
+      onTransporterDrivingChanged: (driving) { if (mounted) setState(() => _isDriving = driving); },
       onReceivedChanged: (total) { if (mounted) setState(() => _received = total); },
       onOverload: () {
         if (!mounted) return;
@@ -56,19 +60,20 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
         if (!mounted) return;
         HapticFeedback.mediumImpact();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 20 + _level! * 2, questionsAnswered: 1, correctAnswers: 1);
-        LevelMapScreen.unlockNext('colony_siege_v2', _level!);
+        LevelMapScreen.unlockNext('colony_siege_v3', _level!);
         setState(() => _phase = _Phase.complete);
       },
     );
-    setState(() { _isNearReactor = false; _heldPods = []; _received = 0; _phase = _Phase.playing; });
+    setState(() { _isNearTransporter = false; _isDriving = false; _heldPods = []; _transporterLoad = 0; _received = 0; _phase = _Phase.playing; });
   }
 
   void _onJoystickDirection(Offset dir) => _game.setMoveDirection(Vector2(dir.dx, dir.dy));
-  void _deliver() { if (_heldPods.isNotEmpty) _game.deliverHeldPods(); }
+  void _load() => _game.loadTransporter();
+  void _launch() => _game.launchTransporter();
 
   @override
   Widget build(BuildContext context) {
-    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'colony_siege_v2', title: 'Colony Siege', onPlayLevel: _selectLevel);
+    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'colony_siege_v3', title: 'Colony Siege', onPlayLevel: _selectLevel);
     if (_phase == _Phase.intro) return _introScreen();
     if (_phase == _Phase.complete) return _completeScreen();
 
@@ -100,9 +105,12 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
           border: Border.all(color: _overloadFlash ? GacomColors.error : Colors.white.withOpacity(0.12), width: _overloadFlash ? 1.5 : 1),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.bolt_rounded, color: GacomColors.accentCyan, size: 13),
+          Icon(_isDriving ? Icons.local_shipping_rounded : Icons.bolt_rounded, color: _isDriving ? GacomColors.accentCyan : GacomColors.accentCyan, size: 13),
           const SizedBox(width: 5),
-          Text(_overloadFlash ? 'REACTOR OVERLOAD — PODS RESET' : 'REACTOR TARGET: $_requiredTotal UNITS',
+          Text(
+            _overloadFlash ? 'REACTOR OVERLOAD — PODS RESET'
+              : _isDriving ? 'TRANSPORTER EN ROUTE…'
+              : 'REACTOR TARGET: $_requiredTotal UNITS',
             style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: _overloadFlash ? GacomColors.error : GacomColors.accentCyan, letterSpacing: 0.5)),
         ]),
       ),
@@ -117,44 +125,45 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
 
   Widget _actionArea() {
     final holding = _heldPods.isNotEmpty;
-    final canDeliver = holding && _isNearReactor;
+    final canLoad = holding && _isNearTransporter && !_isDriving;
+    final canLaunch = _transporterLoad > 0 && _isNearTransporter && !_isDriving;
+
     return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      if (holding) Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Text('CARRYING ', style: TextStyle(color: Colors.white70, fontSize: 10)),
-          ..._heldPods.map((v) => Container(margin: const EdgeInsets.only(left: 3), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(color: const Color(0xFF3DD6FF).withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-            child: Text('$v', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: Color(0xFF3DD6FF))))),
-        ]),
-      ),
-      AnimatedOpacity(
-        opacity: canDeliver ? 1 : 0,
-        duration: const Duration(milliseconds: 200),
-        child: IgnorePointer(
-          ignoring: !canDeliver,
-          child: GestureDetector(
-            onTap: _deliver,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: GacomColors.deepOrange,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.5), blurRadius: 12)],
-              ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 6),
-                Text('DELIVER', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
-              ]),
-            ),
-          ),
-        ),
-      ),
+      if (holding) _chipRow('CARRYING', _heldPods, const Color(0xFF3DD6FF)),
+      if (_transporterLoad > 0) Padding(padding: const EdgeInsets.only(bottom: 10), child: _pill('TRANSPORTER: $_transporterLoad', GacomColors.deepOrange)),
+      if (canLoad) Padding(padding: const EdgeInsets.only(bottom: 8), child: _actionButton('LOAD', Icons.upload_rounded, _load)),
+      if (canLaunch) _actionButton('LAUNCH', Icons.send_rounded, _launch),
     ]);
   }
+
+  Widget _chipRow(String label, List<int> values, Color color) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Text('$label ', style: const TextStyle(color: Colors.white70, fontSize: 10)),
+      ...values.map((v) => Container(margin: const EdgeInsets.only(left: 3), padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+        child: Text('$v', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: color)))),
+    ]),
+  );
+
+  Widget _actionButton(String label, IconData icon, VoidCallback onTap) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: GacomColors.deepOrange,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.5), blurRadius: 12)],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: Colors.white, size: 18),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
+      ]),
+    ),
+  );
 
   Widget _introScreen() => Scaffold(
     backgroundColor: GacomColors.obsidian,
@@ -163,14 +172,14 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
       mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('POWER THE REACTOR', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
       const SizedBox(height: 16),
-      Text('The Reactor Core needs exactly $_requiredTotal units. Fuel pods are scattered nearby — collect the right combination '
-        'and deliver them. Overshoot the target and the reactor vents steam, resetting the pods.',
+      Text('The Reactor Core needs exactly $_requiredTotal units. Collect fuel pods, bring them to the Transporter and LOAD it, '
+        'then LAUNCH it — it drives itself to the Reactor. Overshoot the target and it vents steam, resetting the pods.',
         style: const TextStyle(color: GacomColors.textSecondary, fontSize: 15, height: 1.5)),
       const SizedBox(height: 28),
       Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
         child: const Row(children: [
           Icon(Icons.gamepad_rounded, color: GacomColors.deepOrange, size: 20), SizedBox(width: 10),
-          Expanded(child: Text('Walk over a pod to collect it. Get close to the reactor and tap DELIVER.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
+          Expanded(child: Text('Collect pods → walk to the Transporter → LOAD → LAUNCH.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
         ])),
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, child: ElevatedButton(
