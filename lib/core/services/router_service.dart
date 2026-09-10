@@ -46,6 +46,7 @@ import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
 import '../../features/arena/screens/games/colony_siege_game.dart';
 import '../../features/arena/screens/games/arena_gauntlet_game.dart';
+import '../../features/arena/screens/games/astra_colony_screen.dart';
 import '../../features/arena/screens/games/reaction_solo.dart';
 import '../../features/arena/screens/games/algebra_game.dart';
 import '../../features/arena/screens/games/physics_game.dart';
@@ -218,6 +219,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/trivia', builder: (_, __) => const TriviaSoloScreen()),
               GoRoute(path: 'practice/colonybuilder', builder: (_, __) => const ColonySiegeScreen()),
               GoRoute(path: 'practice/weaponduel', builder: (_, __) => const ArenaGauntletScreen()),
+              GoRoute(path: 'practice/astracolony', builder: (_, __) => const AstraColonyScreen()),
               GoRoute(path: 'practice/reaction', builder: (_, __) => const ReactionSoloScreen()),
               GoRoute(path: 'practice/algebra', builder: (_, __) => const AlgebraGame()),
               GoRoute(path: 'practice/physics', builder: (_, __) => const PhysicsGame()),
