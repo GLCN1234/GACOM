@@ -1,0 +1,17 @@
+{
+  "name": "GACOM Flutter Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "postCreateCommand": "git clone https://github.com/flutter/flutter.git -b stable ~/flutter && echo 'export PATH=\"$PATH:$HOME/flutter/bin\"' >> ~/.bashrc && ~/flutter/bin/flutter doctor && ~/flutter/bin/flutter pub get && npm install -g supabase",
+  "customizations": {
+    "vscode": {
+      "extensions": ["Dart-Code.flutter", "Dart-Code.dart-code"]
+    }
+  },
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": { "label": "Flutter Web", "onAutoForward": "openBrowser" }
+  }
+}
