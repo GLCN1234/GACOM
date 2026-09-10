@@ -48,3 +48,4 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 .env
 .env.*
 supabase/.temp/
+*.zip
