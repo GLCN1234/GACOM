@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 /// — after two real runtime crashes from less-certain Flame APIs this
 /// session, movement input stays on Flutter's most solid ground.
 class VirtualJoystickWidget extends StatefulWidget {
-  const VirtualJoystickWidget({super.key, required this.onDirectionChanged});
+  const VirtualJoystickWidget({super.key, required this.onDirectionChanged, this.knobColor = const Color(0xFF3DD6FF), this.baseBorderColor});
   final void Function(Offset direction) onDirectionChanged; // x/y each in [-1, 1]
+  final Color knobColor;
+  final Color? baseBorderColor;
 
   @override
   State<VirtualJoystickWidget> createState() => _VirtualJoystickWidgetState();
@@ -49,7 +51,7 @@ class _VirtualJoystickWidgetState extends State<VirtualJoystickWidget> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.black.withOpacity(0.35),
-              border: Border.all(color: Colors.white.withOpacity(0.25), width: 1.5),
+              border: Border.all(color: widget.baseBorderColor ?? Colors.white.withOpacity(0.25), width: 1.5),
             ),
           ),
           Transform.translate(
@@ -58,8 +60,8 @@ class _VirtualJoystickWidgetState extends State<VirtualJoystickWidget> {
               width: _knobRadius * 2, height: _knobRadius * 2,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3DD6FF).withOpacity(0.85),
-                boxShadow: [BoxShadow(color: const Color(0xFF3DD6FF).withOpacity(0.5), blurRadius: 10)],
+                color: widget.knobColor.withOpacity(0.85),
+                boxShadow: [BoxShadow(color: widget.knobColor.withOpacity(0.5), blurRadius: 10)],
               ),
             ),
           ),
