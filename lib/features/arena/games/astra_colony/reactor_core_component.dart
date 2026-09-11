@@ -11,6 +11,10 @@ class ReactorCoreComponent extends PositionComponent {
       : super(position: position, size: Vector2(84, 70), anchor: Anchor.center);
 
   bool powered = false;
+  /// Diegetic status text floating above the reactor itself — replaces a
+  /// top-of-screen HUD panel entirely. Set by the game engine whenever
+  /// received/target changes.
+  String needsLabel = '';
 
   @override
   void render(Canvas canvas) {
@@ -38,5 +42,19 @@ class ReactorCoreComponent extends PositionComponent {
     final strut = Paint()..color = const Color(0xFF2A3452);
     canvas.drawRect(Rect.fromLTWH(size.x * 0.1, size.y - 8, 6, 8), strut);
     canvas.drawRect(Rect.fromLTWH(size.x * 0.85, size.y - 8, 6, 8), strut);
+
+    // Floating diegetic label — drawn ABOVE the component's own bounds
+    // (negative y), directly anchored to this world object, not a
+    // separate top-of-screen panel.
+    if (needsLabel.isNotEmpty) {
+      final bgPaint = Paint()..color = Colors.black.withOpacity(0.6);
+      final tp = TextPainter(
+        text: TextSpan(text: needsLabel, style: TextStyle(color: powered ? const Color(0xFF3DD6FF) : const Color(0xFFFFA940), fontWeight: FontWeight.w800, fontSize: 11)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final labelRect = Rect.fromCenter(center: Offset(size.x / 2, -14), width: tp.width + 16, height: 20);
+      canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(6)), bgPaint);
+      tp.paint(canvas, Offset(labelRect.center.dx - tp.width / 2, labelRect.center.dy - tp.height / 2));
+    }
   }
 }

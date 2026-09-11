@@ -1,26 +1,22 @@
 import 'package:flame/game.dart';
-import 'package:flame/components.dart' show Vector2;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
 import '../../games/astra_colony/colony_siege_game.dart';
-import '../../games/astra_colony/virtual_joystick_widget.dart';
 import '../../games/astra_colony/industrial_gauge.dart';
 import 'level_map_screen.dart';
 
-// Colony Siege's own palette — amber/rust/iron. Deliberately NOT reusing
-// GacomColors.deepOrange/accentCyan here: this game needs to look and
-// feel like heavy machinery, distinct from every other game's HUD.
 const _amber = Color(0xFFFFA940);
 const _rust = Color(0xFFB8541F);
 const _iron = Color(0xFF17171A);
 const _ironPanel = Color(0xFF232326);
 const _ironBorder = Color(0xFF4A4A50);
 
-/// Colony Siege — industrial mining identity. Collect fuel pods, load a
-/// Transporter, launch it to drive itself to the Reactor. Visually
-/// distinct from every other game: amber/rust/iron palette, beveled
-/// riveted panels, an analog gauge dial instead of a progress pill.
+/// Colony Siege v4 — a genuinely different ARRANGEMENT, not just a
+/// different theme: no joystick, no top HUD bar, no corner action button.
+/// Tap a pod to send your unit for it. Tap a dock tray card to select it.
+/// Tap the Reactor to dispatch delivery. Status lives as a floating label
+/// on the Reactor itself, not a global panel.
 class ColonySiegeScreen extends StatefulWidget {
   const ColonySiegeScreen({super.key, this.subject = 'logic'});
   final String subject;
@@ -37,12 +33,10 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
   String _difficulty = 'Easy';
   int _requiredTotal = 15;
   late ColonySiegeGame _game;
-  bool _isNearTransporter = false;
-  bool _isDriving = false;
-  bool _overloadFlash = false;
-  List<int> _heldPods = [];
-  int _transporterLoad = 0;
+  List<int> _dock = [];
+  int? _selectedDockIndex;
   int _received = 0;
+  bool _overloadFlash = false;
 
   void _selectLevel(int level, String difficulty) {
     final target = 10 + level * 3;
@@ -52,10 +46,7 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
   void _beginLevel() {
     _game = ColonySiegeGame(
       requiredTotal: _requiredTotal,
-      onNearTransporterChanged: (near) { if (mounted) setState(() => _isNearTransporter = near); },
-      onHeldPodsChanged: (held) { if (mounted) setState(() => _heldPods = held); },
-      onTransporterLoadChanged: (load) { if (mounted) setState(() => _transporterLoad = load); },
-      onTransporterDrivingChanged: (driving) { if (mounted) setState(() => _isDriving = driving); },
+      onDockChanged: (dock) { if (mounted) setState(() { _dock = dock; _selectedDockIndex = null; }); },
       onReceivedChanged: (total) { if (mounted) setState(() => _received = total); },
       onOverload: () {
         if (!mounted) return;
@@ -68,108 +59,77 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
         if (!mounted) return;
         HapticFeedback.mediumImpact();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 20 + _level! * 2, questionsAnswered: 1, correctAnswers: 1);
-        LevelMapScreen.unlockNext('colony_siege_v3', _level!);
+        LevelMapScreen.unlockNext('colony_siege_v4', _level!);
         setState(() => _phase = _Phase.complete);
       },
     );
-    setState(() { _isNearTransporter = false; _isDriving = false; _heldPods = []; _transporterLoad = 0; _received = 0; _phase = _Phase.playing; });
+    setState(() { _dock = []; _selectedDockIndex = null; _received = 0; _phase = _Phase.playing; });
   }
 
-  void _onJoystickDirection(Offset dir) => _game.setMoveDirection(Vector2(dir.dx, dir.dy));
-  void _load() => _game.loadTransporter();
-  void _launch() => _game.launchTransporter();
+  void _selectDock(int index) {
+    setState(() => _selectedDockIndex = index);
+    _game.selectDockPod(index);
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'colony_siege_v3', title: 'Colony Siege', onPlayLevel: _selectLevel);
+    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'colony_siege_v4', title: 'Colony Siege', onPlayLevel: _selectLevel);
     if (_phase == _Phase.intro) return _introScreen();
     if (_phase == _Phase.complete) return _completeScreen();
 
     return Scaffold(
       backgroundColor: _iron,
-      body: Stack(children: [
-        GameWidget(game: _game),
-        Positioned(top: 0, left: 0, right: 0, child: SafeArea(bottom: false, child: _topHud())),
-        Positioned(left: 20, bottom: 28, child: VirtualJoystickWidget(onDirectionChanged: _onJoystickDirection, knobColor: _amber, baseBorderColor: _rust)),
-        Positioned(right: 24, bottom: 40, child: _actionArea()),
-      ]),
+      body: SafeArea(child: Column(children: [
+        // Minimal top corners only — no bar spanning the screen.
+        Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 6), child: Row(children: [
+          GestureDetector(onTap: () => setState(() => _phase = _Phase.levelMap),
+            child: Row(mainAxisSize: MainAxisSize.min, children: const [
+              Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 13),
+              SizedBox(width: 4),
+              Text('BASE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white70, letterSpacing: 1)),
+            ])),
+          const Spacer(),
+          IndustrialGauge(current: _received, target: _requiredTotal, size: 52, overload: _overloadFlash),
+        ])),
+        // The play space — nearly the entire screen, per the blueprint.
+        Expanded(child: GameWidget(game: _game)),
+        // Bottom dock tray — the ONLY interaction surface besides the
+        // world itself. Replaces both the old joystick and action button.
+        _dockTray(),
+      ])),
     );
   }
 
-  // ── Riveted industrial panel — the signature shape for this game ──────
-  Widget _rivetedPanel({required Widget child, EdgeInsets? padding}) => Container(
-    padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    decoration: BoxDecoration(
-      color: _ironPanel,
-      border: Border.all(color: _ironBorder, width: 2),
-      boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2))],
-    ),
-    child: Stack(clipBehavior: Clip.none, children: [
-      child,
-      // Corner rivets — small dots at each corner, the industrial tell.
-      const Positioned(top: -3, left: -3, child: _Rivet()),
-      const Positioned(top: -3, right: -3, child: _Rivet()),
-      const Positioned(bottom: -3, left: -3, child: _Rivet()),
-      const Positioned(bottom: -3, right: -3, child: _Rivet()),
-    ]),
-  );
-
-  Widget _topHud() => Padding(
-    padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-    child: Column(children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _rivetedPanel(child: Text('LVL $_level · ${_difficulty.toUpperCase()}',
-          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: _amber, letterSpacing: 1.2))),
-        const Spacer(),
-        _rivetedPanel(child: IndustrialGauge(current: _received, target: _requiredTotal, overload: _overloadFlash)),
-      ]),
-      const SizedBox(height: 10),
-      _rivetedPanel(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(_isDriving ? Icons.local_shipping_rounded : Icons.factory_rounded, color: _amber, size: 15),
-        const SizedBox(width: 7),
-        Text(
-          _overloadFlash ? 'OVERLOAD — VENTING STEAM'
-            : _isDriving ? 'TRANSPORTER EN ROUTE…'
-            : 'TARGET: $_requiredTotal UNITS',
-          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: Colors.white, letterSpacing: 0.8)),
-      ])),
-    ]),
-  );
-
-  Widget _actionArea() {
-    final holding = _heldPods.isNotEmpty;
-    final canLoad = holding && _isNearTransporter && !_isDriving;
-    final canLaunch = _transporterLoad > 0 && _isNearTransporter && !_isDriving;
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-      if (holding) Padding(padding: const EdgeInsets.only(bottom: 10), child: _rivetedPanel(child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Text('CARRYING ', style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w700)),
-        ..._heldPods.map((v) => Container(margin: const EdgeInsets.only(left: 3), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          color: _rust.withOpacity(0.3),
-          child: Text('$v', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: _amber)))),
-      ]))),
-      if (_transporterLoad > 0) Padding(padding: const EdgeInsets.only(bottom: 10), child: _rivetedPanel(child:
-        Text('CARGO: $_transporterLoad', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: _amber)))),
-      if (canLoad) Padding(padding: const EdgeInsets.only(bottom: 8), child: _leverButton('LOAD', Icons.upload_rounded, _load)),
-      if (canLaunch) _leverButton('LAUNCH', Icons.send_rounded, _launch),
-    ]);
-  }
-
-  Widget _leverButton(String label, IconData icon, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
-      decoration: BoxDecoration(
-        color: _rust,
-        border: Border.all(color: _amber, width: 2),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 6, offset: Offset(0, 3))],
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: Colors.white, size: 18),
-        const SizedBox(width: 7),
-        Text(label, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white, letterSpacing: 1)),
-      ]),
-    ),
+  Widget _dockTray() => Container(
+    height: 96,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: const BoxDecoration(color: _ironPanel, border: Border(top: BorderSide(color: _ironBorder, width: 2))),
+    child: _dock.isEmpty
+      ? const Center(child: Text('Tap a fuel pod in the field to collect it', style: TextStyle(color: Colors.white38, fontSize: 12)))
+      : ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: _dock.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (_, i) {
+            final selected = _selectedDockIndex == i;
+            return GestureDetector(
+              onTap: () => _selectDock(i),
+              child: Container(
+                width: 64,
+                decoration: BoxDecoration(
+                  color: selected ? _rust : _ironPanel,
+                  border: Border.all(color: selected ? _amber : _ironBorder, width: selected ? 2.5 : 1.5),
+                  boxShadow: selected ? [BoxShadow(color: _amber.withOpacity(0.4), blurRadius: 8)] : null,
+                ),
+                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.propane_tank_rounded, color: _amber, size: 20),
+                  const SizedBox(height: 4),
+                  Text('${_dock[i]}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white)),
+                ]),
+              ),
+            );
+          },
+        ),
   );
 
   Widget _introScreen() => Scaffold(
@@ -179,14 +139,15 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
       mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('POWER THE REACTOR', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: _amber, letterSpacing: 1)),
       const SizedBox(height: 16),
-      Text('The Reactor Core needs exactly $_requiredTotal units. Collect fuel pods, bring them to the Transporter and LOAD it, '
-        'then LAUNCH it — it drives itself to the Reactor. Overshoot the target and it vents steam, resetting the pods.',
+      Text('The Reactor needs exactly $_requiredTotal units. Tap a fuel pod to send your unit to collect it. '
+        'Tap a pod in your dock tray to select it, then tap the Reactor to dispatch delivery.',
         style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5)),
       const SizedBox(height: 28),
-      _rivetedPanel(padding: const EdgeInsets.all(14), child: const Row(children: [
-        Icon(Icons.settings_rounded, color: _amber, size: 20), SizedBox(width: 10),
-        Expanded(child: Text('Collect pods → walk to the Transporter → LOAD → LAUNCH.', style: TextStyle(color: Colors.white60, fontSize: 12))),
-      ])),
+      Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _ironPanel, border: Border.all(color: _ironBorder, width: 2)),
+        child: const Row(children: [
+          Icon(Icons.touch_app_rounded, color: _amber, size: 20), SizedBox(width: 10),
+          Expanded(child: Text('No joystick — tap the field to move, tap pods to collect, tap the dock tray then the Reactor to deliver.', style: TextStyle(color: Colors.white60, fontSize: 12))),
+        ])),
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, child: GestureDetector(
         onTap: _beginLevel,
@@ -203,9 +164,10 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
       const SizedBox(height: 12),
       const Text('REACTOR POWERED', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: _amber, letterSpacing: 1)),
       const SizedBox(height: 8),
-      Text('Level $_level complete. Energy surges through the colony.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
+      Text('Level $_level complete.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
       const SizedBox(height: 20),
-      _rivetedPanel(padding: const EdgeInsets.all(14), child: Text('+${20 + _level! * 2} XP', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: _amber))),
+      Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _ironPanel, border: Border.all(color: _ironBorder, width: 2)),
+        child: Text('+${20 + _level! * 2} XP', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: _amber))),
       const SizedBox(height: 24),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         OutlinedButton(onPressed: () => setState(() => _phase = _Phase.levelMap), style: OutlinedButton.styleFrom(side: const BorderSide(color: _ironBorder)),
@@ -216,14 +178,5 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
             child: const Text('NEXT LEVEL', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))),
       ]),
     ]))),
-  );
-}
-
-class _Rivet extends StatelessWidget {
-  const _Rivet();
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 6, height: 6,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: _ironBorder, border: Border.all(color: Colors.black54, width: 0.5)),
   );
 }
