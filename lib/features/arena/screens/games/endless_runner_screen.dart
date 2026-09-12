@@ -1,150 +1,144 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
-import 'level_map_screen.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
 const _accent = Color(0xFF3DD6FF);
 const _danger = Color(0xFFFF5A5F);
 const _gold = Color(0xFFFFC940);
+const _green = Color(0xFF3DDC84);
 
-/// A genuine endless runner — the exact known genre (Subway Surfers-style
-/// lane switching), not an invented mechanic. Three lanes, one correct
-/// answer lane per gate, swipe to switch, run through the right one.
-/// Continuous and smooth: gates keep coming, no popups, no pauses.
+/// A genuine continuous endless runner — no levels, no level map, no
+/// "clear level 1 to unlock level 2". One run: you keep going, it keeps
+/// getting faster, until you crash. While running, you dodge obstacles
+/// and collect +/- number tokens toward a running MISSION target that
+/// resets and grows harder every time you reach it — addition and
+/// subtraction embedded directly in continuous movement, not a discrete
+/// question stopping the run.
 class EndlessRunnerScreen extends StatefulWidget {
-  const EndlessRunnerScreen({super.key, this.subject = 'general', this.questions});
+  const EndlessRunnerScreen({super.key, this.subject = 'math'});
   final String subject;
-  final List<Map<String, dynamic>>? questions;
 
   @override
   State<EndlessRunnerScreen> createState() => _EndlessRunnerScreenState();
 }
 
-const _fallbackQuestions = [
-  {'question': 'What is 12 × 8?', 'options': ['96', '84', '108', '92']},
-  {'question': 'Capital of Nigeria?', 'options': ['Abuja', 'Lagos', 'Kano', 'Ibadan']},
-  {'question': 'What gas do plants absorb?', 'options': ['Carbon Dioxide', 'Oxygen', 'Nitrogen', 'Hydrogen']},
-  {'question': 'Who wrote "Things Fall Apart"?', 'options': ['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Adichie', 'Ben Okri']},
-  {'question': 'Square root of 144?', 'options': ['12', '11', '14', '10']},
-  {'question': 'Largest ocean on Earth?', 'options': ['Pacific', 'Atlantic', 'Indian', 'Arctic']},
-  {'question': 'What is 9 + 16?', 'options': ['25', '23', '27', '24']},
-  {'question': 'Powerhouse of the cell?', 'options': ['Mitochondria', 'Nucleus', 'Ribosome', 'Golgi Body']},
-];
+enum _ItemType { obstacle, token }
 
-class _Gate {
-  _Gate({required this.lanes, required this.correctLane});
-  final List<String> lanes; // exactly 3, one per lane
-  final int correctLane;
-  double y = -0.25; // 0 = top, 1 = player's row, in screen-fraction units
-  bool resolved = false;
-  bool? wasCorrect; // set once resolved, drives pass/fail visual feedback
-  int? resolvedPlayerLane; // which lane the player was actually in at resolution — captured once, not read live, since the player may move lanes again before this gate scrolls off screen
+class _RunnerItem {
+  _RunnerItem({required this.type, required this.lane, this.value = 0});
+  final _ItemType type;
+  final int lane;
+  final int value;
+  double y = -0.12;
+  bool consumed = false;
+  bool? hitResult; // true = good outcome, false = bad, for brief flash feedback
 }
 
-enum _Phase { levelMap, intro, playing, complete }
+enum _Phase { intro, playing, gameOver }
 
 class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
-  _Phase _phase = _Phase.levelMap;
-  int? _level;
-  String _difficulty = 'Easy';
-  int _targetCorrect = 10;
-  double _gateSpeed = 0.28; // screen-fractions per second
+  static const double _tickSeconds = 1 / 60;
+  static const double _playerRowY = 0.86;
+  static const double _baseSpeed = 0.26;
 
+  _Phase _phase = _Phase.intro;
   int _lane = 1;
   int _lives = 3;
   int _score = 0;
-  int _correctCount = 0;
-  final List<_Gate> _gates = [];
+  double _elapsed = 0;
+  int _missionTarget = 15;
+  int _tally = 0;
+  double _timeSinceLastSpawn = 999;
+  double _bestMissionReached = 0;
+
+  final List<_RunnerItem> _items = [];
   Timer? _timer;
-  late List<Map<String, dynamic>> _questionPool;
-  int _questionCursor = 0;
+  final _rng = Random();
 
-  static const double _tickSeconds = 1 / 60;
-  static const double _playerRowY = 0.86;
+  double get _speed => _baseSpeed + (_elapsed / 40).clamp(0, 0.35);
+  double get _spawnInterval => (1.0 - (_elapsed / 90).clamp(0, 0.5)).clamp(0.5, 1.0);
 
-  void _selectLevel(int level, String difficulty) {
-    setState(() {
-      _level = level;
-      _difficulty = difficulty;
-      _targetCorrect = 8 + level;
-      _gateSpeed = difficulty == 'Easy' ? 0.22 : difficulty == 'Medium' ? 0.30 : 0.4;
-      _phase = _Phase.intro;
-    });
-  }
-
-  void _beginLevel() {
-    _questionPool = (widget.questions != null && widget.questions!.isNotEmpty)
-        ? (List<Map<String, dynamic>>.from(widget.questions!)..shuffle())
-        : ([..._fallbackQuestions]..shuffle());
-    _questionCursor = 0;
+  void _begin() {
     _lane = 1;
     _lives = 3;
     _score = 0;
-    _correctCount = 0;
-    _gates.clear();
-    _spawnGate();
+    _elapsed = 0;
+    _missionTarget = 15;
+    _tally = 0;
+    _bestMissionReached = 0;
+    _items.clear();
+    _timeSinceLastSpawn = 999;
     setState(() => _phase = _Phase.playing);
     _timer?.cancel();
     _timer = Timer.periodic(Duration(milliseconds: (_tickSeconds * 1000).round()), _tick);
   }
 
-  void _spawnGate() {
-    if (_questionPool.isEmpty) return;
-    final q = _questionPool[_questionCursor % _questionPool.length];
-    _questionCursor++;
-
-    final rawOptions = List<String>.from(q['options'] as List? ?? const []);
-    final answer = q['answer'] as String?;
-    final correctText = answer ?? rawOptions.first;
-    final wrongPool = rawOptions.where((o) => o != correctText).toList()..shuffle();
-    final picks = <String>[correctText, ...wrongPool.take(2)];
-    picks.shuffle();
-    final correctLane = picks.indexOf(correctText);
-
-    _gates.add(_Gate(lanes: picks, correctLane: correctLane));
-  }
-
   void _tick(Timer t) {
     if (!mounted) return;
     setState(() {
-      for (final gate in _gates) {
-        if (gate.resolved) continue;
-        gate.y += _gateSpeed * _tickSeconds;
-        if (gate.y >= _playerRowY) {
-          gate.resolved = true;
-          _resolveGate(gate);
+      _elapsed += _tickSeconds;
+      _timeSinceLastSpawn += _tickSeconds;
+      if (_timeSinceLastSpawn >= _spawnInterval) {
+        _timeSinceLastSpawn = 0;
+        _spawnItem();
+      }
+
+      for (final item in _items) {
+        if (item.consumed) continue;
+        item.y += _speed * _tickSeconds;
+        if (item.y >= _playerRowY) {
+          _resolveItem(item);
         }
       }
-      _gates.removeWhere((g) => g.resolved && g.y > 1.05);
+      _items.removeWhere((i) => i.consumed && i.y > 1.05);
 
-      if (_gates.isEmpty || _gates.last.y > 0.32) {
-        _spawnGate();
+      if (_lives <= 0) {
+        _timer?.cancel();
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
+        _phase = _Phase.gameOver;
       }
     });
   }
 
-  void _resolveGate(_Gate gate) {
-    final correct = _lane == gate.correctLane;
-    gate.wasCorrect = correct;
-    gate.resolvedPlayerLane = _lane;
-    HapticFeedback.mediumImpact();
-    EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: correct ? 10 : 0, questionsAnswered: 1, correctAnswers: correct ? 1 : 0);
-    if (correct) {
-      _score += 10;
-      _correctCount++;
-      if (_correctCount >= _targetCorrect) {
-        _timer?.cancel();
-        LevelMapScreen.unlockNext('endless_runner', _level!);
-        _phase = _Phase.complete;
-      }
+  void _spawnItem() {
+    final lane = _rng.nextInt(3);
+    if (_rng.nextDouble() < 0.28) {
+      _items.add(_RunnerItem(type: _ItemType.obstacle, lane: lane));
     } else {
-      _lives--;
-      if (_lives <= 0) {
-        _timer?.cancel();
-        _phase = _Phase.complete;
+      final values = [2, 3, 5, -2, -3];
+      final value = values[_rng.nextInt(values.length)];
+      _items.add(_RunnerItem(type: _ItemType.token, lane: lane, value: value));
+    }
+  }
+
+  void _resolveItem(_RunnerItem item) {
+    item.consumed = true;
+    final hit = item.lane == _lane;
+
+    if (item.type == _ItemType.obstacle) {
+      if (hit) {
+        item.hitResult = false;
+        _lives--;
+        HapticFeedback.heavyImpact();
+      }
+      return;
+    }
+
+    if (hit) {
+      item.hitResult = true;
+      _tally += item.value;
+      _score += item.value > 0 ? item.value : 1;
+      HapticFeedback.selectionClick();
+      if (_tally >= _missionTarget) {
+        _score += 50;
+        _bestMissionReached = _missionTarget.toDouble();
+        _missionTarget += 8 + _rng.nextInt(8);
+        _tally = 0;
+        EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 15, questionsAnswered: 1, correctAnswers: 1);
       }
     }
   }
@@ -154,29 +148,13 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
     setState(() => _lane = (_lane + delta).clamp(0, 2));
   }
 
-  Color _gateColor(_Gate gate, int lane) {
-    if (!gate.resolved) return _panel;
-    if (lane == gate.resolvedPlayerLane) {
-      return gate.wasCorrect == true ? const Color(0xFF1B3B2E) : const Color(0xFF3B1B1F);
-    }
-    return _panel.withOpacity(0.5);
-  }
-
-  Color _gateBorderColor(_Gate gate, int lane) {
-    if (!gate.resolved) return Colors.white24;
-    if (lane == gate.correctLane) return const Color(0xFF3DDC84);
-    if (lane == gate.resolvedPlayerLane) return _danger;
-    return Colors.white12;
-  }
-
   @override
   void dispose() { _timer?.cancel(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
-    if (_phase == _Phase.levelMap) return LevelMapScreen(gameKey: 'endless_runner', title: 'Signal Run', onPlayLevel: _selectLevel);
     if (_phase == _Phase.intro) return _introScreen();
-    if (_phase == _Phase.complete) return _completeScreen();
+    if (_phase == _Phase.gameOver) return _gameOverScreen();
 
     return Scaffold(
       backgroundColor: _bg,
@@ -184,10 +162,18 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10), child: Row(children: [
           Row(children: List.generate(3, (i) => Icon(i < _lives ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: _danger, size: 18))),
           const Spacer(),
-          Text('$_correctCount / $_targetCorrect', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: _accent)),
-          const SizedBox(width: 14),
           Text('SCORE $_score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: _gold)),
         ])),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(10)),
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('MISSION: REACH', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: Colors.white54, letterSpacing: 0.5)),
+            Text('$_tally / $_missionTarget', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: _tally < 0 ? _danger : _accent)),
+          ]),
+        ),
+        const SizedBox(height: 10),
         Expanded(
           child: GestureDetector(
             onHorizontalDragEnd: (details) {
@@ -201,26 +187,9 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
               return Stack(children: [
                 for (final x in [w / 3, 2 * w / 3])
                   Positioned(left: x, top: 0, bottom: 0, child: Container(width: 1, color: Colors.white10)),
-                for (final gate in _gates)
-                  for (int lane = 0; lane < 3; lane++)
-                    Positioned(
-                      left: laneX[lane] - 46, top: gate.y * h - 22,
-                      child: Container(width: 92, padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-                        decoration: BoxDecoration(
-                          color: _gateColor(gate, lane),
-                          border: Border.all(color: _gateBorderColor(gate, lane), width: gate.resolved && lane == _lane ? 2.5 : 1.5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(gate.lanes[lane], textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))),
-                    ),
-                if (_gates.any((g) => !g.resolved))
-                  Positioned(top: 8, left: 16, right: 16, child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(10)),
-                    child: Text(_questionPool[(_questionCursor - 1) % _questionPool.length]['question'] as String,
-                      textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 12)))),
+                for (final item in _items) _itemWidget(item, laneX, h),
                 AnimatedPositioned(
-                  duration: const Duration(milliseconds: 150), curve: Curves.easeOut,
+                  duration: const Duration(milliseconds: 130), curve: Curves.easeOut,
                   left: laneX[_lane] - 16, top: _playerRowY * h - 16,
                   child: Container(width: 32, height: 32, decoration: BoxDecoration(shape: BoxShape.circle, color: _accent,
                     boxShadow: [BoxShadow(color: _accent.withOpacity(0.6), blurRadius: 10)])),
@@ -237,48 +206,62 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
     );
   }
 
+  Widget _itemWidget(_RunnerItem item, List<double> laneX, double h) {
+    if (item.type == _ItemType.obstacle) {
+      return Positioned(
+        left: laneX[item.lane] - 26, top: item.y * h - 18,
+        child: Container(width: 52, height: 36, decoration: BoxDecoration(
+          color: item.hitResult == false ? _danger.withOpacity(0.5) : _danger.withOpacity(0.25),
+          border: Border.all(color: _danger, width: 2), borderRadius: BorderRadius.circular(6)),
+          child: const Center(child: Icon(Icons.warning_rounded, color: Colors.white, size: 18))),
+      );
+    }
+    final positive = item.value > 0;
+    return Positioned(
+      left: laneX[item.lane] - 20, top: item.y * h - 20,
+      child: Container(width: 40, height: 40,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: (positive ? _green : _danger).withOpacity(item.hitResult != null ? 0.9 : 0.6),
+          border: Border.all(color: positive ? _green : _danger, width: 1.5)),
+        child: Center(child: Text('${positive ? '+' : ''}${item.value}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white)))),
+    );
+  }
+
   Widget _introScreen() => Scaffold(
     backgroundColor: _bg,
-    appBar: AppBar(backgroundColor: _bg, title: Text('LEVEL $_level · $_difficulty')),
+    appBar: AppBar(backgroundColor: _bg, title: const Text('SIGNAL RUN')),
     body: SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(
       mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('SIGNAL RUN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: _accent)),
+      const Text('KEEP RUNNING', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: _accent)),
       const SizedBox(height: 16),
-      Text('Get $_targetCorrect correct before you run out of lives. Swipe or tap the arrows to switch lanes — run through the lane with the right answer as the gate reaches you.',
-        style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5)),
+      const Text('One continuous run — no levels. Dodge obstacles, collect +/- tokens toward your mission target. '
+        'Hit the target and a bigger one appears immediately. It keeps getting faster. Survive as long as you can.',
+        style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.5)),
       const SizedBox(height: 28),
       Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(12)),
         child: const Row(children: [
           Icon(Icons.swipe_rounded, color: _accent, size: 20), SizedBox(width: 10),
-          Expanded(child: Text('3 lanes, one correct answer. Swipe left/right. Keep running.', style: TextStyle(color: Colors.white60, fontSize: 12))),
+          Expanded(child: Text('Swipe or tap arrows to switch lanes. Red blocks hurt. Circles add or subtract from your mission.', style: TextStyle(color: Colors.white60, fontSize: 12))),
         ])),
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, child: ElevatedButton(
-        onPressed: _beginLevel,
+        onPressed: _begin,
         style: ElevatedButton.styleFrom(backgroundColor: _accent, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         child: const Text('RUN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.black, letterSpacing: 2)))),
     ]))));
 
-  Widget _completeScreen() {
-    final won = _correctCount >= _targetCorrect;
-    return Scaffold(
-      backgroundColor: _bg,
-      body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(won ? Icons.emoji_events_rounded : Icons.heart_broken_rounded, color: won ? _gold : _danger, size: 48),
-        const SizedBox(height: 12),
-        Text(won ? 'LEVEL CLEAR' : 'OUT OF LIVES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: won ? _gold : _danger)),
-        const SizedBox(height: 8),
-        Text('$_correctCount / $_targetCorrect correct · Score $_score', style: const TextStyle(color: Colors.white70, fontSize: 14)),
-        const SizedBox(height: 24),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          OutlinedButton(onPressed: () => setState(() => _phase = _Phase.levelMap), style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)),
-            child: const Text('LEVEL MAP', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white))),
-          const SizedBox(width: 12),
-          ElevatedButton(onPressed: won ? () => _selectLevel((_level! + 1).clamp(1, 20), LevelMapScreen.difficultyFor((_level! + 1).clamp(1, 20))) : () => _selectLevel(_level!, _difficulty),
-            style: ElevatedButton.styleFrom(backgroundColor: _accent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: Text(won ? 'NEXT LEVEL' : 'RETRY', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.black))),
-        ]),
-      ]))),
-    );
-  }
+  Widget _gameOverScreen() => Scaffold(
+    backgroundColor: _bg,
+    body: Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      const Icon(Icons.heart_broken_rounded, color: _danger, size: 48),
+      const SizedBox(height: 12),
+      const Text('RUN OVER', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: _danger)),
+      const SizedBox(height: 8),
+      Text('Score $_score · Best mission reached: ${_bestMissionReached.toInt()}', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+      const SizedBox(height: 24),
+      SizedBox(width: double.infinity, child: ElevatedButton(
+        onPressed: _begin,
+        style: ElevatedButton.styleFrom(backgroundColor: _accent, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        child: const Text('RUN AGAIN', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.black, letterSpacing: 1)))),
+    ]))),
+  );
 }
