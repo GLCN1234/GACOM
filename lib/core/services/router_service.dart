@@ -45,6 +45,7 @@ import '../../features/arena/screens/games/extra_games.dart';
 import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
 import '../../features/arena/screens/games/colony_siege_game.dart';
+import '../../features/arena/screens/games/endless_runner_screen.dart';
 import '../../features/arena/screens/games/arena_gauntlet_game.dart';
 import '../../features/arena/screens/games/astra_colony_screen.dart';
 import '../../features/arena/screens/games/spatial_quiz_screen.dart';
@@ -219,6 +220,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/rps', builder: (_, __) => const RpsSoloScreen()),
               GoRoute(path: 'practice/trivia', builder: (_, __) => const TriviaSoloScreen()),
               GoRoute(path: 'practice/colonybuilder', builder: (_, __) => const ColonySiegeScreen()),
+              GoRoute(path: 'practice/endlessrunner', builder: (_, __) => const EndlessRunnerScreen()),
               GoRoute(path: 'practice/weaponduel', builder: (_, __) => const ArenaGauntletScreen()),
               GoRoute(path: 'practice/astracolony', builder: (_, __) => const AstraColonyScreen()),
               GoRoute(path: 'practice/spatialquiz', builder: (_, __) => const SpatialQuizScreen()),
