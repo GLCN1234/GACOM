@@ -73,7 +73,7 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
 
   void _beginLevel() {
     _slots = List.generate(_slotCount, (_) => _Slot());
-    _resources = 0;
+    _resources = 25; // enough to afford the cheapest building (Solar Array, cost 20) immediately
     _lifetimeEarned = 0;
     _timeLeft = _timeLimitSeconds.toDouble();
     setState(() => _phase = _Phase.playing);
@@ -235,8 +235,8 @@ class _ColonySiegeScreenState extends State<ColonySiegeScreen> {
       mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('MANAGE THE COLONY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: _amber, letterSpacing: 1)),
       const SizedBox(height: 16),
-      Text('Earn $_target total energy in $_timeLimitSeconds seconds. Build producers in the empty slots — cheaper ones pay off fast but earn less; '
-        'expensive ones cost more upfront but earn more per second. Choose wisely, time is limited.',
+      Text('Earn $_target total energy in $_timeLimitSeconds seconds. You start with 25 energy — enough for one Solar Array. '
+        'Cheaper buildings pay off fast but earn less; expensive ones cost more upfront but earn more per second. Choose wisely, time is limited.',
         style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5)),
       const SizedBox(height: 28),
       Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _ironPanel, border: Border.all(color: _ironBorder, width: 2)),
