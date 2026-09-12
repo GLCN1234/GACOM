@@ -278,8 +278,8 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
           child: GestureDetector(
             onHorizontalDragEnd: (details) {
               final v = details.primaryVelocity ?? 0;
-              if (v > 150) _changeLane(1);
-              if (v < -150) _changeLane(-1);
+              if (v > 80) _changeLane(1);
+              if (v < -80) _changeLane(-1);
             },
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth, h = constraints.maxHeight;
@@ -311,10 +311,6 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
             }),
           ),
         ),
-        Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          GestureDetector(onTap: () => _changeLane(-1), child: Container(padding: const EdgeInsets.all(14), decoration: const BoxDecoration(color: _panel, shape: BoxShape.circle), child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white70, size: 18))),
-          GestureDetector(onTap: () => _changeLane(1), child: Container(padding: const EdgeInsets.all(14), decoration: const BoxDecoration(color: _panel, shape: BoxShape.circle), child: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18))),
-        ])),
       ])),
     );
   }
@@ -368,7 +364,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
       Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(12)),
         child: const Row(children: [
           Icon(Icons.swipe_rounded, color: _accent, size: 20), SizedBox(width: 10),
-          Expanded(child: Text('Swipe or tap arrows to switch lanes. Red blocks hurt. Catch the right answer to score.', style: TextStyle(color: Colors.white60, fontSize: 12))),
+          Expanded(child: Text('Swipe left or right anywhere on screen to switch lanes. Red blocks hurt. Catch the right answer to score.', style: TextStyle(color: Colors.white60, fontSize: 12))),
         ])),
       const SizedBox(height: 24),
       SizedBox(width: double.infinity, child: ElevatedButton(
