@@ -170,6 +170,85 @@
     // Fallback: hide splash after 8 seconds even if Flutter callback never fires
     setTimeout(function() { window._gacomHideSplash && window._gacomHideSplash(); }, 8000);
   </script>
+
+  <!-- ── PWA install prompt ───────────────────────────────────────────────
+       Chrome/Edge/Android: real native install prompt, captured via
+       beforeinstallprompt (the browser itself only fires this when the
+       app genuinely isn't installed yet — that IS the "who doesn't have
+       it" detection, there's no separate API for it).
+       iOS Safari: Apple provides no install-prompt API at all, so this
+       shows manual "Add to Home Screen" instructions instead — that's a
+       hard platform limitation, not something that can be coded around.
+       Neither banner shows if the user is currently running the already-
+       installed app (display-mode: standalone / navigator.standalone). -->
+  <script>
+    (function () {
+      var deferredPrompt = null;
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      var isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !window.MSStream;
+
+      if (isStandalone) return; // already installed and running as the app — never prompt
+
+      function buildBanner(message, buttonText, onButton) {
+        var banner = document.createElement('div');
+        banner.id = 'gacom-install-banner';
+        banner.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;' +
+          'background:#141018;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;' +
+          'border-top:2px solid #E84B00;font-family:Rajdhani,Arial,sans-serif;box-shadow:0 -4px 16px rgba(0,0,0,0.4);';
+        var text = document.createElement('div');
+        text.style.cssText = 'flex:1;font-size:13px;line-height:1.4;';
+        text.textContent = message;
+        var btn = document.createElement('button');
+        btn.textContent = buttonText;
+        btn.style.cssText = 'background:#E84B00;color:#fff;border:none;border-radius:8px;padding:10px 16px;' +
+          'font-weight:700;font-size:13px;white-space:nowrap;cursor:pointer;';
+        btn.onclick = onButton;
+        var close = document.createElement('button');
+        close.textContent = '×';
+        close.setAttribute('aria-label', 'Dismiss');
+        close.style.cssText = 'background:none;border:none;color:#888;font-size:22px;line-height:1;padding:0 4px;cursor:pointer;';
+        close.onclick = function () {
+          banner.remove();
+          // Re-shows next new browser session, not permanently silenced —
+          // a fully permanent dismissal would work against the actual
+          // goal of getting more users onto the installed app.
+          window.sessionStorage.setItem('gacom_install_dismissed', '1');
+        };
+        banner.appendChild(text);
+        banner.appendChild(btn);
+        banner.appendChild(close);
+        return banner;
+      }
+
+      if (window.sessionStorage.getItem('gacom_install_dismissed')) return;
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        var banner = buildBanner('Install GACOM for the full app experience — faster, offline-ready, no browser bar.', 'INSTALL', function () {
+          banner.remove();
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.finally(function () { deferredPrompt = null; });
+          }
+        });
+        document.body.appendChild(banner);
+      });
+
+      if (isIOS) {
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            if (document.getElementById('gacom-install-banner')) return;
+            var banner = buildBanner('Install GACOM: tap the Share icon, then "Add to Home Screen".', 'GOT IT', function () {
+              banner.remove();
+              window.sessionStorage.setItem('gacom_install_dismissed', '1');
+            });
+            document.body.appendChild(banner);
+          }, 2500);
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <!-- Splash screen shown immediately — no white flash -->
