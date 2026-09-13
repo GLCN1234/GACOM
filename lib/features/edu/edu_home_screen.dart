@@ -47,6 +47,7 @@ class _EduHomeState extends State<EduHomeScreen> {
     {'name': 'Signal Run', 'icon': Icons.directions_run_rounded, 'route': '/arena/practice/endlessrunner'},
     {'name': 'Drone Breach', 'icon': Icons.gps_fixed_rounded, 'route': '/arena/practice/dronebreach'},
     {'name': 'Signal Match', 'icon': Icons.gesture_rounded, 'route': '/arena/practice/signalmatch'},
+    {'name': 'Vault Break', 'icon': Icons.rotate_right_rounded, 'route': '/arena/practice/vaultbreak'},
     {'name': 'Field Trial (Beta)', 'icon': Icons.grid_view_rounded, 'route': '/arena/practice/spatialquiz'},
     {'name': 'Colony Siege', 'icon': Icons.view_in_ar_rounded,   'route': '/arena/practice/colonybuilder'},
     {'name': 'Arena Gauntlet',    'icon': Icons.shield_rounded, 'route': '/arena/practice/weaponduel'},

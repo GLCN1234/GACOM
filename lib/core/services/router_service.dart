@@ -48,6 +48,7 @@ import '../../features/arena/screens/games/colony_siege_game.dart';
 import '../../features/arena/screens/games/endless_runner_screen.dart';
 import '../../features/arena/screens/games/drone_breach_screen.dart';
 import '../../features/arena/screens/games/signal_match_screen.dart';
+import '../../features/arena/screens/games/vault_break_screen.dart';
 import '../../features/arena/screens/games/arena_gauntlet_game.dart';
 import '../../features/arena/screens/games/astra_colony_screen.dart';
 import '../../features/arena/screens/games/spatial_quiz_screen.dart';
@@ -225,6 +226,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/endlessrunner', builder: (_, __) => const EndlessRunnerScreen()),
               GoRoute(path: 'practice/dronebreach', builder: (_, __) => const DroneBreachScreen()),
               GoRoute(path: 'practice/signalmatch', builder: (_, __) => const SignalMatchScreen()),
+              GoRoute(path: 'practice/vaultbreak', builder: (_, __) => const VaultBreakScreen()),
               GoRoute(path: 'practice/weaponduel', builder: (_, __) => const ArenaGauntletScreen()),
               GoRoute(path: 'practice/astracolony', builder: (_, __) => const AstraColonyScreen()),
               GoRoute(path: 'practice/spatialquiz', builder: (_, __) => const SpatialQuizScreen()),
