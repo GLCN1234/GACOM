@@ -1,12 +1,13 @@
-// AI product scout. Searches the real web (Gemini + Google Search
-// grounding — NOT the model's own unguided memory, which would risk
-// hallucinated products/prices/links) for gaming products worth adding
-// to the marketplace, applies the 20% markup, and inserts them as
-// review_status='pending_review' — a human with can_add_products still
-// has to approve before anything goes live. That review step is a
-// deliberate safety net: an ungrounded or misread price/link landing
-// directly on a live storefront is a real business risk, not just a
-// technical one.
+// AI product scout — back on Gemini (free), but using its OWN separate
+// API key (GEMINI_API_KEY_SCOUT) instead of the GEMINI_API_KEY shared by
+// blog generation, curriculum questions, and the newsletter. That
+// sharing was the actual cause of the quota error — not Gemini itself.
+// A second free-tier Google Cloud project/key gives this feature its own
+// quota pool at zero cost.
+//
+// Setup: create a new API key at aistudio.google.com under a project
+// separate from your existing one, then:
+//   supabase secrets set GEMINI_API_KEY_SCOUT=your_new_key_here
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -68,9 +69,6 @@ async function callGeminiGrounded(apiKey: string, prompt: string): Promise<strin
 }
 
 function parseJson(raw: string): any {
-  // Grounded responses sometimes wrap JSON in prose despite instructions —
-  // pull out the first {...} block rather than assuming the whole
-  // response is clean JSON.
   const match = raw.match(/\{[\s\S]*\}/)
   const cleaned = (match ? match[0] : raw).replace(/^```json\s*/i, '').replace(/```$/, '').trim()
   return JSON.parse(cleaned)
@@ -85,8 +83,11 @@ Deno.serve(async (req) => {
   )
 
   try {
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
+    // Deliberately a DIFFERENT secret name from the one blog/questions/
+    // newsletter use, so this can be a separate free-tier key with its
+    // own quota rather than competing for the same one.
+    const geminiKey = Deno.env.get('GEMINI_API_KEY_SCOUT')
+    if (!geminiKey) throw new Error('GEMINI_API_KEY_SCOUT not configured — set up a second, separate Gemini API key for this feature.')
 
     const raw = await callGeminiGrounded(geminiKey, buildPrompt())
     const parsed = parseJson(raw)
