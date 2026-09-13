@@ -54,7 +54,10 @@ class _CurriculumGamePickerScreenState extends State<CurriculumGamePickerScreen>
 
   void _launch(BuildContext context, Widget Function(String subject, List<TopicBlock> topics) build) {
     final subjectId = EduProgressRecorder.subjectIdFromLabel(_subjectLabel);
-    final topics = [TopicBlock(topicName: _topic, questions: _questions)];
+    // If this topic has no generated questions yet, pass an empty list —
+    // every game falls back to its own built-in general-knowledge
+    // question set automatically rather than being blocked entirely.
+    final topics = _questions.isEmpty ? <TopicBlock>[] : [TopicBlock(topicName: _topic, questions: _questions)];
     Navigator.push(context, MaterialPageRoute(builder: (_) => build(subjectId, topics)));
   }
 
@@ -67,10 +70,10 @@ class _CurriculumGamePickerScreenState extends State<CurriculumGamePickerScreen>
         ? const Center(child: CircularProgressIndicator())
         : _error != null
           ? Center(child: Text(_error!, style: const TextStyle(color: GacomColors.textMuted)))
-          : _questions.isEmpty
-            ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('No questions generated for this topic yet.', textAlign: TextAlign.center, style: TextStyle(color: GacomColors.textMuted))))
-            : SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${_questions.length} questions ready — pick how you want to play them.',
+          : SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_questions.isEmpty
+                    ? 'No questions generated for this topic yet — you can still play with general practice questions.'
+                    : '${_questions.length} questions ready — pick how you want to play them.',
                   style: const TextStyle(color: GacomColors.textSecondary, fontSize: 14)),
                 const SizedBox(height: 20),
                 Expanded(child: ListView(children: [

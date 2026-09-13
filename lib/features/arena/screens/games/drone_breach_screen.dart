@@ -54,7 +54,7 @@ enum _Phase { intro, playing, gameOver }
 class _DroneBreachScreenState extends State<DroneBreachScreen> {
   static const double _tickSeconds = 1 / 60;
   static const double _dangerRowY = 0.82;
-  static const double _baseSpeed = 0.20;
+  static const double _baseSpeed = 0.11;
 
   List<TopicBlock> get _topics => (widget.topics != null && widget.topics!.isNotEmpty) ? widget.topics! : _fallbackTopics;
 
@@ -73,8 +73,8 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
   final List<_Drone> _drones = [];
   Timer? _timer;
 
-  double get _speed => _baseSpeed + (_elapsed / 45).clamp(0, 0.22);
-  double get _waveInterval => (2.4 - (_elapsed / 60).clamp(0, 1.0)).clamp(1.4, 2.4);
+  double get _speed => _baseSpeed + (_elapsed / 75).clamp(0, 0.13);
+  double get _waveInterval => (3.2 - (_elapsed / 80).clamp(0, 1.0)).clamp(2.2, 3.2);
 
   void _begin() {
     _lives = 3;

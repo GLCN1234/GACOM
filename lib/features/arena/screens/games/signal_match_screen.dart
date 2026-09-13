@@ -58,7 +58,7 @@ enum _Phase { intro, playing, gameOver }
 
 class _SignalMatchScreenState extends State<SignalMatchScreen> {
   static const double _tickSeconds = 1 / 60;
-  static const double _gravity = 1.7; // screen-heights per second^2
+  static const double _gravity = 1.0; // screen-heights per second^2
 
   List<TopicBlock> get _topics => (widget.topics != null && widget.topics!.isNotEmpty) ? widget.topics! : _fallbackTopics;
 
@@ -157,7 +157,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
         label: picks[i],
         isTarget: picks[i] == answer,
         x: xs[i],
-        vy: -1.05 - _rng.nextDouble() * 0.2,
+        vy: -0.8 - _rng.nextDouble() * 0.15,
         color: _gemColors[_rng.nextInt(_gemColors.length)],
       ));
     }

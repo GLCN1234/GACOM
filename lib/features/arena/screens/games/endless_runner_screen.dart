@@ -53,7 +53,7 @@ enum _Phase { intro, playing, gameOver }
 class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   static const double _tickSeconds = 1 / 60;
   static const double _playerRowY = 0.86;
-  static const double _baseSpeed = 0.26;
+  static const double _baseSpeed = 0.15;
 
   bool get _answerMode => widget.topics != null && widget.topics!.isNotEmpty;
 
@@ -82,8 +82,8 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   Timer? _timer;
   final _rng = Random();
 
-  double get _speed => _baseSpeed + (_elapsed / 40).clamp(0, 0.35);
-  double get _spawnInterval => (1.0 - (_elapsed / 90).clamp(0, 0.5)).clamp(0.5, 1.0);
+  double get _speed => _baseSpeed + (_elapsed / 70).clamp(0, 0.2);
+  double get _spawnInterval => (1.4 - (_elapsed / 120).clamp(0, 0.5)).clamp(0.9, 1.4);
 
   void _begin() {
     _lane = 1;
