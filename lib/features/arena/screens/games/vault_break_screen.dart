@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../games/topic_block.dart';
 
 // Gold/brass heist-vault palette — a third distinct visual identity.
 const _bg = Color(0xFF14100A);
@@ -11,12 +12,6 @@ const _brassDark = Color(0xFF8A6D2F);
 const _panel = Color(0xFF221B10);
 const _danger = Color(0xFFFF5A5F);
 const _green = Color(0xFF3DDC84);
-
-class TopicBlock {
-  const TopicBlock({required this.topicName, required this.questions});
-  final String topicName;
-  final List<Map<String, dynamic>> questions;
-}
 
 /// Vault Break — a rotational dial puzzle. Drag anywhere on the dial to
 /// turn it; whichever segment lands at the top pointer is your tentative

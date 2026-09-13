@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../games/topic_block.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
@@ -9,14 +10,6 @@ const _accent = Color(0xFF3DD6FF);
 const _danger = Color(0xFFFF5A5F);
 const _gold = Color(0xFFFFC940);
 const _green = Color(0xFF3DDC84);
-
-/// A generic subject block: topic name + real generated_questions
-/// (question/options/answer schema).
-class TopicBlock {
-  const TopicBlock({required this.topicName, required this.questions});
-  final String topicName;
-  final List<Map<String, dynamic>> questions;
-}
 
 /// Drone Breach — a runner-shooter in the Into the Dead 2 mould. The
 /// world scrolls continuously toward you; rogue drones approach carrying

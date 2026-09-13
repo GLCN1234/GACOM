@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
-import 'institution/curriculum_game_screen.dart';
+import 'institution/curriculum_game_picker_screen.dart';
 
 class EduSubjectScreen extends StatefulWidget {
   final String subjectId;
@@ -245,7 +245,7 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
                 final tintColor = isUnlocked ? GacomColors.accentCyan : GacomColors.textMuted;
                 return GestureDetector(
                   onTap: isUnlocked
-                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CurriculumGameScreen(curriculumId: c['id'] as String)))
+                      ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CurriculumGamePickerScreen(curriculumId: c['id'] as String)))
                       : null,
                   child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(color: tintColor.withOpacity(0.06), borderRadius: BorderRadius.circular(14), border: Border.all(color: tintColor.withOpacity(0.3))),

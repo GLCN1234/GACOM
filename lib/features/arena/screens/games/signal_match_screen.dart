@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../games/topic_block.dart';
 
 // A distinct, vibrant palette — warm sunset gradient, not the dark
 // cyan/panel look used by Signal Run or Drone Breach.
@@ -11,12 +12,6 @@ const _bgBottom = Color(0xFF7B1E5C);
 const _gemColors = [Color(0xFFFF6B9D), Color(0xFFFFC85C), Color(0xFF5CE1E6), Color(0xFFB08CFF)];
 const _danger = Color(0xFFFF4757);
 const _green = Color(0xFF3DDC84);
-
-class TopicBlock {
-  const TopicBlock({required this.topicName, required this.questions});
-  final String topicName;
-  final List<Map<String, dynamic>> questions;
-}
 
 /// Signal Match — a swipe-to-slice game in the Fruit Ninja mould.
 /// Answer gems launch upward and arc back down across the whole open

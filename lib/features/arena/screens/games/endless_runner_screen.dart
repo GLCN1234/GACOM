@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../games/topic_block.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
@@ -16,11 +17,6 @@ const _green = Color(0xFF3DDC84);
 /// these to chain topics together in ONE continuous run — when a topic's
 /// questions are exhausted, a non-blocking mission banner announces the
 /// next topic and the run keeps going without stopping.
-class TopicBlock {
-  const TopicBlock({required this.topicName, required this.questions});
-  final String topicName;
-  final List<Map<String, dynamic>> questions;
-}
 
 /// Signal Run — continuous endless runner, generalized to any subject.
 /// Two modes, chosen automatically:
