@@ -1,9 +1,17 @@
-// Weekly newsletter. Triggered by pg_cron every Friday.
-// Drafts a short newsletter via Gemini, logs it to newsletter_issues,
-// then sends it to every subscribed user's email via Resend.
+// Newsletter, now sent as a daily rotation batch instead of one big blast.
+// Triggered by pg_cron every day. On each run:
+//  - If an edition is mid-rotation (status='sending'), sends the NEXT
+//    batch of subscribers who haven't received it yet.
+//  - If the current edition is fully delivered (or none exists) and at
+//    least 7 days have passed since the last completed edition, drafts a
+//    brand new one via Gemini and sends its first batch.
+//  - Otherwise, does nothing this run (too soon for a new edition).
+// This keeps each day's send comfortably under Resend's free-tier daily
+// cap, and every subscriber eventually receives each edition over a
+// rolling ~10-12 day window rather than only the first ~100 succeeding.
 //
-// Requires two secrets on this function: GEMINI_API_KEY (likely already
-// set) and RESEND_API_KEY (new — from resend.com dashboard).
+// Requires GEMINI_API_KEY and RESEND_API_KEY secrets (already set from
+// the original weekly setup).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -15,9 +23,10 @@ const GEMINI_MODEL = 'gemini-flash-lite-latest'
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
-// Update this once you've verified a sending domain in Resend.
 const FROM_ADDRESS = 'GACOM <newsletter@gamicom.net>'
-const RESEND_BATCH_SIZE = 100 // Resend batch endpoint accepts up to 100 per call
+// Kept comfortably under Resend's 100/day free-tier cap, leaving
+// headroom for any other transactional email sharing the same account.
+const DAILY_BATCH_SIZE = 80
 
 const SYSTEM_PROMPT = `You are writing GACOM's weekly newsletter. GACOM
 (gamicom.net) is a Nigerian gaming social platform: social feed, esports
@@ -60,7 +69,7 @@ function parseJson(raw: string): any {
   return JSON.parse(cleaned)
 }
 
-function wrapEmail(subject: string, bodyHtml: string): string {
+function wrapEmail(bodyHtml: string): string {
   return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#0a0a0a;color:#eaeaea;padding:24px;max-width:600px;margin:0 auto;">
     <h1 style="color:#ff6b1a;font-size:20px;">GACOM</h1>
     ${bodyHtml}
@@ -89,75 +98,86 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  let issueId: string | null = null
-
   try {
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
     const resendKey = Deno.env.get('RESEND_API_KEY')
     if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
     if (!resendKey) throw new Error('RESEND_API_KEY not configured')
 
-    // 1. Draft the newsletter content
-    const raw = await callGemini(geminiKey, buildPrompt())
-    const draft = parseJson(raw)
-    if (!draft.subject || !draft.html_content) throw new Error('Gemini response missing required fields')
+    // 1. Find the most recent edition to decide what today's run should do.
+    const { data: latestIssue, error: latestError } = await supabase
+      .from('newsletter_issues')
+      .select('id, subject, html_content, status, recipient_count, sent_at, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latestError) throw latestError
 
-    const fullHtml = wrapEmail(draft.subject, draft.html_content)
+    let issue = latestIssue
 
-    // 2. Log the issue as 'sending' before we start (avoids losing content if send fails partway)
-    const { data: issue, error: issueError } = await supabase.from('newsletter_issues').insert({
-      subject: draft.subject, html_content: fullHtml, status: 'sending',
-    }).select().single()
-    if (issueError) throw issueError
-    issueId = issue.id
+    if (!issue || issue.status !== 'sending') {
+      // No edition in progress — the previous one either fully completed
+      // or none has ever run. Start the next edition right away rather
+      // than waiting; at 80/day for ~1000 subscribers a full rotation
+      // already takes ~13 days on its own, so there's no reason to add
+      // an artificial gap on top of that.
+      const raw = await callGemini(geminiKey, buildPrompt())
+      const draft = parseJson(raw)
+      if (!draft.subject || !draft.html_content) throw new Error('Gemini response missing required fields')
+      const fullHtml = wrapEmail(draft.html_content)
 
-    // 3. Get all subscribed users' emails (profiles.newsletter_subscribed join auth.users)
-    const { data: subscribers, error: subError } = await supabase
-      .from('profiles').select('id').eq('newsletter_subscribed', true)
-    if (subError) throw subError
-
-    const emails: string[] = []
-    for (const sub of subscribers ?? []) {
-      const { data: userRes } = await supabase.auth.admin.getUserById(sub.id)
-      if (userRes?.user?.email) emails.push(userRes.user.email)
+      const { data: newIssue, error: insertError } = await supabase.from('newsletter_issues').insert({
+        subject: draft.subject, html_content: fullHtml, status: 'sending', recipient_count: 0,
+      }).select().single()
+      if (insertError) throw insertError
+      issue = newIssue
     }
 
-    if (emails.length === 0) {
-      await supabase.from('newsletter_issues').update({
-        status: 'sent', recipient_count: 0, sent_at: new Date().toISOString(),
-        error_message: 'No subscribed users with an email were found.',
-      }).eq('id', issueId)
-      return new Response(JSON.stringify({ success: true, recipient_count: 0, note: 'no subscribers' }),
+    // 2. Find subscribers who haven't received THIS edition yet.
+    const { data: pending, error: pendingError } = await supabase
+      .from('profiles')
+      .select('id, newsletter_last_sent_issue_id')
+      .eq('newsletter_subscribed', true)
+      .or(`newsletter_last_sent_issue_id.is.null,newsletter_last_sent_issue_id.neq.${issue.id}`)
+      .limit(DAILY_BATCH_SIZE)
+    if (pendingError) throw pendingError
+
+    if (!pending || pending.length === 0) {
+      // Rotation complete — everyone subscribed has this edition now.
+      await supabase.from('newsletter_issues').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', issue.id)
+      return new Response(JSON.stringify({ success: true, note: 'Rotation complete, edition fully delivered.', recipient_count: issue.recipient_count }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // 4. Send in batches of 100 (Resend batch API limit)
-    let sentCount = 0
-    const failures: string[] = []
-    for (let i = 0; i < emails.length; i += RESEND_BATCH_SIZE) {
-      const chunk = emails.slice(i, i + RESEND_BATCH_SIZE)
-      const result = await sendResendBatch(resendKey, chunk, draft.subject, fullHtml)
-      if (result.ok) sentCount += chunk.length
-      else failures.push(result.error ?? 'unknown batch error')
+    // 3. Resolve emails for today's batch and send.
+    const idToEmail = new Map<string, string>()
+    for (const p of pending) {
+      const { data: userRes } = await supabase.auth.admin.getUserById(p.id)
+      if (userRes?.user?.email) idToEmail.set(p.id, userRes.user.email)
+    }
+    const emails = Array.from(idToEmail.values())
+
+    if (emails.length === 0) {
+      return new Response(JSON.stringify({ success: true, note: 'No resolvable emails in this batch.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    await supabase.from('newsletter_issues').update({
-      status: failures.length > 0 && sentCount === 0 ? 'failed' : 'sent',
-      recipient_count: sentCount,
-      sent_at: new Date().toISOString(),
-      error_message: failures.length > 0 ? `${failures.length} batch(es) failed: ${failures.join('; ')}` : null,
-    }).eq('id', issueId)
+    const result = await sendResendBatch(resendKey, emails, issue.subject, issue.html_content)
+    if (!result.ok) {
+      await supabase.from('newsletter_issues').update({ error_message: result.error }).eq('id', issue.id)
+      throw new Error(`Resend batch failed: ${result.error}`)
+    }
 
-    return new Response(JSON.stringify({ success: true, recipient_count: sentCount, failed_batches: failures.length }),
+    // Mark exactly the users we just emailed as having received this edition.
+    const sentIds = Array.from(idToEmail.keys())
+    await supabase.from('profiles').update({ newsletter_last_sent_issue_id: issue.id }).in('id', sentIds)
+    await supabase.from('newsletter_issues').update({ recipient_count: (issue.recipient_count ?? 0) + sentIds.length }).eq('id', issue.id)
+
+    return new Response(JSON.stringify({ success: true, sent_today: sentIds.length, edition_id: issue.id }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {
     console.error('generate-and-send-newsletter error:', error)
-    if (issueId) {
-      await supabase.from('newsletter_issues').update({
-        status: 'failed', error_message: (error as Error).message,
-      }).eq('id', issueId)
-    }
     return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
