@@ -67,6 +67,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
   int _topicIndex = 0;
   int _questionCursor = 0;
   String? _missionBanner;
+  String _currentQuestion = '';
   Timer? _bannerTimer;
 
   final List<_Drone> _drones = [];
@@ -133,6 +134,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
     final wrongPool = rawOptions.where((o) => o != answer).toList()..shuffle();
     final picks = <String>[answer, ...wrongPool.take(2)];
     picks.shuffle();
+    _currentQuestion = q['question'] as String? ?? '';
 
     final lanes = [0, 1, 2]..shuffle();
     for (int i = 0; i < picks.length && i < lanes.length; i++) {
@@ -192,6 +194,13 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
           const SizedBox(width: 14),
           Text('SCORE $_score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: _gold)),
         ])),
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(10)),
+          child: Text(_currentQuestion, textAlign: TextAlign.center,
+            style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
+        ),
         Expanded(
           child: LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth, h = constraints.maxHeight;

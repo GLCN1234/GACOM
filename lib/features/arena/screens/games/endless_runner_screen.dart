@@ -75,6 +75,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   int _topicIndex = 0;
   int _questionCursor = 0;
   String? _missionBanner;
+  String _currentQuestion = '';
   Timer? _bannerTimer;
 
   final List<_RunnerItem> _items = [];
@@ -173,6 +174,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
     final wrongPool = rawOptions.where((o) => o != answer).toList()..shuffle();
     final picks = <String>[answer, ...wrongPool.take(2)];
     picks.shuffle();
+    _currentQuestion = q['question'] as String? ?? '';
 
     for (int lane = 0; lane < picks.length && lane < 3; lane++) {
       _items.add(_RunnerItem(type: _ItemType.answerToken, lane: lane, label: picks[lane], isCorrectAnswer: picks[lane] == answer));
@@ -268,6 +270,13 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
             const Text('CORRECT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: Colors.white54, letterSpacing: 0.5)),
             Text('$_correctCount', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: _accent)),
           ]),
+        ),
+        if (_answerMode) Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(10)),
+          child: Text(_currentQuestion, textAlign: TextAlign.center,
+            style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
         ),
         const SizedBox(height: 10),
         Expanded(

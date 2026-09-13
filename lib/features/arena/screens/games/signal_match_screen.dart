@@ -70,6 +70,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
   int _topicIndex = 0;
   int _questionCursor = 0;
   String? _missionBanner;
+  String _currentQuestion = '';
   Timer? _bannerTimer;
 
   final List<_Gem> _gems = [];
@@ -148,6 +149,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
     final wrongPool = rawOptions.where((o) => o != answer).toList()..shuffle();
     final picks = <String>[answer, ...wrongPool.take(2)];
     picks.shuffle();
+    _currentQuestion = q['question'] as String? ?? '';
 
     final xs = [0.22, 0.5, 0.78]..shuffle();
     for (int i = 0; i < picks.length && i < xs.length; i++) {
@@ -216,6 +218,13 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
             const SizedBox(width: 14),
             Text('SCORE $_score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: Color(0xFFFFC85C))),
           ])),
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Text(_currentQuestion, textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
+          ),
           Expanded(
             child: LayoutBuilder(builder: (context, constraints) {
               final size = Size(constraints.maxWidth, constraints.maxHeight);

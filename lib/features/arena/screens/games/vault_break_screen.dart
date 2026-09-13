@@ -60,6 +60,7 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
 
   List<String> _segments = [];
   String _correctAnswer = '';
+  String _currentQuestion = '';
   double _rotation = 0;
   double? _lastTouchAngle;
   bool _resolving = false;
@@ -96,6 +97,7 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
     setState(() {
       _segments = options;
       _correctAnswer = answer;
+      _currentQuestion = q['question'] as String? ?? '';
       _rotation = 0;
     });
 
@@ -189,6 +191,15 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
           const SizedBox(width: 14),
           Text('SCORE $_score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: _brass)),
         ])),
+        // Persistent, always-visible question — the player must always
+        // know what they're answering, not just see the answer options.
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: _panel, border: Border.all(color: _brassDark), borderRadius: BorderRadius.circular(10)),
+          child: Text(_currentQuestion, textAlign: TextAlign.center,
+            style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: Colors.white)),
+        ),
         Expanded(
           child: LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth, h = constraints.maxHeight;
