@@ -236,7 +236,13 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
                     const Text('Your accuracy and XP will appear here after your first game.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
                   ])),
                 ])),
-            if (_institutionAdventures.isNotEmpty) ...[
+            if (_loadingAdventures) ...[
+              const Text('YOUR SCHOOL\'S ADVENTURES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.accentCyan, letterSpacing: 1)),
+              const SizedBox(height: 10),
+              Container(height: 64, alignment: Alignment.center, margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
+                child: const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: GacomColors.accentCyan))),
+            ] else if (_institutionAdventures.isNotEmpty) ...[
               const Text('YOUR SCHOOL\'S ADVENTURES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.accentCyan, letterSpacing: 1)),
               const SizedBox(height: 10),
               ..._institutionAdventures.map((c) {
