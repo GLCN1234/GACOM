@@ -30,6 +30,7 @@ import '../../features/blog/screens/blog_detail_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/store_admin_screen.dart';
 import '../../features/poc/poc_3d_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
@@ -270,6 +271,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: AppConstants.adminRoute, builder: (_, __) => const AdminDashboardScreen()),
+      GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
       GoRoute(path: '/poc-3d', builder: (_, __) => const Poc3dScreen()),
     ],
   );

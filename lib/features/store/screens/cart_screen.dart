@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -206,7 +207,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             'total_price': price * qty,
           };
         }).toList();
-        await SupabaseService.client.from('orders').insert({
+        final orderRow = await SupabaseService.client.from('orders').insert({
           'user_id': uid,
           'reference': reference,
           'status': 'pending',
@@ -216,7 +217,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           'delivery_state': _selectedState,
           'delivery_days': _deliveryDays,
           'items': orderItems,
-        });
+        }).select('id').single();
+        // Notify assigned order managers — best-effort, never blocks checkout.
+        unawaited(SupabaseService.client.functions.invoke('notify-order-received', body: {'orderId': orderRow['id']}).catchError((_) => null));
       } catch (_) {
         // orders table not yet created — skip silently, payment still proceeds
       }

@@ -186,6 +186,7 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
               'is_active, is_featured, rating, stock, category, '
               'seller:profiles!seller_id(display_name, avatar_url, verification_status)')
           .eq('is_active', true)
+          .eq('review_status', 'approved')
           .order('created_at', ascending: false)
           .limit(60);
       final rows = List<Map<String, dynamic>>.from(data);

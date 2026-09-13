@@ -96,6 +96,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           .from('products')
           .select('*, reviews:product_reviews(rating, review, user:profiles!user_id(display_name, avatar_url))')
           .eq('id', widget.productId)
+          .eq('review_status', 'approved')
           .single();
       if (mounted) setState(() { _product = p; _loading = false; });
     } catch (e) {
