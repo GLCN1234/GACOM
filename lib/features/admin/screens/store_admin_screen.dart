@@ -76,7 +76,15 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> with SingleTickerPr
 
   Widget _pendingTab() => _pending.isEmpty
     ? const Center(child: Text('No products awaiting review.', style: TextStyle(color: GacomColors.textMuted)))
-    : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _pending.length, itemBuilder: (_, i) {
+    : Column(children: [
+        Container(margin: const EdgeInsets.all(16), padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: GacomColors.error.withOpacity(0.12), borderRadius: BorderRadius.circular(10), border: Border.all(color: GacomColors.error.withOpacity(0.4))),
+          child: const Row(children: [
+            Icon(Icons.warning_amber_rounded, color: GacomColors.error, size: 18), SizedBox(width: 8),
+            Expanded(child: Text('The AI has no live web search — verify the price and source link yourself before approving. Do not approve on trust alone.',
+              style: TextStyle(color: GacomColors.error, fontSize: 12, fontWeight: FontWeight.w600))),
+          ])),
+        Expanded(child: ListView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), itemCount: _pending.length, itemBuilder: (_, i) {
         final p = _pending[i];
         return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
@@ -98,7 +106,8 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> with SingleTickerPr
                 child: const Text('APPROVE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
             ]),
           ]));
-      });
+      })),
+      ]);
 
   Widget _staffTab() {
     final emailCtrl = TextEditingController();

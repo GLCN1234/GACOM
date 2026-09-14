@@ -51,7 +51,13 @@ class _RunnerItem {
 enum _Phase { intro, playing, gameOver }
 
 class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
-  static const double _tickSeconds = 1 / 60;
+  // 24fps rebuild rate, not 60 — full-widget-tree setState() rebuilds at
+  // 60fps are known to be expensive on Flutter web specifically, and
+  // this was almost certainly the cause of the jank/unresponsiveness
+  // seen on a real phone. 24fps is still smooth to the eye for this kind
+  // of motion, at less than half the rebuild cost. Actual game speed is
+  // unchanged — every rate below is defined per-second, not per-tick.
+  static const double _tickSeconds = 1 / 24;
   static const double _playerRowY = 0.86;
   static const double _baseSpeed = 0.15;
 

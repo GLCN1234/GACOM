@@ -57,7 +57,9 @@ class _Gem {
 enum _Phase { intro, playing, gameOver }
 
 class _SignalMatchScreenState extends State<SignalMatchScreen> {
-  static const double _tickSeconds = 1 / 60;
+  // Same reasoning as Signal Run — 24fps instead of 60fps rebuild rate,
+  // fixing real-phone jank without changing actual game speed.
+  static const double _tickSeconds = 1 / 24;
   static const double _gravity = 1.0; // screen-heights per second^2
 
   List<TopicBlock> get _topics => (widget.topics != null && widget.topics!.isNotEmpty) ? widget.topics! : _fallbackTopics;

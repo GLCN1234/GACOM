@@ -52,7 +52,9 @@ class _Drone {
 enum _Phase { intro, playing, gameOver }
 
 class _DroneBreachScreenState extends State<DroneBreachScreen> {
-  static const double _tickSeconds = 1 / 60;
+  // Same reasoning as Signal Run — 24fps instead of 60fps rebuild rate,
+  // fixing real-phone jank without changing actual game speed.
+  static const double _tickSeconds = 1 / 24;
   static const double _dangerRowY = 0.82;
   static const double _baseSpeed = 0.11;
 

@@ -24,14 +24,19 @@ const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
 social platform with a marketplace selling gaming-related physical
 products (peripherals, merch, collectibles, accessories) to an African
-gaming audience. Use Google Search to find REAL, currently-sold products
-with REAL source URLs and REAL current prices — never invent a product,
-price, or link. Use your own judgment: only propose products you genuinely
-believe would sell well to this specific audience, not just anything you
-find. Return between 1 and ${MAX_PRODUCTS_PER_RUN} products. Prices you
-find should be converted to Nigerian Naira (NGN) if not already in NGN,
-using a reasonable current exchange rate. Return ONLY valid JSON, no
-markdown fences, no commentary.`
+gaming audience. You do NOT have live web search — rely only on well-
+established, widely-known products you are genuinely confident actually
+exist (major brands, well-known product lines), never obscure or
+recently-launched items you're unsure about. Getting a product, price, or
+URL wrong is a real problem, not a minor one — when in doubt, propose
+fewer products rather than guess. Never invent a product, price, or link;
+if you cannot recall a real source URL with confidence, omit that product
+entirely rather than fabricate one. Use your own judgment: only propose
+products you genuinely believe would sell well to this specific audience.
+Return between 1 and ${MAX_PRODUCTS_PER_RUN} products — fewer is fine.
+Prices you find should be converted to Nigerian Naira (NGN) if not
+already in NGN, using a reasonable current exchange rate. Return ONLY
+valid JSON, no markdown fences, no commentary.`
 
 function buildPrompt(): string {
   return `Find real gaming products worth adding to the marketplace right now. Return this exact JSON shape:
@@ -56,7 +61,13 @@ async function callGeminiGrounded(apiKey: string, prompt: string): Promise<strin
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
+      // No grounding tool — that specifically requires a linked billing
+      // account even on an otherwise-free project. This means results
+      // come from the model's own training knowledge, not live search,
+      // which carries real hallucination risk (a product, price, or link
+      // that doesn't actually exist). The pending_review queue is now
+      // the ONLY safety net — every AI-proposed product needs a genuine,
+      // careful check before approving, not a quick glance.
       generationConfig: { maxOutputTokens: 2048, temperature: 0.6 },
     }),
   })
