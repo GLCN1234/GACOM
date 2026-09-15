@@ -59,7 +59,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   // unchanged — every rate below is defined per-second, not per-tick.
   static const double _tickSeconds = 1 / 24;
   static const double _playerRowY = 0.86;
-  static const double _baseSpeed = 0.15;
+  static const double _baseSpeed = 0.10; // slower start — more time to read the first few questions
 
   bool get _answerMode => widget.topics != null && widget.topics!.isNotEmpty;
 
@@ -88,8 +88,10 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   Timer? _timer;
   final _rng = Random();
 
-  double get _speed => _baseSpeed + (_elapsed / 70).clamp(0, 0.2);
-  double get _spawnInterval => (1.4 - (_elapsed / 120).clamp(0, 0.5)).clamp(0.9, 1.4);
+  // Slower start, gentler and longer ramp — a new player needs to read
+  // the question and options before reacting, not just react on reflex.
+  double get _speed => _baseSpeed + (_elapsed / 100).clamp(0, 0.18);
+  double get _spawnInterval => (1.9 - (_elapsed / 140).clamp(0, 0.7)).clamp(1.2, 1.9);
 
   void _begin() {
     _lane = 1;

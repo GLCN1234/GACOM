@@ -60,7 +60,11 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
   // Same reasoning as Signal Run — 24fps instead of 60fps rebuild rate,
   // fixing real-phone jank without changing actual game speed.
   static const double _tickSeconds = 1 / 24;
-  static const double _gravity = 1.0; // screen-heights per second^2
+  // Flat and easy for the first 35 seconds — the ramp only begins
+  // midway through the game, not from the very first wave, so a new
+  // player gets genuinely comfortable before it speeds up at all.
+  static const double _rampStartDelay = 35.0;
+  double get _gravity => 0.85 + ((_elapsed - _rampStartDelay).clamp(0, 60) / 60) * 0.55;
 
   List<TopicBlock> get _topics => (widget.topics != null && widget.topics!.isNotEmpty) ? widget.topics! : _fallbackTopics;
 
@@ -159,7 +163,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
         label: picks[i],
         isTarget: picks[i] == answer,
         x: xs[i],
-        vy: -0.8 - _rng.nextDouble() * 0.15,
+        vy: -0.85 - _rng.nextDouble() * 0.15,
         color: _gemColors[_rng.nextInt(_gemColors.length)],
       ));
     }

@@ -90,14 +90,27 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
   void _loadQuestion() {
     final topic = _topics[_topicIndex];
     if (topic.questions.isEmpty) return;
-    final q = topic.questions[_questionCursor % topic.questions.length];
-    final rawOptions = List<String>.from(q['options'] as List? ?? const []);
+
+    // Defensive: skip any question with fewer than 2 real options rather
+    // than ever render an empty wheel the player can't act on. Capped at
+    // one full pass through the topic so a genuinely all-malformed topic
+    // can't loop forever.
+    Map<String, dynamic>? q;
+    List<String> rawOptions = [];
+    for (int attempt = 0; attempt < topic.questions.length; attempt++) {
+      final candidate = topic.questions[_questionCursor % topic.questions.length];
+      final candidateOptions = List<String>.from(candidate['options'] as List? ?? const []);
+      if (candidateOptions.length >= 2) { q = candidate; rawOptions = candidateOptions; break; }
+      _questionCursor++;
+    }
+    if (q == null) return; // entire topic is malformed — nothing safe to show
+
     final answer = q['answer'] as String? ?? (rawOptions.isNotEmpty ? rawOptions.first : '');
     final options = List<String>.from(rawOptions)..shuffle();
     setState(() {
       _segments = options;
       _correctAnswer = answer;
-      _currentQuestion = q['question'] as String? ?? '';
+      _currentQuestion = q!['question'] as String? ?? '';
       _rotation = 0;
     });
 
