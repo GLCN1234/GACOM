@@ -152,7 +152,12 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
   void _spawnNext() {
     if (_nextSpawnIsWave) {
       if (_answerMode) {
-        _spawnAnswerWave();
+        // Don't start a new question's answer tokens until the previous
+        // question's are fully off-screen — otherwise two different
+        // questions' answer options end up visible/mixed together in
+        // the same lanes, which is exactly what looked "disorderly".
+        final hasActiveWave = _items.any((i) => i.type == _ItemType.answerToken && !i.consumed);
+        if (!hasActiveWave) _spawnAnswerWave();
       } else {
         _spawnNumberToken();
       }
