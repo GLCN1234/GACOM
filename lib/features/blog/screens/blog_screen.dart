@@ -305,9 +305,16 @@ class _FeaturedCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Stack(fit: StackFit.expand, children: [
-            // Background image
-            post['cover_image_url'] != null
-                ? CachedNetworkImage(imageUrl: post['cover_image_url'], fit: BoxFit.cover)
+            // Background image — treats empty string the same as null
+            // (a common DB-default gotcha), and has a real errorWidget so
+            // a bad/corrupted image can never crash the page again.
+            (post['cover_image_url'] != null && (post['cover_image_url'] as String).isNotEmpty)
+                ? CachedNetworkImage(
+                    imageUrl: post['cover_image_url'],
+                    fit: BoxFit.cover,
+                    errorWidget: (context, url, error) => Container(color: GacomColors.elevatedCard,
+                      child: const Center(child: Icon(Icons.broken_image_rounded, color: GacomColors.textMuted, size: 40))),
+                  )
                 : Container(color: GacomColors.elevatedCard,
                     child: const Center(child: Icon(Icons.article_rounded, color: GacomColors.textMuted, size: 40))),
             // Gradient overlay — transparent until ~40%, then to page black
@@ -381,8 +388,13 @@ class _ArticleCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: SizedBox(width: 80, height: 80,
-              child: post['cover_image_url'] != null
-                  ? CachedNetworkImage(imageUrl: post['cover_image_url'], fit: BoxFit.cover)
+              child: (post['cover_image_url'] != null && (post['cover_image_url'] as String).isNotEmpty)
+                  ? CachedNetworkImage(
+                      imageUrl: post['cover_image_url'],
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(color: GacomColors.elevatedCard,
+                        child: const Icon(Icons.broken_image_rounded, color: GacomColors.textMuted, size: 28)),
+                    )
                   : Container(color: GacomColors.elevatedCard,
                       child: const Icon(Icons.article_rounded, color: GacomColors.textMuted, size: 28))),
           ),

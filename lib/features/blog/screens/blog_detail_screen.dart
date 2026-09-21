@@ -47,17 +47,23 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
     final p = _post!;
     final author = p['author'] as Map<String, dynamic>? ?? {};
     final publishedAt = DateTime.tryParse(p['published_at'] ?? '') ?? DateTime.now();
+    final hasCoverImage = p['cover_image_url'] != null && (p['cover_image_url'] as String).isNotEmpty;
 
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: p['cover_image_url'] != null ? 240 : 0,
+            expandedHeight: hasCoverImage ? 240 : 0,
             pinned: true,
             backgroundColor: GacomColors.obsidian,
-            flexibleSpace: p['cover_image_url'] != null ? FlexibleSpaceBar(
-              background: CachedNetworkImage(imageUrl: p['cover_image_url'], fit: BoxFit.cover),
+            flexibleSpace: hasCoverImage ? FlexibleSpaceBar(
+              background: CachedNetworkImage(
+                imageUrl: p['cover_image_url'],
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) => Container(color: GacomColors.elevatedCard,
+                  child: const Center(child: Icon(Icons.broken_image_rounded, color: GacomColors.textMuted, size: 40))),
+              ),
             ) : null,
           ),
           SliverPadding(
