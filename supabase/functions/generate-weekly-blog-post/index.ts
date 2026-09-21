@@ -1,7 +1,12 @@
-// Weekly AI blog drafter. Triggered by pg_cron every Wednesday.
-// Picks a trending gaming-industry angle, drafts a full post via Gemini,
-// and inserts it as an UNPUBLISHED draft for a human editor to review,
-// tweak, and publish from the admin dashboard's Blog Posts section.
+// Blog drafter — on Groq now, using their built-in browser_search tool
+// for REAL current gaming news (not the model's own memory). This is
+// the actual fix for "the blog needs to be about real gaming news tied
+// back to GACOM" — the previous Gemini version had no search access at
+// all and was explicitly told to avoid claiming real news because of it.
+// Triggered daily by pg_cron. Publishes directly (no review queue).
+//
+// Requires GROQ_API_KEY (console.groq.com/keys — free tier, no card,
+// far more than enough headroom for one post/day).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -9,65 +14,68 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const GEMINI_MODEL = 'gemini-flash-lite-latest'
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL = 'openai/gpt-oss-20b'
 
 const CATEGORIES = ['News', 'Esports', 'Reviews', 'Tips', 'Tournaments', 'Community']
 
-const SYSTEM_PROMPT = `You are GACOM's in-house gaming journalist. GACOM (gamicom.net) is a
-Nigerian gaming social platform combining social feed, esports competitions, an
-education-gaming arm, and a marketplace. You write sharp, current, genuinely
-interesting blog posts about the gaming industry for a young, mobile-first
-Nigerian and African gaming audience. Never invent specific unverifiable facts,
-statistics, or quotes — write about GENRES of trending topics (a type of game
-mechanic, an industry pattern, a genre's evolution, community/esports culture,
-tips and strategy) rather than claiming specific breaking news you cannot verify.
-Return ONLY valid JSON, no markdown fences, no commentary.`
+const SYSTEM_PROMPT = `You are GACOM's in-house gaming journalist. GACOM
+(gamicom.net) is a Nigerian gaming social platform combining a social
+feed, esports competitions, an education-gaming arm, and a marketplace.
+Use the browser_search tool to find ACTUAL current gaming news — real
+stories from the last few days: game releases, esports results, industry
+announcements, community moments. Do not write generic genre commentary —
+write about something that genuinely happened, that you found via search.
+Then, naturally, tie it to GACOM: how this news connects to what GACOM's
+own community cares about, plays, or could engage with — a real
+extension of that broader conversation, not a forced product plug. Return
+ONLY valid JSON, no markdown fences, no commentary before or after it.`
 
 function buildPrompt(): string {
-  return `Draft one blog post for GACOM's blog. Pick ONE angle from: a gaming genre
-trend, an esports/competitive scene topic, a practical tips-and-strategy piece,
-a community culture observation, or a reflection on mobile gaming growth in Africa.
-
-Return this exact JSON shape:
+  return `Search for real, current gaming news from the past few days, pick the most interesting story for a young Nigerian/African gaming audience, and draft a blog post about it. Return this exact JSON shape:
 {
-  "title": "punchy, specific title, under 70 characters",
-  "excerpt": "1-2 sentence hook/summary, under 160 characters",
-  "content": "the full post, 500-800 words, in markdown with a few subheadings (##), written in an engaging, knowledgeable voice — no invented statistics or fake quotes",
-  "category": "one of: ${CATEGORIES.join(', ')}",
-  "tags": ["3 to 5 relevant lowercase tags"]
+  "title": "a specific, current headline-style title, under 70 characters",
+  "excerpt": "1-2 sentence summary of the real story",
+  "content": "full post as clean HTML (use <h2>, <p>, <a> tags only), 300-500 words: cover the real news accurately, then a natural closing paragraph tying it to GACOM's own community",
+  "category": "one of: ${CATEGORIES.join(', ')}"
 }`
 }
 
-async function callGemini(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+async function callGroqWithSearch(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch(GROQ_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.9 },
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.7,
+      max_completion_tokens: 2048,
+      top_p: 1,
+      stream: false,
+      tool_choice: 'required',
+      tools: [{ type: 'browser_search' }],
     }),
   })
-  if (!response.ok) throw new Error(`Gemini API error: ${await response.text()}`)
+  if (!response.ok) throw new Error(`Groq API error (${response.status}): ${await response.text()}`)
   const data = await response.json()
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`)
+  const text = data?.choices?.[0]?.message?.content
+  if (!text) throw new Error(`Groq returned no content: ${JSON.stringify(data).slice(0, 1500)}`)
   return text.trim()
 }
 
 function parseJson(raw: string): any {
-  const cleaned = raw.replace(/^```json\s*/i, '').replace(/```$/, '').trim()
+  const match = raw.match(/\{[\s\S]*\}/)
+  const cleaned = (match ? match[0] : raw).replace(/^```json\s*/i, '').replace(/```$/, '').trim()
   return JSON.parse(sanitizeJsonControlChars(cleaned))
 }
 
-// Gemini sometimes embeds literal newlines/tabs inside a JSON string value
-// (e.g. between HTML paragraphs) instead of escaping them as \n — that's
-// technically invalid JSON and is exactly what was breaking JSON.parse
-// here. This walks the text once, tracking whether we're currently
-// inside a string literal (respecting \" escapes), and only escapes raw
-// control characters found INSIDE a string — structural JSON whitespace
-// outside strings is left untouched.
+// Same fix used across the other AI functions this session — the model
+// can embed literal newlines/tabs inside a JSON string value instead of
+// escaping them, which breaks JSON.parse. Only touches characters
+// actually inside a string literal.
 function sanitizeJsonControlChars(text: string): string {
   let result = ''
   let inString = false
@@ -102,42 +110,41 @@ function sanitizeJsonControlChars(text: string): string {
 
 function slugify(title: string): string {
   return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-    + '-' + Date.now()
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
   try {
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
+    const groqKey = Deno.env.get('GROQ_API_KEY')
+    if (!groqKey) throw new Error('GROQ_API_KEY not configured')
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
+    const raw = await callGroqWithSearch(groqKey, buildPrompt())
+    const draft = parseJson(raw)
+    if (!draft.title || !draft.content) throw new Error('Groq response missing required fields')
 
-    const raw = await callGemini(geminiKey, buildPrompt())
-    const post = parseJson(raw)
-
-    if (!post.title || !post.content) throw new Error('Gemini response missing required fields')
+    const category = CATEGORIES.includes(draft.category) ? draft.category : 'News'
+    const slug = `${slugify(draft.title)}-${Date.now().toString(36)}`
 
     const { data, error } = await supabase.from('blog_posts').insert({
-      title: post.title,
-      slug: slugify(post.title),
-      excerpt: post.excerpt ?? null,
-      content: post.content,
-      category: CATEGORIES.includes(post.category) ? post.category : 'News',
-      tags: Array.isArray(post.tags) ? post.tags : [],
+      title: draft.title.trim(),
+      slug,
+      excerpt: draft.excerpt?.trim() || null,
+      content: draft.content.trim(),
+      category,
       author_id: null,
-      is_published: true,
       is_ai_generated: true,
-      read_time_minutes: Math.max(2, Math.round((post.content as string).split(/\s+/).length / 200)),
+      is_published: true,
+      published_at: new Date().toISOString(),
     }).select().single()
-
     if (error) throw error
 
-    return new Response(JSON.stringify({ success: true, post_id: data.id, title: data.title }),
+    return new Response(JSON.stringify({ success: true, post: data }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {

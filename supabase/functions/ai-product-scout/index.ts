@@ -1,12 +1,10 @@
-// AI product scout — now on Grok (xAI) instead of Gemini, specifically
-// because the Gemini quota shared across this project's other AI
-// features (blog, curriculum questions, newsletter) was exhausted.
-// Uses xAI's Responses API with the web_search tool for real, grounded
-// results (not the model's own unguided memory) — same anti-
-// hallucination requirement as before, just a different provider.
+// AI product scout — on Groq now, using their built-in browser_search
+// tool for real current products (not the model's own memory, and not
+// xAI which needs paid billing). Autonomous: real search means real
+// hallucination risk is low, so this publishes directly, no review
+// queue — matches the explicit request to make this fully autonomous.
 //
-// Requires a NEW secret: XAI_API_KEY (from console.x.ai — this is a
-// separate key from GEMINI_API_KEY, on a separate quota).
+// Requires GROQ_API_KEY (same free-tier key as the blog function).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -14,8 +12,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const XAI_ENDPOINT = 'https://api.x.ai/v1/responses'
-const XAI_MODEL = 'grok-4.6'
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
+const GROQ_MODEL = 'openai/gpt-oss-20b'
 const MARKUP_MULTIPLIER = 1.20 // 20% added profit
 const MAX_PRODUCTS_PER_RUN = 6
 const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
@@ -23,18 +21,17 @@ const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
 social platform with a marketplace selling gaming-related physical
 products (peripherals, merch, collectibles, accessories) to an African
-gaming audience. Use real-time web search to find REAL, currently-sold
+gaming audience. Use the browser_search tool to find REAL, currently-sold
 products with REAL source URLs and REAL current prices — never invent a
 product, price, or link. Use your own judgment: only propose products you
-genuinely believe would sell well to this specific audience, not just
-anything you find. Return between 1 and ${MAX_PRODUCTS_PER_RUN} products.
-Prices you find should be converted to Nigerian Naira (NGN) if not already
-in NGN, using a reasonable current exchange rate. Return ONLY valid JSON,
-no markdown fences, no commentary — nothing before or after the JSON
-object.`
+genuinely believe would sell well to this specific audience. Return
+between 1 and ${MAX_PRODUCTS_PER_RUN} products. Prices you find should be
+converted to Nigerian Naira (NGN) if not already in NGN, using a
+reasonable current exchange rate. Return ONLY valid JSON, no markdown
+fences, no commentary.`
 
 function buildPrompt(): string {
-  return `Find real gaming products worth adding to the marketplace right now. Return this exact JSON shape:
+  return `Search for real gaming products worth adding to the marketplace right now. Return this exact JSON shape:
 {
   "products": [
     {
@@ -49,27 +46,28 @@ function buildPrompt(): string {
 }`
 }
 
-async function callGrokGrounded(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(XAI_ENDPOINT, {
+async function callGroqWithSearch(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch(GROQ_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: XAI_MODEL,
-      input: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${prompt}` }],
-      tools: [{ type: 'web_search' }],
+      model: GROQ_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.6,
+      max_completion_tokens: 2048,
+      top_p: 1,
+      stream: false,
+      tool_choice: 'required',
+      tools: [{ type: 'browser_search' }],
     }),
   })
-  if (!response.ok) throw new Error(`xAI API error (${response.status}): ${await response.text()}`)
+  if (!response.ok) throw new Error(`Groq API error (${response.status}): ${await response.text()}`)
   const data = await response.json()
-
-  // Responses-API shape: data.output is an array of items; the text lives
-  // in the message-type item's content array. Walking it defensively and
-  // surfacing the raw payload on failure, since this exact shape hasn't
-  // been verified against a real response from this project yet.
-  const messageItem = (data.output ?? []).find((item: any) => item.type === 'message')
-  const text = messageItem?.content?.find((c: any) => c.type === 'output_text')?.text
-    ?? messageItem?.content?.[0]?.text
-  if (!text) throw new Error(`Could not find text in xAI response. Raw payload: ${JSON.stringify(data).slice(0, 2000)}`)
+  const text = data?.choices?.[0]?.message?.content
+  if (!text) throw new Error(`Groq returned no content: ${JSON.stringify(data).slice(0, 1500)}`)
   return text.trim()
 }
 
@@ -79,10 +77,6 @@ function parseJson(raw: string): any {
   return JSON.parse(sanitizeJsonControlChars(cleaned))
 }
 
-// Same fix applied to the blog/newsletter functions — the model can embed
-// literal newlines/tabs inside a JSON string value instead of escaping
-// them, which breaks JSON.parse. Only touches characters actually inside
-// a string literal, leaving structural JSON whitespace untouched.
 function sanitizeJsonControlChars(text: string): string {
   let result = ''
   let inString = false
@@ -124,15 +118,15 @@ Deno.serve(async (req) => {
   )
 
   try {
-    const xaiKey = Deno.env.get('XAI_API_KEY')
-    if (!xaiKey) throw new Error('XAI_API_KEY not configured')
+    const groqKey = Deno.env.get('GROQ_API_KEY')
+    if (!groqKey) throw new Error('GROQ_API_KEY not configured')
 
-    const raw = await callGrokGrounded(xaiKey, buildPrompt())
+    const raw = await callGroqWithSearch(groqKey, buildPrompt())
     const parsed = parseJson(raw)
     const candidates: any[] = Array.isArray(parsed.products) ? parsed.products : []
 
     if (candidates.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'AI found nothing worth proposing this run.', added: 0 }),
+      return new Response(JSON.stringify({ success: true, note: 'Nothing worth proposing this run.', added: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
@@ -148,7 +142,7 @@ Deno.serve(async (req) => {
           source_price: sourcePrice,
           source_url: String(c.source_url).slice(0, 500),
           is_ai_sourced: true,
-          review_status: 'pending_review',
+          review_status: 'approved',
           is_active: true,
           stock: 5,
           images: [],
@@ -158,14 +152,14 @@ Deno.serve(async (req) => {
       })
 
     if (rows.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'AI proposals were missing required fields, none inserted.', added: 0 }),
+      return new Response(JSON.stringify({ success: true, note: 'Proposals were missing required fields, none inserted.', added: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const { error: insertError } = await supabase.from('products').insert(rows)
     if (insertError) throw insertError
 
-    return new Response(JSON.stringify({ success: true, added: rows.length, note: 'Awaiting review in the admin dashboard.' }),
+    return new Response(JSON.stringify({ success: true, added: rows.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {
