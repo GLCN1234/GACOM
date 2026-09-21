@@ -1,13 +1,12 @@
-// AI product scout — back on Gemini (free), but using its OWN separate
-// API key (GEMINI_API_KEY_SCOUT) instead of the GEMINI_API_KEY shared by
-// blog generation, curriculum questions, and the newsletter. That
-// sharing was the actual cause of the quota error — not Gemini itself.
-// A second free-tier Google Cloud project/key gives this feature its own
-// quota pool at zero cost.
+// AI product scout — now on Grok (xAI) instead of Gemini, specifically
+// because the Gemini quota shared across this project's other AI
+// features (blog, curriculum questions, newsletter) was exhausted.
+// Uses xAI's Responses API with the web_search tool for real, grounded
+// results (not the model's own unguided memory) — same anti-
+// hallucination requirement as before, just a different provider.
 //
-// Setup: create a new API key at aistudio.google.com under a project
-// separate from your existing one, then:
-//   supabase secrets set GEMINI_API_KEY_SCOUT=your_new_key_here
+// Requires a NEW secret: XAI_API_KEY (from console.x.ai — this is a
+// separate key from GEMINI_API_KEY, on a separate quota).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -15,8 +14,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const GEMINI_MODEL = 'gemini-flash-lite-latest'
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
+const XAI_ENDPOINT = 'https://api.x.ai/v1/responses'
+const XAI_MODEL = 'grok-4.6'
 const MARKUP_MULTIPLIER = 1.20 // 20% added profit
 const MAX_PRODUCTS_PER_RUN = 6
 const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
@@ -24,19 +23,15 @@ const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
 social platform with a marketplace selling gaming-related physical
 products (peripherals, merch, collectibles, accessories) to an African
-gaming audience. You do NOT have live web search — rely only on well-
-established, widely-known products you are genuinely confident actually
-exist (major brands, well-known product lines), never obscure or
-recently-launched items you're unsure about. Getting a product, price, or
-URL wrong is a real problem, not a minor one — when in doubt, propose
-fewer products rather than guess. Never invent a product, price, or link;
-if you cannot recall a real source URL with confidence, omit that product
-entirely rather than fabricate one. Use your own judgment: only propose
-products you genuinely believe would sell well to this specific audience.
-Return between 1 and ${MAX_PRODUCTS_PER_RUN} products — fewer is fine.
-Prices you find should be converted to Nigerian Naira (NGN) if not
-already in NGN, using a reasonable current exchange rate. Return ONLY
-valid JSON, no markdown fences, no commentary.`
+gaming audience. Use real-time web search to find REAL, currently-sold
+products with REAL source URLs and REAL current prices — never invent a
+product, price, or link. Use your own judgment: only propose products you
+genuinely believe would sell well to this specific audience, not just
+anything you find. Return between 1 and ${MAX_PRODUCTS_PER_RUN} products.
+Prices you find should be converted to Nigerian Naira (NGN) if not already
+in NGN, using a reasonable current exchange rate. Return ONLY valid JSON,
+no markdown fences, no commentary — nothing before or after the JSON
+object.`
 
 function buildPrompt(): string {
   return `Find real gaming products worth adding to the marketplace right now. Return this exact JSON shape:
@@ -54,28 +49,27 @@ function buildPrompt(): string {
 }`
 }
 
-async function callGeminiGrounded(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+async function callGrokGrounded(apiKey: string, prompt: string): Promise<string> {
+  const response = await fetch(XAI_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      // No grounding tool — that specifically requires a linked billing
-      // account even on an otherwise-free project. This means results
-      // come from the model's own training knowledge, not live search,
-      // which carries real hallucination risk (a product, price, or link
-      // that doesn't actually exist). The pending_review queue is now
-      // the ONLY safety net — every AI-proposed product needs a genuine,
-      // careful check before approving, not a quick glance.
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.6 },
+      model: XAI_MODEL,
+      input: [{ role: 'user', content: `${SYSTEM_PROMPT}\n\n${prompt}` }],
+      tools: [{ type: 'web_search' }],
     }),
   })
-  if (!response.ok) throw new Error(`Gemini API error: ${await response.text()}`)
+  if (!response.ok) throw new Error(`xAI API error (${response.status}): ${await response.text()}`)
   const data = await response.json()
-  const text = data?.candidates?.[0]?.content?.parts
-    ?.map((p: any) => p.text).filter(Boolean).join('\n')
-  if (!text) throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`)
+
+  // Responses-API shape: data.output is an array of items; the text lives
+  // in the message-type item's content array. Walking it defensively and
+  // surfacing the raw payload on failure, since this exact shape hasn't
+  // been verified against a real response from this project yet.
+  const messageItem = (data.output ?? []).find((item: any) => item.type === 'message')
+  const text = messageItem?.content?.find((c: any) => c.type === 'output_text')?.text
+    ?? messageItem?.content?.[0]?.text
+  if (!text) throw new Error(`Could not find text in xAI response. Raw payload: ${JSON.stringify(data).slice(0, 2000)}`)
   return text.trim()
 }
 
@@ -85,10 +79,10 @@ function parseJson(raw: string): any {
   return JSON.parse(sanitizeJsonControlChars(cleaned))
 }
 
-// Same fix as generate-weekly-blog-post — Gemini sometimes embeds literal
-// newlines/tabs inside a JSON string value instead of escaping them,
-// which breaks JSON.parse. Escapes control characters only when actually
-// inside a string literal, leaving structural JSON whitespace untouched.
+// Same fix applied to the blog/newsletter functions — the model can embed
+// literal newlines/tabs inside a JSON string value instead of escaping
+// them, which breaks JSON.parse. Only touches characters actually inside
+// a string literal, leaving structural JSON whitespace untouched.
 function sanitizeJsonControlChars(text: string): string {
   let result = ''
   let inString = false
@@ -130,13 +124,10 @@ Deno.serve(async (req) => {
   )
 
   try {
-    // Deliberately a DIFFERENT secret name from the one blog/questions/
-    // newsletter use, so this can be a separate free-tier key with its
-    // own quota rather than competing for the same one.
-    const geminiKey = Deno.env.get('GEMINI_API_KEY_SCOUT')
-    if (!geminiKey) throw new Error('GEMINI_API_KEY_SCOUT not configured — set up a second, separate Gemini API key for this feature.')
+    const xaiKey = Deno.env.get('XAI_API_KEY')
+    if (!xaiKey) throw new Error('XAI_API_KEY not configured')
 
-    const raw = await callGeminiGrounded(geminiKey, buildPrompt())
+    const raw = await callGrokGrounded(xaiKey, buildPrompt())
     const parsed = parseJson(raw)
     const candidates: any[] = Array.isArray(parsed.products) ? parsed.products : []
 
