@@ -345,7 +345,7 @@ class _FeaturedCard extends StatelessWidget {
                 Text(post['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
                 Row(children: [
-                  CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: author['avatar_url'] != null ? CachedNetworkImageProvider(author['avatar_url']) : null, child: author['avatar_url'] == null ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
+                  CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? CachedNetworkImageProvider(author['avatar_url']) : null, onBackgroundImageError: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null, child: (author['avatar_url'] == null || (author['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
                   const SizedBox(width: 6),
                   Text(author['display_name'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                   const Spacer(),
@@ -409,7 +409,7 @@ class _ArticleCard extends StatelessWidget {
                 Text(post['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 15, fontWeight: FontWeight.w700, color: GacomColors.textPrimary, height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
                 Row(children: [
-                  CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: author['avatar_url'] != null ? CachedNetworkImageProvider(author['avatar_url']) : null, child: author['avatar_url'] == null ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
+                  CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? CachedNetworkImageProvider(author['avatar_url']) : null, onBackgroundImageError: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null, child: (author['avatar_url'] == null || (author['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
                   const SizedBox(width: 5),
                   Flexible(child: Text(author['display_name'] ?? '', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11), overflow: TextOverflow.ellipsis)),
                   if (isVerified) ...[const SizedBox(width: 2), const Icon(Icons.verified_rounded, size: 10, color: GacomColors.deepOrange)],

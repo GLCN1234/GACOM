@@ -79,7 +79,7 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
                 Text(p['title'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 28, fontWeight: FontWeight.w700, color: GacomColors.textPrimary, height: 1.2)),
                 const SizedBox(height: 16),
                 Row(children: [
-                  CircleAvatar(radius: 18, backgroundColor: GacomColors.border, backgroundImage: author['avatar_url'] != null ? CachedNetworkImageProvider(author['avatar_url']) : null, child: author['avatar_url'] == null ? Text((author['display_name'] ?? 'G')[0], style: const TextStyle(fontSize: 12, color: GacomColors.textPrimary)) : null),
+                  CircleAvatar(radius: 18, backgroundColor: GacomColors.border, backgroundImage: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? CachedNetworkImageProvider(author['avatar_url']) : null, onBackgroundImageError: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null, child: (author['avatar_url'] == null || (author['avatar_url'] as String).isEmpty) ? Text((author['display_name'] ?? 'G')[0], style: const TextStyle(fontSize: 12, color: GacomColors.textPrimary)) : null),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(author['display_name'] ?? '', style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
