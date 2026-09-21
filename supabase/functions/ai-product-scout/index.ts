@@ -82,7 +82,43 @@ async function callGeminiGrounded(apiKey: string, prompt: string): Promise<strin
 function parseJson(raw: string): any {
   const match = raw.match(/\{[\s\S]*\}/)
   const cleaned = (match ? match[0] : raw).replace(/^```json\s*/i, '').replace(/```$/, '').trim()
-  return JSON.parse(cleaned)
+  return JSON.parse(sanitizeJsonControlChars(cleaned))
+}
+
+// Same fix as generate-weekly-blog-post — Gemini sometimes embeds literal
+// newlines/tabs inside a JSON string value instead of escaping them,
+// which breaks JSON.parse. Escapes control characters only when actually
+// inside a string literal, leaving structural JSON whitespace untouched.
+function sanitizeJsonControlChars(text: string): string {
+  let result = ''
+  let inString = false
+  let escaped = false
+  for (const char of text) {
+    if (inString) {
+      if (escaped) {
+        result += char
+        escaped = false
+      } else if (char === '\\') {
+        result += char
+        escaped = true
+      } else if (char === '"') {
+        result += char
+        inString = false
+      } else if (char === '\n') {
+        result += '\\n'
+      } else if (char === '\r') {
+        result += '\\r'
+      } else if (char === '\t') {
+        result += '\\t'
+      } else {
+        result += char
+      }
+    } else {
+      result += char
+      if (char === '"') inString = true
+    }
+  }
+  return result
 }
 
 Deno.serve(async (req) => {
