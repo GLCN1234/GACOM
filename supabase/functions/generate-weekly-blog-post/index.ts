@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       category: CATEGORIES.includes(post.category) ? post.category : 'News',
       tags: Array.isArray(post.tags) ? post.tags : [],
       author_id: null,
-      is_published: false,
+      is_published: true,
       is_ai_generated: true,
       read_time_minutes: Math.max(2, Math.round((post.content as string).split(/\s+/).length / 200)),
     }).select().single()
