@@ -178,52 +178,106 @@ class _WhotGameState extends State<WhotGame> {
     else { aScore++; status = 'AI wins!'; SoundService.instance.playLose(); }
   }
 
-  Widget _cardWidget(WhotCard c, {bool small = false, VoidCallback? onTap}) {
+  Widget _cardWidget(WhotCard c, {bool small = false, VoidCallback? onTap, bool playable = true, bool faceDown = false}) {
     final color = _suitColors[c.suit]!;
-    final w = small ? 52.0 : 64.0, h = small ? 72.0 : 88.0;
-    return GestureDetector(onTap: onTap,
-      child: Container(width: w, height: h, margin: const EdgeInsets.symmetric(horizontal: 3),
-        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(10), border: Border.all(color: color, width: 2)),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(_suitIcons[c.suit], color: color, size: small ? 20 : 26),
-          const SizedBox(height: 4),
-          Text(c.suit == 'Whot' ? 'WHOT' : '${c.number}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: small ? 12 : 15, color: GacomColors.textPrimary)),
-        ]),
-      ));
+    final w = small ? 56.0 : 70.0, h = small ? 78.0 : 96.0;
+    if (faceDown) {
+      return Container(width: w, height: h, margin: const EdgeInsets.symmetric(horizontal: 3),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF2A1A00), Color(0xFF4A2E00)]),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4), width: 1.5),
+        ),
+        child: Center(child: Icon(Icons.all_inclusive_rounded, color: GacomColors.deepOrange.withOpacity(0.5), size: small ? 18 : 22)));
+    }
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: playable ? 1.0 : 0.45,
+      child: GestureDetector(onTap: playable ? onTap : null,
+        child: AnimatedContainer(duration: const Duration(milliseconds: 150),
+          width: w, height: h, margin: const EdgeInsets.symmetric(horizontal: 3),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [color.withOpacity(0.22), GacomColors.cardDark]),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: playable ? color : GacomColors.border, width: playable ? 2 : 1),
+            boxShadow: playable ? [BoxShadow(color: color.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)] : null,
+          ),
+          child: Stack(children: [
+            Positioned(top: 4, left: 6, child: Text(c.suit == 'Whot' ? '20' : '${c.number}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: small ? 11 : 13, color: color))),
+            Center(child: Icon(_suitIcons[c.suit], color: color, size: small ? 24 : 30)),
+            if (c.suit == 'Whot') Positioned(bottom: 4, left: 0, right: 0, child: Text('WHOT', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: small ? 9 : 10, color: color, letterSpacing: 1))),
+          ]),
+        ),
+      ),
+    );
   }
+
+  Widget _aiHandFan() => SizedBox(height: 50, child: Center(
+    child: SizedBox(width: min(aiHand.length * 22.0 + 30, 260), child: Stack(
+      children: List.generate(aiHand.length, (i) => Positioned(left: i * 22.0,
+        child: Transform.rotate(angle: (i - aiHand.length / 2) * 0.05, child: _cardWidget(aiHand[i], small: true, faceDown: true)))),
+    )),
+  ));
 
   @override
   Widget build(BuildContext context) {
     final top = discard.last;
+    final activeSuit = calledSuit ?? top.suit;
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('WHOT'), actions: [
-        Padding(padding: const EdgeInsets.only(right: 12), child: Center(child: Text('You $pScore — AI $aScore', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textSecondary)))),
+        Container(margin: const EdgeInsets.only(right: 12), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
+          child: Text('YOU $pScore — AI $aScore', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.deepOrange))),
       ]),
-      body: Column(children: [
-        const SizedBox(height: 8),
-        Text('AI hand: ${aiHand.length} cards', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-        const SizedBox(height: 16),
-        Padding(padding: const EdgeInsets.all(12), child: Text(status, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary), textAlign: TextAlign.center)),
-        Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          _cardWidget(top),
-          if (calledSuit != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text('Called: $calledSuit', style: TextStyle(color: _suitColors[calledSuit], fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13))),
-          const SizedBox(height: 16),
-          GestureDetector(onTap: _playerDraw, child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.border)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.add_circle_outline_rounded, color: GacomColors.textMuted, size: 16),
+      body: Container(
+        decoration: const BoxDecoration(gradient: RadialGradient(center: Alignment.center, radius: 1.2, colors: [Color(0xFF0F2818), Color(0xFF0A0A0F)])),
+        child: Column(children: [
+          const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.smart_toy_rounded, color: GacomColors.textMuted, size: 16),
+            const SizedBox(width: 6),
+            Text('AI — ${aiHand.length} cards', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textMuted)),
+          ]),
+          _aiHandFan(),
+          const SizedBox(height: 8),
+          AnimatedContainer(duration: const Duration(milliseconds: 200), margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(color: GacomColors.cardDark.withOpacity(0.6), borderRadius: BorderRadius.circular(50)),
+            child: Text(status, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary))),
+          Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // Discard pile stack effect
+            SizedBox(width: 90, height: 110, child: Stack(alignment: Alignment.center, children: [
+              if (discard.length > 1) Positioned(top: 6, child: Transform.rotate(angle: -0.08, child: Opacity(opacity: 0.3, child: _cardWidget(discard[discard.length - 2])))),
+              _cardWidget(top),
+            ])),
+            const SizedBox(height: 10),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(_suitIcons[activeSuit], color: _suitColors[activeSuit], size: 16),
               const SizedBox(width: 6),
-              Text('DRAW (${deck.length} left)', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textSecondary)),
-            ]))),
-        ]))),
-        if (over) Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity,
-          child: ElevatedButton(onPressed: _reset, style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: const Text('NEW GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white))))),
-        SizedBox(height: 100, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 8),
-          children: playerHand.map((c) => _cardWidget(c, small: true, onTap: () => _playerPlay(c))).toList())),
-        const SizedBox(height: 12),
-      ]),
+              Text(calledSuit != null ? 'Called: $activeSuit' : activeSuit, style: TextStyle(color: _suitColors[activeSuit], fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
+            ]),
+            const SizedBox(height: 18),
+            GestureDetector(onTap: _playerDraw, child: Container(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(50), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.3))),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.add_circle_outline_rounded, color: GacomColors.deepOrange, size: 18),
+                const SizedBox(width: 6),
+                Text('DRAW  •  ${deck.length} left', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textSecondary)),
+              ]))),
+          ]))),
+          if (over) Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity,
+            child: ElevatedButton(onPressed: _reset, style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
+              child: const Text('NEW GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white))))),
+          Container(
+            padding: const EdgeInsets.only(top: 10),
+            decoration: BoxDecoration(color: GacomColors.cardDark.withOpacity(0.4), border: Border(top: BorderSide(color: GacomColors.border.withOpacity(0.4)))),
+            child: SizedBox(height: 110, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: playerHand.map((c) => _cardWidget(c, onTap: () => _playerPlay(c), playable: _canPlay(c))).toList())),
+          ),
+          const SizedBox(height: 12),
+        ]),
+      ),
     );
   }
 }
