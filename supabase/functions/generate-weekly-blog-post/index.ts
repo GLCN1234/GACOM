@@ -1,12 +1,10 @@
-// Blog drafter — on Groq now, using their built-in browser_search tool
-// for REAL current gaming news (not the model's own memory). This is
-// the actual fix for "the blog needs to be about real gaming news tied
-// back to GACOM" — the previous Gemini version had no search access at
-// all and was explicitly told to avoid claiming real news because of it.
-// Triggered daily by pg_cron. Publishes directly (no review queue).
+// Blog drafter — Groq for real current gaming news via browser_search,
+// plus a real cover image from Unsplash (free, CC0-licensed, hotlinking
+// required by their own guidelines — not a workaround, this is how
+// they want it used). Triggered daily by pg_cron. Publishes directly.
 //
-// Requires GROQ_API_KEY (console.groq.com/keys — free tier, no card,
-// far more than enough headroom for one post/day).
+// Requires GROQ_API_KEY and UNSPLASH_ACCESS_KEY (unsplash.com/developers
+// — free "Demo" tier, 50 requests/hour, far more than one post/day needs).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -16,6 +14,7 @@ const corsHeaders = {
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
+const UNSPLASH_SEARCH_ENDPOINT = 'https://api.unsplash.com/search/photos'
 
 const CATEGORIES = ['News', 'Esports', 'Reviews', 'Tips', 'Tournaments', 'Community']
 
@@ -37,7 +36,8 @@ function buildPrompt(): string {
   "title": "a specific, current headline-style title, under 70 characters",
   "excerpt": "1-2 sentence summary of the real story",
   "content": "full post as clean HTML using ONLY <p> and <a> tags — NO headings, NO <h1>/<h2>/<h3> at all, just flowing narrative paragraphs like a real news article, 300-500 words: cover the real news accurately, then a natural closing paragraph tying it to GACOM's own community",
-  "category": "one of: ${CATEGORIES.join(', ')}"
+  "category": "one of: ${CATEGORIES.join(', ')}",
+  "image_keywords": "2-4 words describing the visual subject of this story for a stock photo search, e.g. 'esports tournament arena' or 'mobile gaming controller'"
 }`
 }
 
@@ -66,16 +66,43 @@ async function callGroqWithSearch(apiKey: string, prompt: string): Promise<strin
   return text.trim()
 }
 
+// Returns the image URL plus an attribution line — Unsplash's own
+// guidelines require crediting the photographer with a link back to
+// their profile, and a "download" ping when a photo is actually used
+// (which this is: chosen to illustrate a published post). Returns null
+// on any failure so a bad image search never blocks the actual post.
+async function fetchUnsplashImage(accessKey: string, keywords: string): Promise<{ url: string; attributionHtml: string } | null> {
+  try {
+    const searchUrl = `${UNSPLASH_SEARCH_ENDPOINT}?query=${encodeURIComponent(keywords)}&per_page=1&orientation=landscape`
+    const res = await fetch(searchUrl, { headers: { 'Authorization': `Client-ID ${accessKey}` } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const photo = data?.results?.[0]
+    if (!photo) return null
+
+    // Required by Unsplash's API guidelines whenever a photo is actually
+    // used (not just displayed in search results) — best-effort, doesn't
+    // block the post if it fails.
+    if (photo.links?.download_location) {
+      fetch(photo.links.download_location, { headers: { 'Authorization': `Client-ID ${accessKey}` } }).catch(() => {})
+    }
+
+    const photographerName = photo.user?.name ?? 'Unsplash'
+    const photographerLink = photo.user?.links?.html ?? 'https://unsplash.com'
+    const attributionHtml = `<p style="font-size:12px;color:#888;">Photo by <a href="${photographerLink}?utm_source=gacom&utm_medium=referral">${photographerName}</a> on <a href="https://unsplash.com/?utm_source=gacom&utm_medium=referral">Unsplash</a></p>`
+
+    return { url: photo.urls?.regular ?? photo.urls?.small, attributionHtml }
+  } catch {
+    return null
+  }
+}
+
 function parseJson(raw: string): any {
   const match = raw.match(/\{[\s\S]*\}/)
   const cleaned = (match ? match[0] : raw).replace(/^```json\s*/i, '').replace(/```$/, '').trim()
   return JSON.parse(sanitizeJsonControlChars(cleaned))
 }
 
-// Same fix used across the other AI functions this session — the model
-// can embed literal newlines/tabs inside a JSON string value instead of
-// escaping them, which breaks JSON.parse. Only touches characters
-// actually inside a string literal.
 function sanitizeJsonControlChars(text: string): string {
   let result = ''
   let inString = false
@@ -131,12 +158,24 @@ Deno.serve(async (req) => {
     const category = CATEGORIES.includes(draft.category) ? draft.category : 'News'
     const slug = `${slugify(draft.title)}-${Date.now().toString(36)}`
 
+    let coverImageUrl: string | null = null
+    let content = draft.content.trim()
+    const unsplashKey = Deno.env.get('UNSPLASH_ACCESS_KEY')
+    if (unsplashKey && draft.image_keywords) {
+      const image = await fetchUnsplashImage(unsplashKey, String(draft.image_keywords))
+      if (image) {
+        coverImageUrl = image.url
+        content = `${content}\n${image.attributionHtml}`
+      }
+    }
+
     const { data, error } = await supabase.from('blog_posts').insert({
       title: draft.title.trim(),
       slug,
       excerpt: draft.excerpt?.trim() || null,
-      content: draft.content.trim(),
+      content,
       category,
+      cover_image_url: coverImageUrl,
       author_id: null,
       is_ai_generated: true,
       is_published: true,
