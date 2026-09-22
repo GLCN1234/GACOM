@@ -91,7 +91,7 @@ class _WhotGameState extends State<WhotGame> {
     if (deck.isEmpty) return;
     setState(() { playerHand.add(deck.removeLast()); playerTurn = false; status = 'AI thinking...'; });
     SoundService.instance.playCardFlip();
-    Future.delayed(const Duration(milliseconds: 500), _aiPlay);
+    Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();});
   }
 
   void _handleSpecial(WhotCard c, {required bool isPlayer}) {
@@ -110,7 +110,7 @@ class _WhotGameState extends State<WhotGame> {
       switch (c.number) {
         case 1: // Hold On — same player goes again
           setState(() { playerTurn = isPlayer; status = isPlayer ? 'Hold On! Go again' : 'AI holds on...'; });
-          if (!isPlayer) Future.delayed(const Duration(milliseconds: 500), _aiPlay);
+          if (!isPlayer) Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();});
           return;
         case 2: // Pick Two
           _drawIfEmpty();
@@ -120,7 +120,7 @@ class _WhotGameState extends State<WhotGame> {
           break;
         case 8: // Suspension — skip opponent
           setState(() { playerTurn = isPlayer; status = isPlayer ? 'Opponent suspended! Go again' : 'You are suspended — AI goes again'; });
-          if (!isPlayer) { Future.delayed(const Duration(milliseconds: 500), _aiPlay); return; }
+          if (!isPlayer) { Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();}); return; }
           break;
         case 14: // General Market — opponent draws 1
           _drawIfEmpty();
@@ -132,7 +132,7 @@ class _WhotGameState extends State<WhotGame> {
           setState(() { playerTurn = !isPlayer; status = isPlayer ? 'AI thinking...' : 'Your turn'; });
       }
       if (playerHand.isEmpty || aiHand.isEmpty) { _endGame(); return; }
-      if (!playerTurn) Future.delayed(const Duration(milliseconds: 600), _aiPlay);
+      if (!playerTurn) Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
     }
     proceed();
   }
@@ -146,7 +146,7 @@ class _WhotGameState extends State<WhotGame> {
           Navigator.pop(context);
           setState(() { calledSuit = s; playerTurn = false; status = 'You called $s — AI thinking...'; });
           if (playerHand.isEmpty) { _endGame(); return; }
-          Future.delayed(const Duration(milliseconds: 600), _aiPlay);
+          Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
         },
         child: Container(padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: _suitColors[s]!.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: _suitColors[s]!)),
