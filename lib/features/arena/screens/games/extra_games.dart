@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/services/sound_service.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONNECT FOUR
@@ -22,7 +23,8 @@ class _ConnectFourState extends State<ConnectFourGame> {
     for(int r=rows-1;r>=0;r--){
       if(board[r][col]==0){ board[r][col]=1; break; }
     }
-    if(_checkWin(1)){setState((){status='You win!'; over=true; wScore++;}); return;}
+    SoundService.instance.playDrop();
+    if(_checkWin(1)){setState((){status='You win!'; over=true; wScore++;}); SoundService.instance.playWin(); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); return;}
     setState((){turn=2; status='AI thinking...';});
     Future.delayed(const Duration(milliseconds:350),_aiMove);
@@ -39,7 +41,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
     }
     if(best<0){for(int c=0;c<cols;c++){if(_canDrop(c)){best=c;break;}}}
     _doMove(board,best,2);
-    if(_checkWin(2)){setState((){status='AI wins!'; over=true; aScore++;}); return;}
+    if(_checkWin(2)){setState((){status='AI wins!'; over=true; aScore++;}); SoundService.instance.playLose(); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); return;}
     setState((){turn=1; status='Your turn';});
   }
@@ -153,11 +155,13 @@ class _ReversiState extends State<ReversiGame>{
   void _move(int sq){
     if(over||!_valid(board,1).contains(sq))return;
     _flip(board,sq,1);
+    SoundService.instance.playPieceMove();
     if(_valid(board,2).isNotEmpty){
       setState((){playerBlack=false; _updateStatus();});
       Future.delayed(const Duration(milliseconds:400),_aiMove);
     } else if(_valid(board,1).isEmpty){
       setState((){over=true; _updateStatus();});
+      _playOutcomeSound();
     } else {
       setState((){_updateStatus();});
     }
@@ -174,8 +178,14 @@ class _ReversiState extends State<ReversiGame>{
     }
     _flip(board,best,2);
     if(_valid(board,1).isNotEmpty){setState((){playerBlack=true; _updateStatus();});}
-    else if(_valid(board,2).isEmpty){setState((){over=true; _updateStatus();});}
+    else if(_valid(board,2).isEmpty){setState((){over=true; _updateStatus();}); _playOutcomeSound();}
     else{setState((){_updateStatus();});}
+  }
+
+  void _playOutcomeSound(){
+    final b=board.where((x)=>x==1).length;
+    final w=board.where((x)=>x==2).length;
+    if(b>w){SoundService.instance.playWin();} else if(b<w){SoundService.instance.playLose();}
   }
 
   void _updateStatus(){
@@ -246,13 +256,16 @@ class _MemoryMatchState extends State<MemoryMatchGame>{
   void _tap(int i){
     if(waiting||revealed[i]||matched[i])return;
     setState((){revealed[i]=true;});
+    SoundService.instance.playCardFlip();
     if(first==null){setState((){first=i;});}
     else{
       moves++;
       if(cards[first!]==cards[i]){
         setState((){matched[first!]=matched[i]=true;pairs++;first=null;});
+        SoundService.instance.playCorrect();
       } else {
         waiting=true;
+        SoundService.instance.playWrong();
         Future.delayed(const Duration(milliseconds:800),(){
           setState((){revealed[first!]=revealed[i]=false;first=null;waiting=false;});
         });
@@ -310,9 +323,11 @@ class _WordScrambleState extends State<WordScrambleGame>{
     if(_ctrl.text.toUpperCase()==word){
       score+=10+streak*2; streak++;
       setState((){msg='Correct! +${10+streak*2} pts';});
+      SoundService.instance.playCorrect();
       Future.delayed(const Duration(milliseconds:800),_next);
     } else {
       streak=0; setState((){msg='Try again!';});
+      SoundService.instance.playWrong();
     }
   }
   @override
@@ -441,7 +456,7 @@ class _Game2048State extends State<Game2048>{
   void _doSlide(String dir){
     if(over)return;
     final changed=_slide(dir);
-    if(changed){_addTile();}
+    if(changed){_addTile(); SoundService.instance.playTileSlide();}
     bool hasMove=false;
     for(final r in board)for(final v in r)if(v==0)hasMove=true;
     if(!hasMove)for(int r=0;r<4;r++)for(int c=0;c<4;c++){
@@ -449,6 +464,7 @@ class _Game2048State extends State<Game2048>{
       if(r+1<4&&board[r][c]==board[r+1][c])hasMove=true;
     }
     setState((){if(!hasMove)over=true;});
+    if(!hasMove)SoundService.instance.playLose();
   }
 }
 
@@ -471,8 +487,10 @@ class _HangmanState extends State<HangmanGame>{
   void _guess(String l){
     if(guessed.contains(l))return;
     setState((){guessed.add(l);if(!word.contains(l))wrong++;});
-    if(_solved){score+=10;Future.delayed(const Duration(milliseconds:600),_next);}
-    if(wrong>=7){Future.delayed(const Duration(milliseconds:800),_next);}
+    SoundService.instance.playLetterType();
+    if(!word.contains(l))SoundService.instance.playWrong();
+    if(_solved){score+=10;SoundService.instance.playWin();Future.delayed(const Duration(milliseconds:600),_next);}
+    if(wrong>=7){SoundService.instance.playLose();Future.delayed(const Duration(milliseconds:800),_next);}
   }
 
   bool get _solved=>word.split('').every((l)=>guessed.contains(l));
@@ -550,8 +568,8 @@ class _SpeedMathState extends State<SpeedMathGame>{
 
   void _check(){
     final v=int.tryParse(_ctrl.text);
-    if(v==answer){streak++;score+=10+streak;_next();}
-    else{streak=0;_ctrl.clear();}
+    if(v==answer){streak++;score+=10+streak;SoundService.instance.playCorrect();_next();}
+    else{streak=0;_ctrl.clear();SoundService.instance.playWrong();}
   }
 
   @override void dispose(){_timer?.cancel();_ctrl.dispose();super.dispose();}
@@ -615,6 +633,7 @@ class _SimonSaysState extends State<SimonSaysGame>{
     await Future.delayed(const Duration(milliseconds:600));
     for(final s in sequence){
       setState((){active=s;});
+      SoundService.instance.playTap();
       await Future.delayed(const Duration(milliseconds:500));
       setState((){active=-1;});
       await Future.delayed(const Duration(milliseconds:300));
@@ -627,10 +646,13 @@ class _SimonSaysState extends State<SimonSaysGame>{
     input.add(i);
     if(input[input.length-1]!=sequence[input.length-1]){
       setState((){started=false;});
+      SoundService.instance.playLose();
       return;
     }
+    SoundService.instance.playTap();
     if(input.length==sequence.length){
       score+=sequence.length;
+      SoundService.instance.playCorrect();
       setState((){showing=true;});
       Future.delayed(const Duration(milliseconds:600),_addAndShow);
     }
@@ -704,7 +726,7 @@ class _MinesweeperState extends State<MinesweeperGame>{
   void _reveal(int i){
     if(revealed[i]||flagged[i])return;
     revealed[i]=true;
-    if(mine[i]){for(int j=0;j<mine.length;j++)if(mine[j])revealed[j]=true;over=true;return;}
+    if(mine[i]){for(int j=0;j<mine.length;j++)if(mine[j])revealed[j]=true;over=true;SoundService.instance.playExplosion();return;}
     if(_adj(i)==0){
       final r=i~/cols,c=i%cols;
       for(int dr=-1;dr<=1;dr++)for(int dc=-1;dc<=1;dc++){
@@ -712,7 +734,7 @@ class _MinesweeperState extends State<MinesweeperGame>{
         if(nr>=0&&nr<rows&&nc>=0&&nc<cols)_reveal(nr*cols+nc);
       }
     }
-    if(revealed.where((x)=>x).length==rows*cols-mines)won=true;
+    if(!won&&revealed.where((x)=>x).length==rows*cols-mines){won=true;SoundService.instance.playWin();}
   }
 
   Color _numColor(int n){
@@ -789,20 +811,22 @@ class _BlackjackState extends State<BlackjackGame>{
     deck=_newDeck();
     pHand=[deck.removeLast(),deck.removeLast()];
     dHand=[deck.removeLast(),deck.removeLast()];
+    SoundService.instance.playCardShuffle();
     setState((){playing=true;dRevealed=false;msg='';});
   }
   void _hit(){
     pHand.add(deck.removeLast());
-    if(_val(pHand)>21){setState((){dScore++;msg='Bust! Dealer wins.';playing=false;dRevealed=true;});}
+    SoundService.instance.playCardFlip();
+    if(_val(pHand)>21){setState((){dScore++;msg='Bust! Dealer wins.';playing=false;dRevealed=true;});SoundService.instance.playLose();}
     else setState((){});
   }
   void _stand(){
     dRevealed=true;
     while(_val(dHand)<17)dHand.add(deck.removeLast());
     final pv=_val(pHand),dv=_val(dHand);
-    if(dv>21||pv>dv){pScore++;msg='You win! $pv vs $dv';}
+    if(dv>21||pv>dv){pScore++;msg='You win! $pv vs $dv';SoundService.instance.playWin();}
     else if(pv==dv){msg='Push! $pv vs $dv';}
-    else{dScore++;msg='Dealer wins. $pv vs $dv';}
+    else{dScore++;msg='Dealer wins. $pv vs $dv';SoundService.instance.playLose();}
     setState((){playing=false;});
   }
 
@@ -888,9 +912,11 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
   void _hLine(int r,int c){
     if(hLines[r][c]||over||turn!=1)return;
     hLines[r][c]=true;
+    SoundService.instance.playTap();
     final s=_check();
     final total=boxes.expand((x)=>x).where((x)=>x!=0).length;
-    if(total==n*n){setState((){over=true;});return;}
+    if(s)SoundService.instance.playCorrect();
+    if(total==n*n){setState((){over=true;});if(pScore>aScore){SoundService.instance.playWin();}else if(pScore<aScore){SoundService.instance.playLose();}return;}
     if(!s)setState((){turn=2;});
     else setState((){});
     if(turn==2)Future.delayed(const Duration(milliseconds:400),_aiMove);
@@ -899,9 +925,11 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
   void _vLine(int r,int c){
     if(vLines[r][c]||over||turn!=1)return;
     vLines[r][c]=true;
+    SoundService.instance.playTap();
     final s=_check();
     final total=boxes.expand((x)=>x).where((x)=>x!=0).length;
-    if(total==n*n){setState((){over=true;});return;}
+    if(s)SoundService.instance.playCorrect();
+    if(total==n*n){setState((){over=true;});if(pScore>aScore){SoundService.instance.playWin();}else if(pScore<aScore){SoundService.instance.playLose();}return;}
     if(!s)setState((){turn=2;});
     else setState((){});
     if(turn==2)Future.delayed(const Duration(milliseconds:400),_aiMove);
@@ -1015,15 +1043,15 @@ class _NumberQuizState extends State<NumberQuizGame>{
     _ctrl.clear();answered=false;msg='';
     // AI answers in 2-4 seconds
     final delay=Duration(milliseconds:2000+Random().nextInt(2000));
-    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='AI answered first!';answered=true;});Future.delayed(const Duration(milliseconds:1200),_next);}});
+    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='AI answered first!';answered=true;});SoundService.instance.playLose();Future.delayed(const Duration(milliseconds:1200),_next);}});
     setState((){});
   }
 
   void _submit(){
     if(answered)return;
     final v=int.tryParse(_ctrl.text);
-    if(v==answer){_aiTimer?.cancel();answered=true;pScore++;setState((){msg='You got it first!';});Future.delayed(const Duration(milliseconds:1000),_next);}
-    else{setState((){msg='Wrong!';_ctrl.clear();});}
+    if(v==answer){_aiTimer?.cancel();answered=true;pScore++;setState((){msg='You got it first!';});SoundService.instance.playWin();Future.delayed(const Duration(milliseconds:1000),_next);}
+    else{setState((){msg='Wrong!';_ctrl.clear();});SoundService.instance.playWrong();}
   }
 
   @override
@@ -1084,10 +1112,10 @@ class _SnakeState extends State<SnakeGame>{
     if(over)return;
     final head=[snake.first[0]+dir[0],snake.first[1]+dir[1]];
     if(head[0]<0||head[0]>=gridSize||head[1]<0||head[1]>=gridSize||snake.any((s)=>s[0]==head[0]&&s[1]==head[1])){
-      _timer?.cancel(); setState((){over=true;});return;
+      _timer?.cancel(); setState((){over=true;}); SoundService.instance.playLose(); return;
     }
     snake.insert(0,head);
-    if(head[0]==food[0]&&head[1]==food[1]){score+=10;_spawnFood();}
+    if(head[0]==food[0]&&head[1]==food[1]){score+=10;_spawnFood();SoundService.instance.playCorrect();}
     else snake.removeLast();
     setState((){});
   }

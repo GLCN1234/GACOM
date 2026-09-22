@@ -44,6 +44,15 @@ class SoundService {
   Future<void> playWrong() => _playSfx('wrong.mp3');
   Future<void> playWin() => _playSfx('win.mp3');
   Future<void> playLose() => _playSfx('lose.mp3');
+  Future<void> playPieceMove() => _playSfx('piece_move.mp3');
+  Future<void> playPieceCapture() => _playSfx('piece_capture.mp3');
+  Future<void> playCardFlip() => _playSfx('card_flip.mp3');
+  Future<void> playCardShuffle() => _playSfx('card_shuffle.mp3');
+  Future<void> playTileSlide() => _playSfx('tile_slide.mp3');
+  Future<void> playDrop() => _playSfx('drop.mp3');
+  Future<void> playExplosion() => _playSfx('explosion.mp3');
+  Future<void> playShoot() => _playSfx('shoot.mp3');
+  Future<void> playLetterType() => _playSfx('letter_type.mp3');
 
   Future<void> startBackgroundMusic() async {
     if (!_musicEnabled) return;

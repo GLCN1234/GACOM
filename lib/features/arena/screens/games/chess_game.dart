@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/supabase_service.dart';
+import '../../../../core/services/sound_service.dart';
 
 // ── Chess piece constants ─────────────────────────────────────────────────────
 const empty = 0;
@@ -367,6 +368,9 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     HapticFeedback.lightImpact();
     final wasStudentMove=whiteTurn;
     final beforeBoard=List<int>.from(board);
+    final wasCapture=board[to]!=empty;
+    SoundService.instance.playPieceMove();
+    if(wasCapture)SoundService.instance.playPieceCapture();
     final nb=List<int>.from(board);
     nb[to]=nb[from]; nb[from]=empty;
     // pawn promotion
@@ -386,6 +390,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
         final winner=whiteTurn?'White':'Black';
         setState((){gameOver=true; status='$winner wins by checkmate!';
           if(whiteTurn)wScore++;else bScore++;});
+        if(whiteTurn){SoundService.instance.playWin();}else{SoundService.instance.playLose();}
         _advanceLessonIfComplete();
       } else {
         setState((){gameOver=true; status='Stalemate — draw!';});
