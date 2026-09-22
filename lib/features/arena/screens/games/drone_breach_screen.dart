@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../games/topic_block.dart';
 
 const _bg = Color(0xFF0B0B0F);
@@ -121,6 +122,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
 
       if (_lives <= 0) {
         _timer?.cancel();
+        SoundService.instance.playLose();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         _phase = _Phase.gameOver;
       }
@@ -157,6 +159,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
       // The correct answer got past you unshot — a real miss.
       _lives--;
       HapticFeedback.heavyImpact();
+      SoundService.instance.playWrong();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
     }
   }
@@ -169,9 +172,11 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
     if (drone.isTarget) {
       _score += 20;
       _correctCount++;
+      SoundService.instance.playCorrect();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 10, questionsAnswered: 1, correctAnswers: 1);
     } else {
       _lives--;
+      SoundService.instance.playWrong();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
       HapticFeedback.heavyImpact();
     }

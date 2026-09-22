@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../games/topic_block.dart';
 
 // A distinct, vibrant palette — warm sunset gradient, not the dark
@@ -126,6 +127,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
           if (gem.isTarget) {
             _lives--;
             HapticFeedback.heavyImpact();
+            SoundService.instance.playWrong();
             EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
           }
         }
@@ -140,6 +142,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
 
       if (_lives <= 0) {
         _timer?.cancel();
+        SoundService.instance.playLose();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         _phase = _Phase.gameOver;
       }
@@ -197,10 +200,12 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
     if (gem.isTarget) {
       _score += 20;
       _correctCount++;
+      SoundService.instance.playCorrect();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 10, questionsAnswered: 1, correctAnswers: 1);
     } else {
       _lives--;
       HapticFeedback.heavyImpact();
+      SoundService.instance.playWrong();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
     }
   }

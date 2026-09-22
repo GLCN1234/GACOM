@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../games/topic_block.dart';
 
 // Gold/brass heist-vault palette — a third distinct visual identity.
@@ -168,9 +169,11 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
     if (correct) {
       _score += 25;
       _correctCount++;
+      SoundService.instance.playCorrect();
     } else {
       _lives--;
       HapticFeedback.heavyImpact();
+      SoundService.instance.playWrong();
     }
 
     Future.delayed(const Duration(milliseconds: 650), () {
@@ -178,6 +181,7 @@ class _VaultBreakScreenState extends State<VaultBreakScreen> {
       setState(() => _flashLabel = null);
       _resolving = false;
       if (_lives <= 0) {
+        SoundService.instance.playLose();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         setState(() => _phase = _Phase.gameOver);
       } else {

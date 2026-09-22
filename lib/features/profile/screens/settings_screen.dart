@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
+import '../../../core/services/sound_service.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
 
 // Theme mode provider
@@ -27,11 +28,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifMessages = true;
   bool _notifWallet = true;
   bool _privateAccount = false;
+  bool _musicEnabled = true;
+  bool _sfxEnabled = true;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadSoundPrefs();
+  }
+
+  Future<void> _loadSoundPrefs() async {
+    await SoundService.instance.init();
+    if (mounted) setState(() {
+      _musicEnabled = SoundService.instance.musicEnabled;
+      _sfxEnabled = SoundService.instance.sfxEnabled;
+    });
   }
 
   Future<void> _loadProfile() async {
@@ -60,6 +72,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           // Profile card
           _buildProfileCard(email),
+
+          const SizedBox(height: 24),
+          _SectionLabel('SOUND'),
+          _SettingsGroup([
+            SwitchListTile(
+              title: const Text('Background Music', style: TextStyle(color: GacomColors.textPrimary, fontSize: 14)),
+              value: _musicEnabled,
+              activeColor: GacomColors.deepOrange,
+              onChanged: (v) async {
+                setState(() => _musicEnabled = v);
+                await SoundService.instance.setMusicEnabled(v);
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Sound Effects', style: TextStyle(color: GacomColors.textPrimary, fontSize: 14)),
+              value: _sfxEnabled,
+              activeColor: GacomColors.deepOrange,
+              onChanged: (v) async {
+                setState(() => _sfxEnabled = v);
+                await SoundService.instance.setSfxEnabled(v);
+                if (v) SoundService.instance.playTap();
+              },
+            ),
+          ]),
 
           const SizedBox(height: 24),
           _SectionLabel('ACCOUNT'),

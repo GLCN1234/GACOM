@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
+import '../../../../core/services/sound_service.dart';
 import '../../games/topic_block.dart';
 
 const _bg = Color(0xFF0B0B0F);
@@ -143,6 +144,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
 
       if (_lives <= 0) {
         _timer?.cancel();
+        SoundService.instance.playLose();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         _phase = _Phase.gameOver;
       }
@@ -210,6 +212,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
         item.hitResult = false;
         _lives--;
         HapticFeedback.heavyImpact();
+        SoundService.instance.playWrong();
       }
       return;
     }
@@ -238,8 +241,10 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
         _score += 15;
         _correctCount++;
         HapticFeedback.selectionClick();
+        SoundService.instance.playCorrect();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 10, questionsAnswered: 1, correctAnswers: 1);
       } else {
+        SoundService.instance.playWrong();
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 0, questionsAnswered: 1, correctAnswers: 0);
       }
     }
