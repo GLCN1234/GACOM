@@ -51,6 +51,7 @@ const ICON_QUERIES: Record<string, string> = {
   'Number Duel': 'numbers competition',
   'Snake': 'retro arcade game',
   'Survival Shooter': 'space shooter arcade',
+  'Whot': 'playing cards deck colorful',
 }
 
 Deno.serve(async (req) => {
