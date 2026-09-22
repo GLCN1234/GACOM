@@ -44,7 +44,7 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
     _times.add(ms);
     _flashing = false; _waiting = false;
     if (_times.length >= _rounds) { setState(() => _done = true); }
-    else { Future.delayed(const Duration(milliseconds: 600), _scheduleNext); setState(() {}); }
+    else { Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_scheduleNext();}); setState(() {}); }
   }
 
   int get _avg => _times.isEmpty ? 0 : _times.reduce((a, b) => a + b) ~/ _times.length;

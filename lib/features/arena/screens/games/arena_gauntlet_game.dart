@@ -138,7 +138,7 @@ class _ArenaGauntletScreenState extends State<ArenaGauntletScreen> {
     }
 
     EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: correct ? 10 : 0, questionsAnswered: 1, correctAnswers: correct ? 1 : 0);
-    Future.delayed(const Duration(milliseconds: 900), _next);
+    Future.delayed(const Duration(milliseconds: 900), (){if(mounted)_next();});
   }
 
   void _resolveWrong() {

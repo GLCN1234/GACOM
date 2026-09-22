@@ -55,7 +55,7 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
       questionsAnswered: 1,
       correctAnswers: correct ? 1 : 0,
     );
-    Future.delayed(const Duration(milliseconds: 1000), _nextQ);
+    Future.delayed(const Duration(milliseconds: 1000), (){if(mounted)_nextQ();});
   }
 
   void _nextQ() {

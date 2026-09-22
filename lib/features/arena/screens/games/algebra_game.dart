@@ -91,7 +91,7 @@ class _AlgebraGameState extends State<AlgebraGame> {
       questionsAnswered: 1,
       correctAnswers: correct ? 1 : 0,
     );
-    Future.delayed(const Duration(milliseconds: 1800), _next);
+    Future.delayed(const Duration(milliseconds: 1800), (){if(mounted)_next();});
   }
 
   void _next() {

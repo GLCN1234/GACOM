@@ -41,7 +41,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
     if (winner != null) { _finish(winner); return; }
 
     // Small delay so the AI's move doesn't feel instant/robotic
-    Future.delayed(const Duration(milliseconds: 450), _aiMove);
+    Future.delayed(const Duration(milliseconds: 450), (){if(mounted)_aiMove();});
   }
 
   void _aiMove() {
