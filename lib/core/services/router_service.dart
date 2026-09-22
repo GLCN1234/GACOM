@@ -42,6 +42,7 @@ import '../../features/arena/screens/match_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
 import '../../features/arena/screens/games/chess_game.dart';
 import '../../features/arena/screens/games/extra_games.dart';
+import '../../features/arena/screens/games/whot_game.dart';
 import '../../features/arena/screens/games/rps_solo.dart';
 import '../../features/arena/screens/games/trivia_solo.dart';
 import '../../features/arena/screens/games/colony_siege_game.dart';
@@ -252,6 +253,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/dotsboxes', builder: (_, __) => const DotsAndBoxesGame()),
               GoRoute(path: 'practice/numberduel', builder: (_, __) => const NumberQuizGame()),
               GoRoute(path: 'practice/snake', builder: (_, __) => const SnakeGame()),
+              GoRoute(path: 'practice/whot', builder: (_, __) => const WhotGame()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),

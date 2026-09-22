@@ -24,3 +24,9 @@ select cron.schedule(
   );
   $$
 );
+
+-- Add Whot to the game store if it isn't already there (won't duplicate
+-- on re-run, unlike the original seed which only fires on an empty table).
+insert into game_listings (name, tagline, category, developer_name, play_route, is_gacom_official, status, is_featured)
+select 'Whot', 'The real Nigerian card game — Hold On, Pick Two, Whot wilds and all', 'Card', 'GACOM', '/arena/practice/whot', true, 'approved', true
+where not exists (select 1 from game_listings where name = 'Whot');
