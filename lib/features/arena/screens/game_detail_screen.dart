@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/widgets/gacom_snackbar.dart';
 
 class GameDetailScreen extends StatefulWidget {
   final String gameId;
@@ -12,7 +13,9 @@ class GameDetailScreen extends StatefulWidget {
 
 class _GameDetailScreenState extends State<GameDetailScreen> {
   Map<String, dynamic>? _game;
+  int _myRating = 0;
   bool _loading = true;
+  bool _submittingRating = false;
 
   @override
   void initState() { super.initState(); _load(); }
@@ -20,8 +23,33 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   Future<void> _load() async {
     try {
       final data = await SupabaseService.client.from('game_listings').select().eq('id', widget.gameId).single();
-      if (mounted) setState(() { _game = data; _loading = false; });
+      final uid = SupabaseService.currentUserId;
+      int myRating = 0;
+      if (uid != null) {
+        final mine = await SupabaseService.client.from('game_ratings')
+            .select('rating').eq('game_id', widget.gameId).eq('user_id', uid).maybeSingle();
+        myRating = (mine?['rating'] as num?)?.toInt() ?? 0;
+      }
+      if (mounted) setState(() { _game = data; _myRating = myRating; _loading = false; });
     } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
+
+  Future<void> _submitRating(int stars) async {
+    final uid = SupabaseService.currentUserId;
+    if (uid == null) { GacomSnackbar.show(context, 'Sign in to rate this game', isError: true); return; }
+    setState(() => _submittingRating = true);
+    try {
+      await SupabaseService.client.from('game_ratings').upsert({
+        'game_id': widget.gameId, 'user_id': uid, 'rating': stars, 'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'game_id,user_id');
+      setState(() => _myRating = stars);
+      await _load(); // refresh the aggregate now that the trigger has run
+      if (mounted) GacomSnackbar.show(context, 'Thanks for rating!', isSuccess: true);
+    } catch (e) {
+      if (mounted) GacomSnackbar.show(context, 'Couldn\'t save your rating: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _submittingRating = false);
+    }
   }
 
   @override
@@ -66,6 +94,23 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
           child: const Text('PLAY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)),
         )),
+        const SizedBox(height: 28),
+        const Text('RATE THIS GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textMuted, letterSpacing: 1)),
+        const SizedBox(height: 10),
+        Row(children: [
+          ...List.generate(5, (i) {
+            final starIndex = i + 1;
+            final filled = starIndex <= _myRating;
+            return IconButton(
+              onPressed: _submittingRating ? null : () => _submitRating(starIndex),
+              icon: Icon(filled ? Icons.star_rounded : Icons.star_border_rounded, color: Colors.amber, size: 30),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40),
+            );
+          }),
+          if (_submittingRating) const Padding(padding: EdgeInsets.only(left: 8), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+        ]),
+        if (_myRating > 0) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Your rating — tap to change', style: TextStyle(color: GacomColors.textMuted, fontSize: 12))),
         const SizedBox(height: 24),
         const Text('ABOUT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textMuted, letterSpacing: 1)),
         const SizedBox(height: 8),

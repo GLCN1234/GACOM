@@ -46,7 +46,44 @@ create policy "admins manage all games" on game_listings for update
   using (exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin', 'super_admin')))
   with check (exists (select 1 from profiles p where p.id = auth.uid() and p.role in ('admin', 'super_admin')));
 
--- Seed GACOM's existing built-in games so the store has one unified data
+-- Real per-user ratings, not just hand-edited aggregate numbers — one
+-- rating per user per game (they can change it later), with the
+-- aggregate on game_listings kept correct automatically via trigger.
+create table if not exists game_ratings (
+  id uuid primary key default gen_random_uuid(),
+  game_id uuid not null references game_listings(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(game_id, user_id)
+);
+alter table game_ratings enable row level security;
+drop policy if exists "anyone views ratings" on game_ratings;
+create policy "anyone views ratings" on game_ratings for select using (true);
+drop policy if exists "users insert own rating" on game_ratings;
+create policy "users insert own rating" on game_ratings for insert with check (auth.uid() = user_id);
+drop policy if exists "users update own rating" on game_ratings;
+create policy "users update own rating" on game_ratings for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Security definer so the trigger can update game_listings.rating even
+-- though the rating user themselves has no direct UPDATE permission on
+-- that table — only on their own row in game_ratings.
+create or replace function update_game_rating_aggregate() returns trigger
+language plpgsql security definer as $$
+begin
+  update game_listings set
+    rating = (select coalesce(avg(rating), 0) from game_ratings where game_id = coalesce(new.game_id, old.game_id)),
+    rating_count = (select count(*) from game_ratings where game_id = coalesce(new.game_id, old.game_id))
+  where id = coalesce(new.game_id, old.game_id);
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists game_rating_aggregate_trigger on game_ratings;
+create trigger game_rating_aggregate_trigger
+after insert or update or delete on game_ratings
+for each row execute function update_game_rating_aggregate();
 -- source instead of a hardcoded list plus a separate database table.
 -- Safe to re-run: only inserts if the table is still empty.
 insert into game_listings (name, tagline, category, developer_name, play_route, is_gacom_official, status, is_featured)

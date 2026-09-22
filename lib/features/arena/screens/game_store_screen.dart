@@ -15,6 +15,16 @@ class GameStoreScreen extends StatefulWidget {
 
 class _GameStoreScreenState extends State<GameStoreScreen> {
   static const _categories = ['All', 'Puzzle', 'Action', 'Strategy', 'Board', 'Arcade', 'Card', 'Educational'];
+  static const _categoryIcons = {
+    'All': Icons.apps_rounded,
+    'Puzzle': Icons.extension_rounded,
+    'Action': Icons.bolt_rounded,
+    'Strategy': Icons.psychology_rounded,
+    'Board': Icons.grid_on_rounded,
+    'Arcade': Icons.sports_esports_rounded,
+    'Card': Icons.style_rounded,
+    'Educational': Icons.school_rounded,
+  };
   String _selectedCategory = 'All';
   String _search = '';
   bool _loading = true;
@@ -116,7 +126,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
   );
 
   Widget _categoryChips() => SizedBox(
-    height: 42,
+    height: 46,
     child: ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       scrollDirection: Axis.horizontal,
@@ -127,7 +137,10 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
         return Padding(
           padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
+            avatar: Icon(_categoryIcons[cat] ?? Icons.apps_rounded, size: 16, color: selected ? Colors.white : GacomColors.textMuted),
             label: Text(cat, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: selected ? Colors.white : GacomColors.textSecondary)),
+            labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             selected: selected,
             onSelected: (_) => setState(() => _selectedCategory = cat),
             selectedColor: GacomColors.deepOrange,
@@ -148,7 +161,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.78),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.68),
       itemCount: list.length,
       itemBuilder: (_, i) {
         final g = list[i];
@@ -156,7 +169,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
         return GestureDetector(
           onTap: () => _openGame(g),
           child: Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             decoration: GacomDecorations.glassCard(context, radius: 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AspectRatio(aspectRatio: 1, child: Container(
@@ -166,12 +179,13 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
                       errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32)))
                   : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32),
               )),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(g['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+                style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textPrimary)),
+              const SizedBox(height: 2),
               Text(g['developer_name'] as String? ?? 'GACOM', maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Row(children: [
                 const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                 const SizedBox(width: 2),
