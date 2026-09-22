@@ -67,6 +67,7 @@ import '../../features/edu/institution/institution_picker_screen.dart';
 import '../../features/edu/institution/institution_portal_screen.dart';
 import '../../features/edu/institution/curriculum_game_picker_screen.dart';
 import '../../features/arena/screens/game_store_screen.dart';
+import '../../features/arena/screens/game_detail_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
 
@@ -258,6 +259,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'submit',
                     builder: (_, __) => const GameDeveloperApplicationScreen(),
+                  ),
+                  GoRoute(
+                    path: 'game/:id',
+                    builder: (_, s) => GameDetailScreen(gameId: s.pathParameters['id']!),
                   ),
                   GoRoute(
                     path: 'survival',

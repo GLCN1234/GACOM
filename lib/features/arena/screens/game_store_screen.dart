@@ -1,86 +1,208 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
 
-class GameStoreScreen extends StatelessWidget {
+/// A standard app-store style layout — featured carousel, search, category
+/// filters, then a grid of listings. Pulls from game_listings so GACOM's
+/// own built-in games and developer submissions render identically once
+/// approved, rather than being two separate hardcoded/dynamic sources.
+class GameStoreScreen extends StatefulWidget {
   const GameStoreScreen({super.key});
+  @override
+  State<GameStoreScreen> createState() => _GameStoreScreenState();
+}
 
-  static const _gacomGames = [
-    {'name': 'Chess',          'desc': 'Alpha-beta AI engine, full rules', 'icon': Icons.extension_rounded,       'route': '/arena/practice/chess',        'badge': 'NEW'},
-    {'name': 'Tic-Tac-Toe',   'desc': 'Unbeatable minimax AI (Ryan)',       'icon': Icons.grid_3x3_rounded,        'route': '/arena/practice/tictactoe',    'badge': 'LIVE'},
-    {'name': 'RPS Battle',     'desc': 'Best of 5 — Rock Paper Scissors',   'icon': Icons.front_hand_rounded,      'route': '/arena/practice/rps',          'badge': 'LIVE'},
-    {'name': 'Trivia',         'desc': '10 questions, race the clock',       'icon': Icons.quiz_rounded,            'route': '/arena/practice/trivia',       'badge': 'LIVE'},
-    {'name': 'Reaction',       'desc': 'Tap fastest, pure reflexes',         'icon': Icons.bolt_rounded,            'route': '/arena/practice/reaction',     'badge': 'LIVE'},
-    {'name': 'Connect Four',   'desc': '4 in a row vs AI',                   'icon': Icons.circle_rounded,         'route': '/arena/practice/connect4',     'badge': 'NEW'},
-    {'name': 'Reversi',        'desc': 'Flip tiles, own the board',          'icon': Icons.radio_button_checked_rounded,'route': '/arena/practice/reversi',  'badge': 'NEW'},
-    {'name': 'Memory Match',   'desc': 'Flip and match all pairs',           'icon': Icons.grid_view_rounded,       'route': '/arena/practice/memory',       'badge': 'NEW'},
-    {'name': 'Word Scramble',  'desc': 'Unscramble the hidden word',         'icon': Icons.abc_rounded,             'route': '/arena/practice/wordscramble', 'badge': 'NEW'},
-    {'name': '2048',           'desc': 'Slide tiles, reach 2048',            'icon': Icons.dashboard_rounded,       'route': '/arena/practice/2048',         'badge': 'NEW'},
-    {'name': 'Hangman',        'desc': 'Guess the word before time runs out','icon': Icons.text_fields_rounded,     'route': '/arena/practice/hangman',      'badge': 'NEW'},
-    {'name': 'Speed Math',     'desc': 'Solve equations before the timer',   'icon': Icons.calculate_rounded,       'route': '/arena/practice/speedmath',    'badge': 'NEW'},
-    {'name': 'Simon Says',     'desc': 'Watch and repeat the sequence',      'icon': Icons.colorize_rounded,        'route': '/arena/practice/simon',        'badge': 'NEW'},
-    {'name': 'Minesweeper',    'desc': 'Clear the field, avoid the mines',   'icon': Icons.landslide_rounded,       'route': '/arena/practice/minesweeper',  'badge': 'NEW'},
-    {'name': 'Blackjack',      'desc': 'Beat the dealer to 21',              'icon': Icons.style_rounded,           'route': '/arena/practice/blackjack',    'badge': 'NEW'},
-    {'name': 'Dots & Boxes',   'desc': 'Claim the most boxes vs AI',         'icon': Icons.border_all_rounded,      'route': '/arena/practice/dotsboxes',    'badge': 'NEW'},
-    {'name': 'Number Duel',    'desc': 'Race the AI — solve maths first',    'icon': Icons.timer_rounded,           'route': '/arena/practice/numberduel',   'badge': 'NEW'},
-    {'name': 'Snake',          'desc': 'Classic snake — grow as long as you can','icon': Icons.linear_scale_rounded,'route': '/arena/practice/snake',        'badge': 'NEW'},
-    {'name': 'Survival Shooter','desc': 'Move, auto-fire, survive the waves','icon': Icons.gps_fixed_rounded,       'route': '/arena/store/survival',        'badge': 'NEW'},
-    {'name': 'More Coming',    'desc': 'Submit your own game below!',        'icon': Icons.add_circle_outline_rounded,'route': null,                         'badge': 'SOON'},
-  ];
+class _GameStoreScreenState extends State<GameStoreScreen> {
+  static const _categories = ['All', 'Puzzle', 'Action', 'Strategy', 'Board', 'Arcade', 'Card', 'Educational'];
+  String _selectedCategory = 'All';
+  String _search = '';
+  bool _loading = true;
+  List<Map<String, dynamic>> _games = [];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: GacomColors.obsidian,
-      appBar: AppBar(title: const Text('GAME STORE')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('GACOM GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textMuted, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          ..._gacomGames.map((g) => GestureDetector(
-            onTap: g['route'] != null ? () => context.push(g['route'] as String) : null,
-            child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: GacomDecorations.glassCard(context, radius: 16),
-            child: Row(children: [
-              Container(width: 44, height: 44, decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(12)),
-                child: Icon(g['icon'] as IconData, color: GacomColors.deepOrange, size: 22)),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(g['name'] as String, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)),
-                Text(g['desc'] as String, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
-              ])),
-              Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: ((g['badge'] as String?) == 'NEW' ? GacomColors.electricBlue : GacomColors.success).withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
-                child: Text((g['badge'] as String?) ?? 'LIVE', style: TextStyle(color: (g['badge'] as String?) == 'NEW' ? GacomColors.electricBlue : GacomColors.success, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10))),
-            ]),
-          ))),
+  void initState() { super.initState(); _load(); }
 
-          const SizedBox(height: 24),
-          const Text('COMING FROM DEVELOPERS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textMuted, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: GacomDecorations.glassCard(context, radius: 20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.rocket_launch_outlined, color: GacomColors.electricBlue, size: 28),
-              const SizedBox(height: 12),
-              const Text('Built a game? Get it on GACOM.', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 17, color: GacomColors.textPrimary)),
-              const SizedBox(height: 6),
-              const Text('Submit your game for review. Our team looks at every submission — approved games get added to the Arena for our whole player base to compete on.',
-                style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
-              const SizedBox(height: 16),
-              SizedBox(width: double.infinity, child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: GacomColors.electricBlue, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
-                onPressed: () => context.push('/arena/store/submit'),
-                child: const Text('SUBMIT YOUR GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)),
-              )),
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final data = await SupabaseService.client.from('game_listings')
+          .select('id, name, tagline, category, developer_name, play_route, play_url, icon_url, rating, rating_count, is_featured')
+          .eq('status', 'approved')
+          .order('is_featured', ascending: false)
+          .order('created_at', ascending: false);
+      if (mounted) setState(() { _games = List<Map<String, dynamic>>.from(data); _loading = false; });
+    } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
+
+  List<Map<String, dynamic>> get _featured => _games.where((g) => g['is_featured'] == true).toList();
+  List<Map<String, dynamic>> get _filtered => _games.where((g) {
+    final matchesCategory = _selectedCategory == 'All' || g['category'] == _selectedCategory;
+    final matchesSearch = _search.isEmpty || (g['name'] as String? ?? '').toLowerCase().contains(_search.toLowerCase());
+    return matchesCategory && matchesSearch;
+  }).toList();
+
+  void _openGame(Map<String, dynamic> g) {
+    final route = g['play_route'] as String?;
+    if (route != null) { context.push(route); return; }
+    context.push('/arena/store/game/${g['id']}');
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: GacomColors.obsidian,
+    appBar: AppBar(title: const Text('GAME STORE')),
+    body: _loading
+      ? const Center(child: CircularProgressIndicator())
+      : RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
+            _searchBar(),
+            if (_featured.isNotEmpty) _featuredCarousel(),
+            _categoryChips(),
+            const SizedBox(height: 8),
+            _gameGrid(),
+            _submitCta(),
+          ]),
+        ),
+  );
+
+  Widget _searchBar() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+    child: TextField(
+      onChanged: (v) => setState(() => _search = v),
+      style: const TextStyle(color: GacomColors.textPrimary),
+      decoration: InputDecoration(
+        hintText: 'Search games',
+        hintStyle: const TextStyle(color: GacomColors.textMuted),
+        prefixIcon: const Icon(Icons.search_rounded, color: GacomColors.textMuted),
+        filled: true,
+        fillColor: GacomColors.cardDark,
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(50), borderSide: BorderSide.none),
+      ),
+    ),
+  );
+
+  Widget _featuredCarousel() => SizedBox(
+    height: 170,
+    child: ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      scrollDirection: Axis.horizontal,
+      itemCount: _featured.length,
+      itemBuilder: (_, i) {
+        final g = _featured[i];
+        return GestureDetector(
+          onTap: () => _openGame(g),
+          child: Container(
+            width: 280, margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+              const Text('FEATURED', style: TextStyle(color: Colors.white70, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
+              const SizedBox(height: 4),
+              Text(g['name'] as String? ?? '', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 22)),
+              const SizedBox(height: 4),
+              Text(g['tagline'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 13)),
             ]),
           ),
-        ],
-      ),
+        );
+      },
+    ),
+  );
+
+  Widget _categoryChips() => SizedBox(
+    height: 42,
+    child: ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      scrollDirection: Axis.horizontal,
+      itemCount: _categories.length,
+      itemBuilder: (_, i) {
+        final cat = _categories[i];
+        final selected = cat == _selectedCategory;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: ChoiceChip(
+            label: Text(cat, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: selected ? Colors.white : GacomColors.textSecondary)),
+            selected: selected,
+            onSelected: (_) => setState(() => _selectedCategory = cat),
+            selectedColor: GacomColors.deepOrange,
+            backgroundColor: GacomColors.cardDark,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50), side: BorderSide(color: selected ? Colors.transparent : GacomColors.border)),
+          ),
+        );
+      },
+    ),
+  );
+
+  Widget _gameGrid() {
+    final list = _filtered;
+    if (list.isEmpty) {
+      return const Padding(padding: EdgeInsets.all(40), child: Center(child: Text('No games found.', style: TextStyle(color: GacomColors.textMuted))));
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.78),
+      itemCount: list.length,
+      itemBuilder: (_, i) {
+        final g = list[i];
+        final rating = (g['rating'] as num?)?.toDouble() ?? 0;
+        return GestureDetector(
+          onTap: () => _openGame(g),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: GacomDecorations.glassCard(context, radius: 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AspectRatio(aspectRatio: 1, child: Container(
+                decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                child: g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty
+                  ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(g['icon_url'], fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32)))
+                  : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32),
+              )),
+              const SizedBox(height: 8),
+              Text(g['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
+              Text(g['developer_name'] as String? ?? 'GACOM', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
+                const SizedBox(width: 2),
+                Text(rating > 0 ? rating.toStringAsFixed(1) : 'New', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 11)),
+              ]),
+            ]),
+          ),
+        );
+      },
     );
   }
+
+  Widget _submitCta() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+    child: Container(
+      padding: const EdgeInsets.all(20),
+      decoration: GacomDecorations.glassCard(context, radius: 20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Icon(Icons.rocket_launch_outlined, color: GacomColors.electricBlue, size: 28),
+        const SizedBox(height: 12),
+        const Text('Built a game? Get it on GACOM.', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 17, color: GacomColors.textPrimary)),
+        const SizedBox(height: 6),
+        const Text('Submit your game for review. Approved games appear in the store for our whole player base.',
+          style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
+        const SizedBox(height: 16),
+        SizedBox(width: double.infinity, child: ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: GacomColors.electricBlue, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
+          onPressed: () => context.push('/arena/store/submit'),
+          child: const Text('SUBMIT YOUR GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)),
+        )),
+      ]),
+    ),
+  );
 }

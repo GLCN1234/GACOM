@@ -595,6 +595,27 @@ class _GameSubmissionsSectionState extends State<_GameSubmissionsSection> {
     try {
       await SupabaseService.client.from('game_developer_applications')
           .update({'status': status, 'reviewed_at': DateTime.now().toIso8601String()}).eq('id', id);
+
+      // Approving here is what should actually make the game appear in
+      // the store — previously this only flipped a status flag with no
+      // downstream effect at all, so no approved game ever became
+      // visible anywhere.
+      if (status == 'approved') {
+        final app = _apps.firstWhere((a) => a['id'] == id, orElse: () => {});
+        if (app.isNotEmpty) {
+          await SupabaseService.client.from('game_listings').insert({
+            'name': app['game_name'],
+            'tagline': app['genre'] != null ? '${app['genre']} game' : null,
+            'description': app['game_description'],
+            'category': app['genre'] ?? 'Arcade',
+            'developer_name': app['developer_name'] ?? 'Independent Developer',
+            'play_url': app['demo_link'],
+            'is_gacom_official': false,
+            'status': 'approved',
+          });
+        }
+      }
+
       if (mounted) GacomSnackbar.show(context, 'Marked as $status', isSuccess: true);
       _load();
     } catch (e) {
