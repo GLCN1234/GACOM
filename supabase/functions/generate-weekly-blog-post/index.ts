@@ -52,7 +52,13 @@ async function callGroqWithSearch(apiKey: string, prompt: string): Promise<strin
         { role: 'user', content: prompt },
       ],
       temperature: 0.7,
-      max_completion_tokens: 2048,
+      max_completion_tokens: 4096,
+      // Groq's own docs specifically warn: reasoning models with search
+      // enabled can burn the entire token budget on internal reasoning
+      // before ever writing the actual answer — which is exactly what
+      // just happened (cut off mid-sentence, content field empty).
+      // 'low' keeps the search focused instead of over-exploring.
+      reasoning_effort: 'low',
       top_p: 1,
       stream: false,
       tool_choice: 'required',
