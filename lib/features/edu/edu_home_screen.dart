@@ -13,8 +13,15 @@ class EduHomeScreen extends StatefulWidget {
 
 class _EduHomeState extends State<EduHomeScreen> {
   String _name = 'Student';
+  ({int daysLeft, bool autoRenew})? _expiry;
+  bool _bannerDismissed = false;
 
-  @override void initState() { super.initState(); _loadName(); EduSubscriptionService.isPro().then((_) { if (mounted) setState(() {}); }); }
+  @override void initState() {
+    super.initState();
+    _loadName();
+    EduSubscriptionService.isPro().then((_) { if (mounted) setState(() {}); });
+    EduSubscriptionService.expiryInfo().then((e) { if (mounted) setState(() => _expiry = e); });
+  }
 
   Future<void> _loadName() async {
     try {
@@ -56,6 +63,37 @@ class _EduHomeState extends State<EduHomeScreen> {
     {'name': 'Number Duel',   'icon': Icons.timer_rounded,         'route': '/arena/practice/numberduel'},
     {'name': 'Hangman',       'icon': Icons.abc_rounded,           'route': '/arena/practice/hangman'},
   ];
+
+  Widget _expiryBanner() {
+    final days = _expiry!.daysLeft;
+    final autoRenew = _expiry!.autoRenew;
+    final urgent = days <= 1;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: (urgent ? GacomColors.error : GacomColors.deepOrange).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: (urgent ? GacomColors.error : GacomColors.deepOrange).withOpacity(0.3)),
+      ),
+      child: Row(children: [
+        Icon(Icons.schedule_rounded, color: urgent ? GacomColors.error : GacomColors.deepOrange, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(
+          autoRenew
+            ? (days <= 0 ? 'Your subscription renews today — your card will be charged automatically.' : 'Renews in $days day${days == 1 ? '' : 's'} — your card will be charged automatically.')
+            : (days <= 0 ? 'Your subscription has expired — renew now to keep your access.' : 'Your subscription expires in $days day${days == 1 ? '' : 's'} — renew to keep your access.'),
+          style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12.5, height: 1.4),
+        )),
+        if (!autoRenew)
+          TextButton(
+            onPressed: () => context.push('/edu/paywall'),
+            child: const Text('RENEW', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.deepOrange)),
+          ),
+        GestureDetector(onTap: () => setState(() => _bannerDismissed = true), child: const Padding(padding: EdgeInsets.only(left: 4), child: Icon(Icons.close_rounded, color: GacomColors.textMuted, size: 16))),
+      ]),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +146,7 @@ class _EduHomeState extends State<EduHomeScreen> {
         ],
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        if (_expiry != null && _expiry!.daysLeft <= 5 && !_bannerDismissed) _expiryBanner(),
         // Greeting
         Row(children: [
           Container(width: 48, height: 48,

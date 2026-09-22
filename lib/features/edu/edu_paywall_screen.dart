@@ -150,6 +150,14 @@ class _EduPaywallState extends State<EduPaywallScreen> {
           : const Text('UPGRADE FOR ₦3,500/MONTH', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)))),
       const SizedBox(height: 8),
       const Text('Cancel anytime. Billed monthly. Secure payment via Paystack.', style: TextStyle(color: GacomColors.textMuted, fontSize: 11), textAlign: TextAlign.center),
+      const SizedBox(height: 8),
+      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: GacomColors.electricBlue.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: GacomColors.electricBlue.withOpacity(0.25))),
+        child: Row(children: [
+          const Icon(Icons.credit_card_rounded, color: GacomColors.electricBlue, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('Paying by card renews automatically each month — no need to remember. Bank transfer works too, but renews manually.',
+            style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
+        ])),
       const SizedBox(height: 40),
     ])),
   );

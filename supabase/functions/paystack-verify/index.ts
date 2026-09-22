@@ -45,6 +45,14 @@ serve(async (req) => {
 
     // Paystack's own confirmed amount (kobo) is the only amount we trust.
     const amountNaira = verifyData.data.amount / 100
+    // If this was a card payment with a reusable authorization, capture
+    // it now — this is what lets a future renewal actually auto-charge
+    // the card without the person doing anything. Bank transfers and
+    // other channels never carry a reusable authorization at all; this
+    // just comes back empty/false for those, which is expected.
+    const authorization = verifyData.data.authorization
+    const channel = authorization?.channel as string | undefined
+    const authCode = authorization?.reusable ? authorization.authorization_code as string : null
 
     // Service role client — bypasses RLS, needed to credit another user's
     // wallet_balance row from a server context.
@@ -78,7 +86,17 @@ serve(async (req) => {
       expiresAt.setMonth(expiresAt.getMonth() + 1)
       const { error: updateError } = await supabase
         .from('edu_subscriptions')
-        .update({ status: 'active', expires_at: expiresAt.toISOString() })
+        .update({
+          status: 'active',
+          expires_at: expiresAt.toISOString(),
+          authorization_code: authCode,
+          payment_channel: channel ?? null,
+          // Only ever true for a genuine reusable card authorization —
+          // this is the single flag the renewal job checks before
+          // attempting to auto-charge anyone.
+          auto_renew: authCode !== null,
+          renewal_failed_count: 0,
+        })
         .eq('reference', reference)
       if (updateError) {
         return new Response(

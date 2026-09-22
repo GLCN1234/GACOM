@@ -44,6 +44,28 @@ class EduSubscriptionService {
   /// Clears cache (call after subscription purchase)
   static void clearCache() { _cachedStatus = null; _cacheTime = null; }
 
+  /// Returns days remaining until the active subscription expires, and
+  /// whether it will auto-renew (card) or needs manual renewal
+  /// (transfer) — null if there's no active subscription at all.
+  static Future<({int daysLeft, bool autoRenew})?> expiryInfo() async {
+    try {
+      final uid = SupabaseService.currentUserId;
+      if (uid == null) return null;
+      final row = await SupabaseService.client
+          .from('edu_subscriptions')
+          .select('expires_at, auto_renew')
+          .eq('user_id', uid)
+          .eq('status', 'active')
+          .maybeSingle();
+      final expiresAt = row?['expires_at'] != null ? DateTime.tryParse(row!['expires_at'] as String) : null;
+      if (expiresAt == null) return null;
+      final daysLeft = expiresAt.difference(DateTime.now()).inDays;
+      return (daysLeft: daysLeft, autoRenew: row?['auto_renew'] == true);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Returns true if the given subject is accessible on the free plan
   static bool isFreeSubject(String subjectId) => subjectId == _freeSubject;
 
