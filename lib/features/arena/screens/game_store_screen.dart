@@ -102,22 +102,39 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
       itemCount: _featured.length,
       itemBuilder: (_, i) {
         final g = _featured[i];
+        final iconUrl = g['icon_url'] as String?;
         return GestureDetector(
           onTap: () => _openGame(g),
           child: Container(
             width: 280, margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]),
-            ),
-            padding: const EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
-              const Text('FEATURED', style: TextStyle(color: Colors.white70, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
-              const SizedBox(height: 4),
-              Text(g['name'] as String? ?? '', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 22)),
-              const SizedBox(height: 4),
-              Text(g['tagline'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: GacomColors.cardDark),
+            child: Stack(fit: StackFit.expand, children: [
+              // Real image background — falls back to the gradient only
+              // if this game has no image yet, never a broken/empty tile.
+              if (iconUrl != null && iconUrl.isNotEmpty)
+                Image.network(iconUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(decoration: BoxDecoration(gradient: LinearGradient(
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))))
+              else
+                Container(decoration: BoxDecoration(gradient: LinearGradient(
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))),
+              // Dark scrim so the title text stays legible over any photo.
+              Container(decoration: const BoxDecoration(gradient: LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black87]))),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+                  const Text('FEATURED', style: TextStyle(color: Colors.white70, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
+                  const SizedBox(height: 4),
+                  Text(g['name'] as String? ?? '', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 22)),
+                  const SizedBox(height: 4),
+                  Text(g['tagline'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ]),
+              ),
             ]),
           ),
         );
