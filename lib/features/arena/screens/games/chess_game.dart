@@ -369,8 +369,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     final wasStudentMove=whiteTurn;
     final beforeBoard=List<int>.from(board);
     final wasCapture=board[to]!=empty;
-    SoundService.instance.playPieceMove();
-    if(wasCapture)SoundService.instance.playPieceCapture();
+    if(wasCapture){SoundService.instance.playPieceCapture();}else{SoundService.instance.playPieceMove();}
     final nb=List<int>.from(board);
     nb[to]=nb[from]; nb[from]=empty;
     // pawn promotion

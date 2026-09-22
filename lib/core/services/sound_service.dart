@@ -9,7 +9,6 @@ class SoundService {
   SoundService._();
   static final SoundService instance = SoundService._();
 
-  final AudioPlayer _sfxPlayer = AudioPlayer();
   final AudioPlayer _musicPlayer = AudioPlayer();
   bool _musicEnabled = true;
   bool _sfxEnabled = true;
@@ -30,9 +29,17 @@ class SoundService {
 
   Future<void> _playSfx(String assetName) async {
     if (!_sfxEnabled) return;
+    // A fresh, short-lived player per sound effect — not the old shared
+    // stop-then-restart approach, which caused an audible crack/skip
+    // whenever two sounds fired close together (e.g. a chess capture
+    // triggering move + capture almost simultaneously): stopping a
+    // still-playing sound truncates its waveform abruptly, which is
+    // exactly what that glitch was. Independent players let sounds
+    // overlap and finish naturally instead of cutting each other off.
     try {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.play(AssetSource('sounds/$assetName'));
+      final player = AudioPlayer();
+      player.onPlayerComplete.listen((_) => player.dispose());
+      await player.play(AssetSource('sounds/$assetName'));
     } catch (_) {
       // Expected until real files exist — never let a sound effect
       // take down a game.
