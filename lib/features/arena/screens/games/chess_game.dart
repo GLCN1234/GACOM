@@ -400,7 +400,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     setState((){whiteTurn=nowWhite;});
     if(!whiteTurn){ // AI's turn
       setState((){aiThinking=true; status='Ryan is thinking...';});
-      Future.delayed(const Duration(milliseconds:400),_aiMove);
+      Future.delayed(const Duration(milliseconds:400),(){if(mounted)_aiMove();});
     } else {
       setState((){status='Your turn (White)';});
     }
