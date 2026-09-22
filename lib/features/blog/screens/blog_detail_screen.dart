@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -97,7 +98,14 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
                 const SizedBox(height: 24),
                 const Divider(color: GacomColors.border),
                 const SizedBox(height: 24),
-                Text(p['content'] ?? '', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 16, height: 1.8)),
+                Html(
+                  data: p['content'] ?? '',
+                  style: {
+                    "body": Style(color: GacomColors.textSecondary, fontSize: FontSize(16), lineHeight: LineHeight(1.8), margin: Margins.zero, padding: HtmlPaddings.zero),
+                    "p": Style(margin: Margins.only(bottom: 16)),
+                    "a": Style(color: GacomColors.deepOrange),
+                  },
+                ),
                 const SizedBox(height: 40),
               ]),
             ),
