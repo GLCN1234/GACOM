@@ -1,10 +1,13 @@
-// AI product scout — on Groq now, using their built-in browser_search
-// tool for real current products (not the model's own memory, and not
-// xAI which needs paid billing). Autonomous: real search means real
-// hallucination risk is low, so this publishes directly, no review
-// queue — matches the explicit request to make this fully autonomous.
+// AI product scout — Groq's browser_search for real current products,
+// autonomous (real search grounding means low hallucination risk, so
+// no review queue). Each product now gets a real image via Unsplash
+// (same integration already used for blog covers and game icons —
+// this was simply never wired here before, a real gap, not a flaky
+// bug). Also raised from 6 to 12 products per run since 1-6 wasn't
+// enough for a real storefront.
 //
-// Requires GROQ_API_KEY (same free-tier key as the blog function).
+// Requires GROQ_API_KEY and UNSPLASH_ACCESS_KEY (same secrets already
+// set up for the blog and icon-seeder functions).
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -14,8 +17,9 @@ const corsHeaders = {
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
+const UNSPLASH_SEARCH_ENDPOINT = 'https://api.unsplash.com/search/photos'
 const MARKUP_MULTIPLIER = 1.20 // 20% added profit
-const MAX_PRODUCTS_PER_RUN = 6
+const MAX_PRODUCTS_PER_RUN = 12
 const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
@@ -23,21 +27,23 @@ social platform with a marketplace selling gaming-related physical
 products (peripherals, merch, collectibles, accessories) to an African
 gaming audience. Use the browser_search tool to find REAL, currently-sold
 products with REAL source URLs and REAL current prices — never invent a
-product, price, or link. Use your own judgment: only propose products you
-genuinely believe would sell well to this specific audience. Return
-between 1 and ${MAX_PRODUCTS_PER_RUN} products. Prices you find should be
-converted to Nigerian Naira (NGN) if not already in NGN, using a
-reasonable current exchange rate. Return ONLY valid JSON, no markdown
-fences, no commentary.`
+product, price, or link. Use your own judgment on quality, but aim to
+propose a genuinely broad batch — around ${MAX_PRODUCTS_PER_RUN} distinct
+products across different categories (peripherals, merch, collectibles,
+accessories) rather than just one or two. A real storefront needs real
+variety. Prices you find should be converted to Nigerian Naira (NGN) if
+not already in NGN, using a reasonable current exchange rate. Return ONLY
+valid JSON, no markdown fences, no commentary.`
 
 function buildPrompt(): string {
-  return `Search for real gaming products worth adding to the marketplace right now. Return this exact JSON shape:
+  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. Return this exact JSON shape:
 {
   "products": [
     {
       "name": "product name",
       "description": "2-3 sentence description",
       "category": "one short category word e.g. Peripherals, Merch, Collectibles, Accessories",
+      "image_keywords": "2-4 words for a stock photo search matching this exact product, e.g. 'wireless gaming mouse' or 'gaming headset black'",
       "source_price_ngn": 12345,
       "source_url": "the real URL where you found this",
       "reasoning": "one sentence on why this suits GACOM's audience"
@@ -57,7 +63,7 @@ async function callGroqWithSearch(apiKey: string, prompt: string): Promise<strin
         { role: 'user', content: prompt },
       ],
       temperature: 0.6,
-      max_completion_tokens: 4096,
+      max_completion_tokens: 6144,
       reasoning_effort: 'low',
       top_p: 1,
       stream: false,
@@ -70,6 +76,27 @@ async function callGroqWithSearch(apiKey: string, prompt: string): Promise<strin
   const text = data?.choices?.[0]?.message?.content
   if (!text) throw new Error(`Groq returned no content: ${JSON.stringify(data).slice(0, 1500)}`)
   return text.trim()
+}
+
+// Same Unsplash pattern already used for blog covers and game icons —
+// free, properly licensed, hotlinking is how they want it used.
+// Returns null on any failure so a bad image search never blocks the
+// product itself from being listed (it just shows a fallback icon).
+async function fetchProductImage(accessKey: string, keywords: string): Promise<string | null> {
+  try {
+    const url = `${UNSPLASH_SEARCH_ENDPOINT}?query=${encodeURIComponent(keywords)}&per_page=1&orientation=squarish`
+    const res = await fetch(url, { headers: { 'Authorization': `Client-ID ${accessKey}` } })
+    if (!res.ok) return null
+    const data = await res.json()
+    const photo = data?.results?.[0]
+    if (!photo) return null
+    if (photo.links?.download_location) {
+      fetch(photo.links.download_location, { headers: { 'Authorization': `Client-ID ${accessKey}` } }).catch(() => {})
+    }
+    return photo.urls?.small ?? photo.urls?.regular ?? null
+  } catch {
+    return null
+  }
 }
 
 function parseJson(raw: string): any {
@@ -121,6 +148,7 @@ Deno.serve(async (req) => {
   try {
     const groqKey = Deno.env.get('GROQ_API_KEY')
     if (!groqKey) throw new Error('GROQ_API_KEY not configured')
+    const unsplashKey = Deno.env.get('UNSPLASH_ACCESS_KEY')
 
     const raw = await callGroqWithSearch(groqKey, buildPrompt())
     const parsed = parseJson(raw)
@@ -131,26 +159,35 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const rows = candidates.slice(0, MAX_PRODUCTS_PER_RUN)
+    const filtered = candidates.slice(0, MAX_PRODUCTS_PER_RUN)
       .filter(c => c.name && c.source_price_ngn && c.source_url)
-      .map(c => {
-        const sourcePrice = Number(c.source_price_ngn)
-        return {
-          name: String(c.name).slice(0, 200),
-          description: String(c.description ?? '').slice(0, 1000),
-          category: String(c.category ?? 'Accessories').slice(0, 50),
-          price: Math.round(sourcePrice * MARKUP_MULTIPLIER),
-          source_price: sourcePrice,
-          source_url: String(c.source_url).slice(0, 500),
-          is_ai_sourced: true,
-          review_status: 'approved',
-          is_active: true,
-          stock: 5,
-          images: [],
-          seller_id: null,
-          delivery_estimate: DELIVERY_ESTIMATE_TEXT,
-        }
+
+    const rows = []
+    for (const c of filtered) {
+      const sourcePrice = Number(c.source_price_ngn)
+      let imageUrl: string | null = null
+      if (unsplashKey && c.image_keywords) {
+        imageUrl = await fetchProductImage(unsplashKey, String(c.image_keywords))
+        // Small pause between Unsplash calls — well within their 50/hr
+        // free-tier limit even at MAX_PRODUCTS_PER_RUN, just a safety margin.
+        await new Promise((r) => setTimeout(r, 250))
+      }
+      rows.push({
+        name: String(c.name).slice(0, 200),
+        description: String(c.description ?? '').slice(0, 1000),
+        category: String(c.category ?? 'Accessories').slice(0, 50),
+        price: Math.round(sourcePrice * MARKUP_MULTIPLIER),
+        source_price: sourcePrice,
+        source_url: String(c.source_url).slice(0, 500),
+        is_ai_sourced: true,
+        review_status: 'approved',
+        is_active: true,
+        stock: 5,
+        images: imageUrl ? [imageUrl] : [],
+        seller_id: null,
+        delivery_estimate: DELIVERY_ESTIMATE_TEXT,
       })
+    }
 
     if (rows.length === 0) {
       return new Response(JSON.stringify({ success: true, note: 'Proposals were missing required fields, none inserted.', added: 0 }),
@@ -160,7 +197,7 @@ Deno.serve(async (req) => {
     const { error: insertError } = await supabase.from('products').insert(rows)
     if (insertError) throw insertError
 
-    return new Response(JSON.stringify({ success: true, added: rows.length }),
+    return new Response(JSON.stringify({ success: true, added: rows.length, withImages: rows.filter(r => r.images.length > 0).length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {

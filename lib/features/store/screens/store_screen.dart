@@ -858,9 +858,9 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.70,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.62,
                           ),
                           itemCount: _filtered.length,
                           itemBuilder: (_, i) => _ProductCard(
@@ -1378,7 +1378,7 @@ class _ProductCard extends StatelessWidget {
           ]),
 
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
