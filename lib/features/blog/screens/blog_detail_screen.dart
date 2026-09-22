@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -98,14 +99,7 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
                 const SizedBox(height: 24),
                 const Divider(color: GacomColors.border),
                 const SizedBox(height: 24),
-                Html(
-                  data: p['content'] ?? '',
-                  style: {
-                    "body": Style(color: GacomColors.textSecondary, fontSize: FontSize(16), lineHeight: LineHeight(1.8), margin: Margins.zero, padding: HtmlPaddings.zero),
-                    "p": Style(margin: Margins.only(bottom: 16)),
-                    "a": Style(color: GacomColors.deepOrange),
-                  },
-                ),
+                ..._parseHtmlParagraphs(p['content'] ?? ''),
                 const SizedBox(height: 40),
               ]),
             ),
@@ -115,3 +109,70 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
     );
   }
 }
+
+// Lightweight, dependency-free HTML renderer for blog post content, which
+// is always simple <p> and <a> tags only (that's what the AI generator is
+// prompted to produce). Avoids pulling in flutter_html, whose 3.0.0
+// release has a genuine incompatibility with this project's Dart SDK
+// (fails to compile on Flutter web: "Method not found: 'matches'" in its
+// internal CSS-selector code) — this sidesteps that risk entirely rather
+// than chasing a compatible third-party version.
+List<Widget> _parseHtmlParagraphs(String html) {
+  final paragraphRegex = RegExp(r'<p([^>]*)>(.*?)</p>', dotAll: true);
+  final matches = paragraphRegex.allMatches(html).toList();
+  if (matches.isEmpty) {
+    // No <p> tags matched at all — fall back to showing stripped plain
+    // text rather than an empty post.
+    final stripped = html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    if (stripped.isEmpty) return const [];
+    return [Text(_unescapeHtml(stripped), style: const TextStyle(color: GacomColors.textSecondary, fontSize: 16, height: 1.8))];
+  }
+  final widgets = <Widget>[];
+  for (final match in matches) {
+    final attrs = match.group(1) ?? '';
+    final inner = match.group(2) ?? '';
+    final isSmallPrint = attrs.contains('12px') || attrs.contains('font-size:12');
+    widgets.add(_buildParagraph(inner, isSmallPrint: isSmallPrint));
+    widgets.add(const SizedBox(height: 16));
+  }
+  return widgets;
+}
+
+Widget _buildParagraph(String inner, {bool isSmallPrint = false}) {
+  final baseStyle = isSmallPrint
+      ? const TextStyle(color: GacomColors.textMuted, fontSize: 12)
+      : const TextStyle(color: GacomColors.textSecondary, fontSize: 16, height: 1.8);
+  final linkRegex = RegExp(r'<a\s+href="([^"]*)"[^>]*>(.*?)</a>', dotAll: true);
+  final spans = <InlineSpan>[];
+  int lastEnd = 0;
+  for (final m in linkRegex.allMatches(inner)) {
+    if (m.start > lastEnd) {
+      spans.add(TextSpan(text: _unescapeHtml(inner.substring(lastEnd, m.start))));
+    }
+    final url = m.group(1) ?? '';
+    final linkText = _unescapeHtml(m.group(2) ?? '');
+    spans.add(TextSpan(
+      text: linkText,
+      style: TextStyle(color: GacomColors.deepOrange, decoration: TextDecoration.underline, fontSize: baseStyle.fontSize),
+      recognizer: TapGestureRecognizer()
+        ..onTap = () {
+          final uri = Uri.tryParse(url);
+          if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+        },
+    ));
+    lastEnd = m.end;
+  }
+  if (lastEnd < inner.length) {
+    spans.add(TextSpan(text: _unescapeHtml(inner.substring(lastEnd))));
+  }
+  return RichText(text: TextSpan(style: baseStyle, children: spans));
+}
+
+String _unescapeHtml(String s) => s
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .trim();
+
