@@ -36,7 +36,7 @@ function buildPrompt(): string {
 {
   "title": "a specific, current headline-style title, under 70 characters",
   "excerpt": "1-2 sentence summary of the real story",
-  "content": "full post as clean HTML (use <h2>, <p>, <a> tags only), 300-500 words: cover the real news accurately, then a natural closing paragraph tying it to GACOM's own community",
+  "content": "full post as clean HTML using ONLY <p> and <a> tags — NO headings, NO <h1>/<h2>/<h3> at all, just flowing narrative paragraphs like a real news article, 300-500 words: cover the real news accurately, then a natural closing paragraph tying it to GACOM's own community",
   "category": "one of: ${CATEGORIES.join(', ')}"
 }`
 }
