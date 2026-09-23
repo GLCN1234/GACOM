@@ -20,7 +20,7 @@ const GROQ_MODEL = 'openai/gpt-oss-20b'
 const UNSPLASH_SEARCH_ENDPOINT = 'https://api.unsplash.com/search/photos'
 const MARKUP_MULTIPLIER = 1.10 // 10% added profit (was 20% earlier this session — using the figure most recently stated)
 const MAX_PRODUCTS_PER_RUN = 5 // reduced further — cross-checking each price across multiple sources for 8 products in one low-effort pass may be why it gave up entirely last run
-const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
+const DELIVERY_ESTIMATE_TEXT = '1-4 weeks within Nigeria (may arrive within 7 days, but won\'t pass 4 weeks)'
 
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
 social platform with a marketplace selling gaming-related physical
@@ -28,24 +28,26 @@ products (peripherals, merch, collectibles, accessories) to an African
 gaming audience. Use the browser_search tool to find REAL, currently-sold
 products with REAL source URLs — never invent a product, price, or link.
 
-Price accuracy matters enormously — a wrong price is a real financial
-risk, not a minor detail. For EVERY product, search at least two
-different sites/listings for that same product and compare the prices you
-find. Use the most consistent value among them (the one most sources
-agree on), not just whichever number you saw first. If prices vary
-wildly across sources and you can't find real agreement, either skip that
-product or clearly mark it as low confidence — do not guess or average
-wildly different numbers into something that sounds plausible.
+Search Nigerian e-commerce platforms specifically — Jumia, Konga, and
+Slot Nigeria are the primary, trusted sources, since they list real
+current prices already in Naira (avoiding currency-conversion errors
+entirely, which is the single biggest source of price mistakes). Jumia
+first, as the largest and most reliable. A confirmed price from one of
+these platforms alone is reliable enough to use — you don't need a
+second matching source for every product, but if you happen to check a
+second one and the prices genuinely disagree, prefer the Jumia/Konga
+listing over a foreign or unofficial one, and mark it low confidence
+rather than guessing which is right.
 
 Aim to propose a genuinely broad batch — around ${MAX_PRODUCTS_PER_RUN}
 distinct products across different categories (peripherals, merch,
-collectibles, accessories) rather than just one or two. Prices you find
-should be converted to Nigerian Naira (NGN) if not already in NGN, using
-a reasonable current exchange rate. Return ONLY valid JSON, no markdown
+collectibles, accessories) rather than just one or two. It's fine to
+propose fewer if that's genuinely all you can verify — never invent
+products just to hit the target. Return ONLY valid JSON, no markdown
 fences, no commentary.`
 
 function buildPrompt(): string {
-  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. For each product, cross-check the price across at least 2 sources before settling on a number. Return this exact JSON shape:
+  return `Search Jumia, Konga, and Slot Nigeria for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories. Return this exact JSON shape:
 {
   "products": [
     {
