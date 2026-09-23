@@ -138,21 +138,26 @@ class _WhotGameState extends State<WhotGame> {
   }
 
   void _pickSuitDialog() {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => AlertDialog(
+    showDialog(context: context, barrierDismissible: false, builder: (dialogContext) => SimpleDialog(
       backgroundColor: GacomColors.cardDark,
       title: const Text('Call a suit', style: TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
-      content: Wrap(spacing: 10, runSpacing: 10, children: _suits.map((s) => GestureDetector(
-        onTap: () {
-          Navigator.pop(context);
-          setState(() { calledSuit = s; playerTurn = false; status = 'You called $s — AI thinking...'; });
-          if (playerHand.isEmpty) { _endGame(); return; }
-          Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
-        },
-        child: Container(padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: (_suitColors[s] ?? GacomColors.deepOrange).withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: _suitColors[s] ?? GacomColors.deepOrange)),
-          child: Icon(_suitIcons[s], color: _suitColors[s], size: 28)),
-      )).toList()),
+      children: _suits.map((s) => SimpleDialogOption(
+        onPressed: () => _onSuitChosen(dialogContext, s),
+        child: Row(children: [
+          Icon(_suitIcons[s] ?? Icons.circle_outlined, color: _suitColors[s] ?? GacomColors.deepOrange, size: 26),
+          const SizedBox(width: 12),
+          Text(s, style: TextStyle(color: _suitColors[s] ?? GacomColors.deepOrange, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15)),
+        ]),
+      )).toList(),
     ));
+  }
+
+  void _onSuitChosen(BuildContext dialogContext, String s) {
+    Navigator.of(dialogContext).pop();
+    if (!mounted) return;
+    setState(() { calledSuit = s; playerTurn = false; status = 'You called $s — AI thinking...'; });
+    if (playerHand.isEmpty) { _endGame(); return; }
+    Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
   }
 
   void _aiPlay() {
