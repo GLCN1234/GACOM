@@ -13,98 +13,6 @@ import '../../../shared/widgets/gacom_text_field.dart';
 
 // ── Demo products — include placeholder image URLs so the grid never shows
 // a blank broken box. These point to a real CDN placeholder.
-final _demoProducts = <Map<String, dynamic>>[
-  {
-    'id': 'demo_1',
-    'name': 'Gaming Headset Pro X',
-    'price': 45000.0,
-    'condition': 'new',
-    'category': 'accessories',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1599669454699-248893623440?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'Professional gaming headset with 7.1 surround sound.',
-    'brand': 'SteelSound',
-    'seller_name': 'TechVault NG',
-    'seller_verified': true,
-  },
-  {
-    'id': 'demo_2',
-    'name': 'GACOM Limited Hoodie',
-    'price': 18500.0,
-    'condition': 'new',
-    'category': 'apparel',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'Official GACOM branded hoodie. Premium cotton blend.',
-    'brand': 'GACOM',
-    'seller_name': 'GACOM Official',
-    'seller_verified': true,
-  },
-  {
-    'id': 'demo_3',
-    'name': 'FC 25 (PS5)',
-    'price': 32000.0,
-    'condition': 'new',
-    'category': 'games',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1607853202273-797f1c22a38e?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'FIFA 25 for PlayStation 5. Brand new sealed copy.',
-    'brand': 'EA Sports',
-    'seller_name': 'GameZone Lagos',
-    'seller_verified': false,
-  },
-  {
-    'id': 'demo_4',
-    'name': 'RGB Mechanical Keyboard',
-    'price': 28000.0,
-    'condition': 'used',
-    'category': 'accessories',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'Used but excellent condition. TKL layout, Cherry MX Red switches.',
-    'brand': 'Corsair',
-    'seller_name': 'GadgetHub',
-    'seller_verified': true,
-  },
-  {
-    'id': 'demo_5',
-    'name': 'PS5 DualSense Controller',
-    'price': 52000.0,
-    'condition': 'new',
-    'category': 'accessories',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'Original Sony DualSense wireless controller.',
-    'brand': 'Sony',
-    'seller_name': 'PlayHouse NG',
-    'seller_verified': true,
-  },
-  {
-    'id': 'demo_6',
-    'name': 'Gaming Chair — Black/Orange',
-    'price': 95000.0,
-    'condition': 'new',
-    'category': 'accessories',
-    'images': <String>[
-      'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&q=80',
-    ],
-    'is_active': true,
-    'description': 'Ergonomic gaming chair with lumbar support.',
-    'brand': 'GamerSeat',
-    'seller_name': 'ComfortGear',
-    'seller_verified': true,
-  },
-];
 
 class StoreScreen extends ConsumerStatefulWidget {
   const StoreScreen({super.key});
@@ -192,15 +100,14 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
       final rows = List<Map<String, dynamic>>.from(data);
       if (mounted) {
         setState(() {
-          _allProducts =
-              rows.isNotEmpty ? rows : List.from(_demoProducts);
+          _allProducts = rows;
           _loading = false;
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _allProducts = List.from(_demoProducts);
+          _allProducts = [];
           _loading = false;
         });
       }
