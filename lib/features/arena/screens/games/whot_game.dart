@@ -149,7 +149,7 @@ class _WhotGameState extends State<WhotGame> {
           Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
         },
         child: Container(padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: _suitColors[s]!.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: _suitColors[s]!)),
+          decoration: BoxDecoration(color: (_suitColors[s] ?? GacomColors.deepOrange).withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: _suitColors[s] ?? GacomColors.deepOrange)),
           child: Icon(_suitIcons[s], color: _suitColors[s], size: 28)),
       )).toList()),
     ));
@@ -179,7 +179,7 @@ class _WhotGameState extends State<WhotGame> {
   }
 
   Widget _cardWidget(WhotCard c, {bool small = false, VoidCallback? onTap, bool playable = true, bool faceDown = false}) {
-    final color = _suitColors[c.suit]!;
+    final color = _suitColors[c.suit] ?? GacomColors.deepOrange;
     final w = small ? 56.0 : 70.0, h = small ? 78.0 : 96.0;
     if (faceDown) {
       return Container(width: w, height: h, margin: const EdgeInsets.symmetric(horizontal: 3),
