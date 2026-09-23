@@ -18,25 +18,34 @@ const corsHeaders = {
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
 const UNSPLASH_SEARCH_ENDPOINT = 'https://api.unsplash.com/search/photos'
-const MARKUP_MULTIPLIER = 1.20 // 20% added profit
-const MAX_PRODUCTS_PER_RUN = 12
+const MARKUP_MULTIPLIER = 1.10 // 10% added profit (was 20% earlier this session — using the figure most recently stated)
+const MAX_PRODUCTS_PER_RUN = 8 // reduced from 12 to make room for cross-checking each price properly rather than one quick search per product
 const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
 social platform with a marketplace selling gaming-related physical
 products (peripherals, merch, collectibles, accessories) to an African
 gaming audience. Use the browser_search tool to find REAL, currently-sold
-products with REAL source URLs and REAL current prices — never invent a
-product, price, or link. Use your own judgment on quality, but aim to
-propose a genuinely broad batch — around ${MAX_PRODUCTS_PER_RUN} distinct
-products across different categories (peripherals, merch, collectibles,
-accessories) rather than just one or two. A real storefront needs real
-variety. Prices you find should be converted to Nigerian Naira (NGN) if
-not already in NGN, using a reasonable current exchange rate. Return ONLY
-valid JSON, no markdown fences, no commentary.`
+products with REAL source URLs — never invent a product, price, or link.
+
+Price accuracy matters enormously — a wrong price is a real financial
+risk, not a minor detail. For EVERY product, search at least two or three
+different sites/listings for that same product and compare the prices you
+find. Use the most consistent value among them (the one most sources
+agree on), not just whichever number you saw first. If prices vary
+wildly across sources and you can't find real agreement, either skip that
+product or clearly mark it as low confidence — do not guess or average
+wildly different numbers into something that sounds plausible.
+
+Aim to propose a genuinely broad batch — around ${MAX_PRODUCTS_PER_RUN}
+distinct products across different categories (peripherals, merch,
+collectibles, accessories) rather than just one or two. Prices you find
+should be converted to Nigerian Naira (NGN) if not already in NGN, using
+a reasonable current exchange rate. Return ONLY valid JSON, no markdown
+fences, no commentary.`
 
 function buildPrompt(): string {
-  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. Return this exact JSON shape:
+  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. For each product, cross-check the price across at least 2-3 sources before settling on a number. Return this exact JSON shape:
 {
   "products": [
     {
@@ -45,6 +54,7 @@ function buildPrompt(): string {
       "category": "one short category word e.g. Peripherals, Merch, Collectibles, Accessories",
       "image_keywords": "2-4 words for a stock photo search matching this exact product, e.g. 'wireless gaming mouse' or 'gaming headset black'",
       "source_price_ngn": 12345,
+      "price_confidence": "high if multiple sources agreed closely, low if sources varied or you only found one",
       "source_url": "the real URL where you found this",
       "reasoning": "one sentence on why this suits GACOM's audience"
     }
@@ -63,7 +73,7 @@ async function callGroqWithSearch(apiKey: string, prompt: string): Promise<strin
         { role: 'user', content: prompt },
       ],
       temperature: 0.6,
-      max_completion_tokens: 6144,
+      max_completion_tokens: 8192,
       reasoning_effort: 'low',
       top_p: 1,
       stream: false,
@@ -179,6 +189,7 @@ Deno.serve(async (req) => {
         price: Math.round(sourcePrice * MARKUP_MULTIPLIER),
         source_price: sourcePrice,
         source_url: String(c.source_url).slice(0, 500),
+        price_confidence: String(c.price_confidence ?? 'unknown').toLowerCase().includes('low') ? 'low' : 'high',
         is_ai_sourced: true,
         review_status: 'approved',
         is_active: true,
