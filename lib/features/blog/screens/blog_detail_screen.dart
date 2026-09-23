@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -26,18 +27,39 @@ class _BlogDetailScreenState extends ConsumerState<BlogDetailScreen> {
     try {
       final post = await SupabaseService.client.from('blog_posts').select('*, author:profiles!author_id(username, display_name, avatar_url, verification_status)').eq('id', widget.blogId).single();
       await SupabaseService.client.from('blog_posts').update({'views_count': (post['views_count'] ?? 0) + 1}).eq('id', widget.blogId);
-      if (mounted) setState(() { _post = post; _loading = false; });
+      // Check the REAL like state instead of always starting from false —
+      // that mismatch (showing "not liked" when a like already exists)
+      // is exactly what caused the duplicate-key crash when tapping like
+      // on a post already liked in an earlier visit.
+      final userId = SupabaseService.currentUserId;
+      bool alreadyLiked = false;
+      if (userId != null) {
+        final existing = await SupabaseService.client.from('blog_likes')
+            .select('blog_post_id').eq('blog_post_id', widget.blogId).eq('user_id', userId).maybeSingle();
+        alreadyLiked = existing != null;
+      }
+      if (mounted) setState(() { _post = post; _liked = alreadyLiked; _loading = false; });
     } catch (e) { if (mounted) setState(() => _loading = false); }
   }
 
   Future<void> _toggleLike() async {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
+    final wasLiked = _liked;
     setState(() => _liked = !_liked);
-    if (_liked) {
-      await SupabaseService.client.from('blog_likes').insert({'blog_post_id': widget.blogId, 'user_id': userId});
-    } else {
-      await SupabaseService.client.from('blog_likes').delete().eq('blog_post_id', widget.blogId).eq('user_id', userId);
+    try {
+      if (!wasLiked) {
+        await SupabaseService.client.from('blog_likes').insert({'blog_post_id': widget.blogId, 'user_id': userId});
+      } else {
+        await SupabaseService.client.from('blog_likes').delete().eq('blog_post_id', widget.blogId).eq('user_id', userId);
+      }
+    } catch (e) {
+      // Defensive backstop: if the state ever ends up mismatched again for
+      // any reason, a duplicate-like or delete-nothing error just means
+      // the like already reflects reality — don't crash the page over it,
+      // just keep the UI where it already moved to.
+      if (e is PostgrestException && e.code == '23505') return;
+      if (mounted) setState(() => _liked = wasLiked);
     }
   }
 
