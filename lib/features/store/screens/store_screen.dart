@@ -250,7 +250,8 @@ class _StoreScreenState extends ConsumerState<StoreScreen>
     // Optimistic local removal so it disappears immediately
     setState(() => _allProducts.removeWhere((p) => p['id'] == id));
     try {
-      await SupabaseService.client.from('products').update({'is_active': false}).eq('id', id);
+      final result = await SupabaseService.client.functions.invoke('admin-product-action', body: {'action': 'delete', 'productId': id});
+      if (result.data?['success'] != true) throw Exception(result.data?['error'] ?? 'Unknown error');
       if (mounted) {
         GacomSnackbar.show(context, 'Product removed', isSuccess: true);
       }

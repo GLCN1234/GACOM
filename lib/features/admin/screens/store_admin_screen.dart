@@ -45,7 +45,8 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> with SingleTickerPr
 
   Future<void> _deleteProduct(String id) async {
     try {
-      await SupabaseService.client.from('products').update({'is_active': false}).eq('id', id);
+      final result = await SupabaseService.client.functions.invoke('admin-product-action', body: {'action': 'delete', 'productId': id});
+      if (result.data?['success'] != true) throw Exception(result.data?['error'] ?? 'Unknown error');
       if (mounted) GacomSnackbar.show(context, 'Product removed', isSuccess: true);
       _load();
     } catch (e) {
@@ -55,9 +56,11 @@ class _StoreAdminScreenState extends State<StoreAdminScreen> with SingleTickerPr
 
   Future<void> _saveProductEdit(String id, {required String name, required int price, required String description}) async {
     try {
-      await SupabaseService.client.from('products').update({
-        'name': name, 'price': price, 'description': description, 'price_confidence': 'high',
-      }).eq('id', id);
+      final result = await SupabaseService.client.functions.invoke('admin-product-action', body: {
+        'action': 'update', 'productId': id,
+        'updates': {'name': name, 'price': price, 'description': description, 'price_confidence': 'high'},
+      });
+      if (result.data?['success'] != true) throw Exception(result.data?['error'] ?? 'Unknown error');
       if (mounted) { Navigator.pop(context); GacomSnackbar.show(context, 'Product updated', isSuccess: true); }
       _load();
     } catch (e) {
