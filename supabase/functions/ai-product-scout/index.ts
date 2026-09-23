@@ -19,7 +19,7 @@ const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
 const UNSPLASH_SEARCH_ENDPOINT = 'https://api.unsplash.com/search/photos'
 const MARKUP_MULTIPLIER = 1.10 // 10% added profit (was 20% earlier this session — using the figure most recently stated)
-const MAX_PRODUCTS_PER_RUN = 8 // reduced from 12 to make room for cross-checking each price properly rather than one quick search per product
+const MAX_PRODUCTS_PER_RUN = 5 // reduced further — cross-checking each price across multiple sources for 8 products in one low-effort pass may be why it gave up entirely last run
 const DELIVERY_ESTIMATE_TEXT = '4-6 weeks (may arrive sooner, but not later)'
 
 const SYSTEM_PROMPT = `You are a product scout for GACOM, a Nigerian gaming
@@ -29,7 +29,7 @@ gaming audience. Use the browser_search tool to find REAL, currently-sold
 products with REAL source URLs — never invent a product, price, or link.
 
 Price accuracy matters enormously — a wrong price is a real financial
-risk, not a minor detail. For EVERY product, search at least two or three
+risk, not a minor detail. For EVERY product, search at least two
 different sites/listings for that same product and compare the prices you
 find. Use the most consistent value among them (the one most sources
 agree on), not just whichever number you saw first. If prices vary
@@ -45,7 +45,7 @@ a reasonable current exchange rate. Return ONLY valid JSON, no markdown
 fences, no commentary.`
 
 function buildPrompt(): string {
-  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. For each product, cross-check the price across at least 2-3 sources before settling on a number. Return this exact JSON shape:
+  return `Search for a genuinely broad batch of real gaming products worth adding to the marketplace right now — aim for around ${MAX_PRODUCTS_PER_RUN}, spread across different categories, not just one. For each product, cross-check the price across at least 2 sources before settling on a number. Return this exact JSON shape:
 {
   "products": [
     {
@@ -111,7 +111,13 @@ async function fetchProductImage(accessKey: string, keywords: string): Promise<s
 
 function parseJson(raw: string): any {
   const match = raw.match(/\{[\s\S]*\}/)
-  const cleaned = (match ? match[0] : raw).replace(/^```json\s*/i, '').replace(/```$/, '').trim()
+  if (!match) {
+    // The model didn't return anything resembling JSON at all — most
+    // likely it declined/apologized instead of completing the task.
+    // Surface its actual words instead of a confusing parse error.
+    throw new Error(`AI did not return JSON — its actual response was: "${raw.slice(0, 300)}"`)
+  }
+  const cleaned = match[0].replace(/^```json\s*/i, '').replace(/```$/, '').trim()
   return JSON.parse(sanitizeJsonControlChars(cleaned))
 }
 
