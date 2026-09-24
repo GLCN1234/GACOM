@@ -19,6 +19,7 @@ class CompetitionDetailScreen extends ConsumerStatefulWidget {
 class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScreen> {
   Map<String, dynamic>? _competition;
   List<Map<String, dynamic>> _participants = [];
+  List<Map<String, dynamic>> _raceStandings = [];
   bool _loading = true;
   bool _isParticipant = false;
   bool _joining = false;
@@ -59,6 +60,21 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
           _isParticipant = isParticipant;
           _loading = false;
         });
+      }
+      // Race-format standings — only relevant if this competition has a
+      // target_score set (the "first to reach X points" format).
+      if (comp['target_score'] != null) {
+        try {
+          final standings = await SupabaseService.client
+              .from('game_scores')
+              .select('score, created_at, user:profiles!user_id(display_name, avatar_url)')
+              .eq('game_name', comp['game_name'])
+              .gte('created_at', comp['starts_at'])
+              .lte('created_at', comp['ends_at'])
+              .order('score', ascending: false)
+              .limit(5);
+          if (mounted) setState(() => _raceStandings = List<Map<String, dynamic>>.from(standings));
+        } catch (_) {}
       }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
@@ -213,6 +229,40 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
                   const SizedBox(height: 8),
                   Text(c['rules'], style: const TextStyle(color: GacomColors.textSecondary, height: 1.6)),
                   const SizedBox(height: 20),
+                ],
+
+                // Race-format standings — only shown when this competition
+                // has a target_score set.
+                if (c['target_score'] != null) ...[
+                  Container(margin: const EdgeInsets.only(bottom: 20), padding: const EdgeInsets.all(16),
+                    decoration: GacomDecorations.glassCard(context, radius: 16),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        const Icon(Icons.flag_rounded, color: GacomColors.deepOrange, size: 18),
+                        const SizedBox(width: 8),
+                        Text('Race to ${c['target_score']} points', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
+                      ]),
+                      const SizedBox(height: 12),
+                      if (_raceStandings.isEmpty)
+                        const Text('No scores yet — be the first to play and take the lead.', style: TextStyle(color: GacomColors.textMuted, fontSize: 13))
+                      else
+                        ..._raceStandings.asMap().entries.map((e) {
+                          final i = e.key; final row = e.value;
+                          final user = row['user'] as Map<String, dynamic>? ?? {};
+                          final score = (row['score'] as num?)?.toInt() ?? 0;
+                          final target = (c['target_score'] as num?)?.toInt() ?? 1;
+                          final won = score >= target;
+                          return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [
+                            Text('#${i + 1}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textMuted, fontSize: 13)),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(user['display_name'] as String? ?? 'Player', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+                            if (won) const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD700), size: 16),
+                            const SizedBox(width: 4),
+                            Text('$score / $target', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: won ? const Color(0xFFFFD700) : GacomColors.deepOrange)),
+                          ]));
+                        }),
+                    ]),
+                  ),
                 ],
 
                 // Participants
