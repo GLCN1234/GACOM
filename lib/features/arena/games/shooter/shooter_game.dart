@@ -3,6 +3,8 @@ import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/game.dart';
 import 'package:flame/events.dart';
+import '../../../../core/services/sound_service.dart';
+import '../../../../core/services/game_score_service.dart';
 import 'package:flutter/material.dart';
 
 /// A top-down survival shooter: joystick to move, auto-fires at the
@@ -101,9 +103,12 @@ class ShooterGame extends FlameGame
     if (gameOver) return;
     health -= amount;
     healthNotifier.value = health.clamp(0, 100);
+    SoundService.instance.playWrong();
     if (health <= 0) {
       gameOver = true;
       gameOverNotifier.value = true;
+      SoundService.instance.playLose();
+      GameScoreService.save(gameName: 'Survival Shooter', score: score);
       pauseEngine();
     }
   }
@@ -134,6 +139,7 @@ class PlayerComponent extends CircleComponent
         _fireCooldown = _fireRate;
         final dir = (target.position - position).normalized();
         gameRef.add(BulletComponent(direction: dir)..position = position.clone());
+        SoundService.instance.playShoot();
       }
     }
   }
@@ -210,6 +216,7 @@ class EnemyComponent extends CircleComponent
     health -= amount;
     if (health <= 0) {
       gameRef.addScore(10);
+      SoundService.instance.playExplosion();
       removeFromParent();
     }
   }

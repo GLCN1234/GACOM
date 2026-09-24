@@ -34,7 +34,9 @@ class _SurvivalShooterScreenState extends State<SurvivalShooterScreen> {
           Positioned(
             top: 12, left: 16, right: 16,
             child: Row(children: [
-              const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+              GestureDetector(onTap: () => Navigator.pop(context),
+                child: Container(padding: const EdgeInsets.all(4),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18))),
               const SizedBox(width: 12),
               Expanded(child: ValueListenableBuilder<double>(
                 valueListenable: _game.healthNotifier,

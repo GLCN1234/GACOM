@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
     if (error) throw error
 
     let updated = 0
+    const results: { name: string; found: boolean }[] = []
     for (const row of rows ?? []) {
       const query = ICON_QUERIES[row.name] ?? `${row.name} ${row.category} game`
       const iconUrl = await fetchUnsplashImage(unsplashKey, query)
@@ -79,12 +80,13 @@ Deno.serve(async (req) => {
         await supabase.from('game_listings').update({ icon_url: iconUrl }).eq('id', row.id)
         updated++
       }
+      results.push({ name: row.name, found: !!iconUrl })
       // Unsplash free tier: 50 requests/hour — small pause keeps this
       // well within that even for a larger future list.
       await new Promise((r) => setTimeout(r, 300))
     }
 
-    return new Response(JSON.stringify({ success: true, updated, total: (rows ?? []).length }),
+    return new Response(JSON.stringify({ success: true, updated, total: (rows ?? []).length, results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (error) {
