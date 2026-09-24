@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
+import '../../../../core/services/game_score_service.dart';
 
 /// Whot — the real Nigerian card game. 5 suits (Circle, Triangle, Cross,
 /// Square, Star) plus wild "Whot" cards. Special numbers: 1 Hold On

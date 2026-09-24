@@ -28,7 +28,7 @@ dependencies:
   http: ^1.2.1
   shared_preferences: ^2.2.3
   audioplayers: ^6.1.0
-  livekit_client: ^2.5.4
+  livekit_client: ^2.13.0
   hive_flutter: ^1.1.0
   hive: ^2.2.3
   intl: ^0.19.0
@@ -40,7 +40,7 @@ dependencies:
   flutter_staggered_grid_view: ^0.7.0
   equatable: ^2.0.5
   dio: ^5.4.3
-  connectivity_plus: ^6.0.3
+  connectivity_plus: ^7.3.1
   flame: ^1.18.0
   model_viewer_plus: ^1.7.0
 

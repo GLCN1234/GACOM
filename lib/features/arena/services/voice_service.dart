@@ -1,5 +1,5 @@
 import 'package:livekit_client/livekit_client.dart' as lk;
-import '../services/supabase_service.dart';
+import '../../../core/services/supabase_service.dart';
 
 /// Wraps a real LiveKit room connection for live 2-player voice during a
 /// match — not a mock, this actually captures the mic and streams audio.
