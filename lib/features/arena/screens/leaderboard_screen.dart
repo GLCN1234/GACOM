@@ -2,75 +2,163 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
+/// A game-picker grid (real icons, pulled from the same game_listings
+/// data the store uses) instead of a horizontal scroll of text chips,
+/// and a real podium treatment for the top 3 instead of a flat list —
+/// matches the app's own established visual language rather than
+/// bolting on something disconnected from it.
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
   @override State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
-  static const _games = ['Signal Run', 'Drone Breach', 'Signal Match', 'Vault Break', 'Chess', '2048', 'Snake', 'Whot', 'Speed Math', 'Word Scramble'];
-  String _selectedGame = 'Signal Run';
-  bool _loading = true;
+  bool _loadingGames = true;
+  bool _loadingScores = false;
+  List<Map<String, dynamic>> _games = [];
+  Map<String, dynamic>? _selectedGame;
   List<Map<String, dynamic>> _top = [];
 
-  @override void initState() { super.initState(); _load(); }
+  @override void initState() { super.initState(); _loadGames(); }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _loadGames() async {
+    try {
+      final data = await SupabaseService.client.from('game_listings')
+          .select('name, icon_url, category')
+          .eq('status', 'approved')
+          .order('is_featured', ascending: false)
+          .order('name');
+      final games = List<Map<String, dynamic>>.from(data);
+      if (mounted) setState(() { _games = games; _loadingGames = false; });
+      if (games.isNotEmpty) _selectGame(games.first);
+    } catch (_) { if (mounted) setState(() => _loadingGames = false); }
+  }
+
+  Future<void> _selectGame(Map<String, dynamic> game) async {
+    setState(() { _selectedGame = game; _loadingScores = true; _top = []; });
     try {
       final data = await SupabaseService.client.from('game_scores')
           .select('score, won, created_at, user:profiles!user_id(display_name, avatar_url)')
-          .eq('game_name', _selectedGame)
+          .eq('game_name', game['name'])
           .order('score', ascending: false)
           .limit(10);
-      if (mounted) setState(() { _top = List<Map<String, dynamic>>.from(data); _loading = false; });
-    } catch (_) { if (mounted) setState(() => _loading = false); }
+      if (mounted) setState(() { _top = List<Map<String, dynamic>>.from(data); _loadingScores = false; });
+    } catch (_) { if (mounted) setState(() => _loadingScores = false); }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('LEADERBOARD')),
-    body: Column(children: [
-      SizedBox(height: 46, child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _games.length,
-        itemBuilder: (_, i) {
-          final g = _games[i];
-          final selected = g == _selectedGame;
-          return Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
-            label: Text(g, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: selected ? Colors.white : GacomColors.textSecondary)),
-            selected: selected,
-            onSelected: (_) { setState(() => _selectedGame = g); _load(); },
-            selectedColor: GacomColors.deepOrange,
-            backgroundColor: GacomColors.cardDark,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50), side: BorderSide(color: selected ? Colors.transparent : GacomColors.border)),
-          ));
-        },
-      )),
-      Expanded(child: _loading
-        ? const Center(child: CircularProgressIndicator())
-        : _top.isEmpty
-          ? const Center(child: Text('No scores yet for this game — be the first!', style: TextStyle(color: GacomColors.textMuted)))
-          : ListView.builder(padding: const EdgeInsets.all(16), itemCount: _top.length, itemBuilder: (_, i) {
-              final row = _top[i];
-              final user = row['user'] as Map<String, dynamic>? ?? {};
-              final rank = i + 1;
-              final medalColor = rank == 1 ? const Color(0xFFFFD700) : rank == 2 ? const Color(0xFFC0C0C0) : rank == 3 ? const Color(0xFFCD7F32) : GacomColors.textMuted;
-              return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: rank <= 3 ? Border.all(color: medalColor.withOpacity(0.4)) : null),
-                child: Row(children: [
-                  SizedBox(width: 32, child: Text('$rank', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 18, color: medalColor))),
-                  CircleAvatar(radius: 16, backgroundColor: GacomColors.border,
-                    backgroundImage: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? NetworkImage(user['avatar_url']) : null,
-                    onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
-                    child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 16, color: Colors.white) : null),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(user['display_name'] as String? ?? 'Player', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary))),
-                  Text('${row['score']}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 16, color: GacomColors.deepOrange)),
-                ]));
-            })),
-    ]),
+    body: _loadingGames
+      ? const Center(child: CircularProgressIndicator())
+      : _games.isEmpty
+        ? const Center(child: Text('No games available yet.', style: TextStyle(color: GacomColors.textMuted)))
+        : Column(children: [
+            _gamePicker(),
+            const Divider(color: GacomColors.border, height: 1),
+            Expanded(child: _loadingScores
+              ? const Center(child: CircularProgressIndicator())
+              : _standings()),
+          ]),
   );
+
+  Widget _gamePicker() => SizedBox(
+    height: 96,
+    child: ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: _games.length,
+      itemBuilder: (_, i) {
+        final g = _games[i];
+        final selected = g['name'] == _selectedGame?['name'];
+        return GestureDetector(
+          onTap: () => _selectGame(g),
+          child: Container(
+            width: 68, margin: const EdgeInsets.only(right: 10),
+            child: Column(children: [
+              Container(width: 52, height: 52,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: selected ? GacomColors.deepOrange : GacomColors.border, width: selected ? 2.5 : 1),
+                  color: GacomColors.cardDark,
+                ),
+                child: ClipOval(child: (g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty)
+                  ? Image.network(g['icon_url'], fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22))
+                  : const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22)),
+              ),
+              const SizedBox(height: 4),
+              Text(g['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, fontWeight: selected ? FontWeight.w800 : FontWeight.w500, color: selected ? GacomColors.deepOrange : GacomColors.textMuted)),
+            ]),
+          ),
+        );
+      },
+    ),
+  );
+
+  Widget _standings() {
+    if (_top.isEmpty) {
+      return Center(child: Padding(padding: const EdgeInsets.all(32), child: Text(
+        'No scores yet for ${_selectedGame?['name'] ?? 'this game'} — be the first!',
+        textAlign: TextAlign.center, style: const TextStyle(color: GacomColors.textMuted))));
+    }
+    final podium = _top.take(3).toList();
+    final rest = _top.skip(3).toList();
+    return ListView(padding: const EdgeInsets.all(20), children: [
+      if (podium.isNotEmpty) _podium(podium),
+      const SizedBox(height: 24),
+      ...rest.asMap().entries.map((e) => _rankRow(e.key + 4, e.value)),
+    ]);
+  }
+
+  Widget _podium(List<Map<String, dynamic>> top3) {
+    // Visual order: 2nd, 1st, 3rd — classic podium arrangement, 1st
+    // tallest and centered.
+    final ordered = [
+      if (top3.length > 1) (top3[1], 2) else (null, 2),
+      (top3[0], 1),
+      if (top3.length > 2) (top3[2], 3) else (null, 3),
+    ];
+    return SizedBox(height: 190, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: ordered.map((entry) {
+      final (row, rank) = entry;
+      if (row == null) return const Expanded(child: SizedBox());
+      final user = row['user'] as Map<String, dynamic>? ?? {};
+      final height = rank == 1 ? 150.0 : rank == 2 ? 120.0 : 100.0;
+      final color = rank == 1 ? const Color(0xFFFFD700) : rank == 2 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32);
+      return Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+        CircleAvatar(radius: rank == 1 ? 26 : 22, backgroundColor: GacomColors.border,
+          backgroundImage: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? NetworkImage(user['avatar_url']) : null,
+          onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
+          child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? Icon(Icons.person, size: rank == 1 ? 26 : 22, color: Colors.white) : null),
+        const SizedBox(height: 8),
+        Text(user['display_name'] as String? ?? 'Player', maxLines: 1, overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textPrimary)),
+        Text('${row['score']}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 14, color: color)),
+        const SizedBox(height: 8),
+        Container(width: double.infinity, height: height, margin: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: const BorderRadius.vertical(top: Radius.circular(12)), border: Border.all(color: color.withOpacity(0.5))),
+          child: Center(child: Text('$rank', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 28, color: color)))),
+      ]));
+    }).toList()));
+  }
+
+  Widget _rankRow(int rank, Map<String, dynamic> row) {
+    final user = row['user'] as Map<String, dynamic>? ?? {};
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [
+        SizedBox(width: 28, child: Text('$rank', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textMuted))),
+        CircleAvatar(radius: 16, backgroundColor: GacomColors.border,
+          backgroundImage: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? NetworkImage(user['avatar_url']) : null,
+          onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
+          child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 16, color: Colors.white) : null),
+        const SizedBox(width: 14),
+        Expanded(child: Text(user['display_name'] as String? ?? 'Player', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary))),
+        Text('${row['score']}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 15, color: GacomColors.deepOrange)),
+      ]),
+    );
+  }
 }
