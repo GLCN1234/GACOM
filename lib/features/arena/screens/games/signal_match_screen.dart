@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
 import '../../../../core/services/sound_service.dart';
+import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
 
 // A distinct, vibrant palette — warm sunset gradient, not the dark
@@ -143,6 +144,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
       if (_lives <= 0) {
         _timer?.cancel();
         SoundService.instance.playLose();
+        GameScoreService.save(gameName: 'Signal Match', score: _score);
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         _phase = _Phase.gameOver;
       }

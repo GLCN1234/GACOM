@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../edu/edu_progress_recorder.dart';
 import '../../../../core/services/sound_service.dart';
+import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
 
 const _bg = Color(0xFF0B0B0F);
@@ -123,6 +124,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
       if (_lives <= 0) {
         _timer?.cancel();
         SoundService.instance.playLose();
+        GameScoreService.save(gameName: 'Drone Breach', score: _score);
         EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: _score ~/ 5, questionsAnswered: 1, correctAnswers: 1);
         _phase = _Phase.gameOver;
       }

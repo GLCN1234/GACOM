@@ -179,8 +179,8 @@ class _WhotGameState extends State<WhotGame> {
 
   void _endGame() {
     setState(() { over = true; });
-    if (playerHand.isEmpty) { pScore++; status = 'You win!'; SoundService.instance.playWin(); }
-    else { aScore++; status = 'AI wins!'; SoundService.instance.playLose(); }
+    if (playerHand.isEmpty) { pScore++; status = 'You win!'; SoundService.instance.playWin(); GameScoreService.save(gameName: 'Whot', score: 1, won: true); }
+    else { aScore++; status = 'AI wins!'; SoundService.instance.playLose(); GameScoreService.save(gameName: 'Whot', score: 0, won: false); }
   }
 
   Widget _cardWidget(WhotCard c, {bool small = false, VoidCallback? onTap, bool playable = true, bool faceDown = false}) {

@@ -61,7 +61,9 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: GacomColors.obsidian,
-    appBar: AppBar(title: const Text('GAME STORE')),
+    appBar: AppBar(title: const Text('GAME STORE'), actions: [
+      IconButton(onPressed: () => context.push('/leaderboard'), icon: const Icon(Icons.leaderboard_rounded), tooltip: 'Leaderboard'),
+    ]),
     body: _loading
       ? const Center(child: CircularProgressIndicator())
       : RefreshIndicator(

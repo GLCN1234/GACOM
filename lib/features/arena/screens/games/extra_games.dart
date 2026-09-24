@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
+import '../../../../core/services/game_score_service.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONNECT FOUR
@@ -465,7 +466,7 @@ class _Game2048State extends State<Game2048>{
       if(r+1<4&&board[r][c]==board[r+1][c])hasMove=true;
     }
     setState((){if(!hasMove)over=true;});
-    if(!hasMove)SoundService.instance.playLose();
+    if(!hasMove){SoundService.instance.playLose();GameScoreService.save(gameName: '2048', score: score);}
   }
 }
 
@@ -1116,7 +1117,7 @@ class _SnakeState extends State<SnakeGame>{
     if(over)return;
     final head=[snake.first[0]+dir[0],snake.first[1]+dir[1]];
     if(head[0]<0||head[0]>=gridSize||head[1]<0||head[1]>=gridSize||snake.any((s)=>s[0]==head[0]&&s[1]==head[1])){
-      _timer?.cancel(); setState((){over=true;}); SoundService.instance.playLose(); return;
+      _timer?.cancel(); setState((){over=true;}); SoundService.instance.playLose(); GameScoreService.save(gameName: 'Snake', score: score); return;
     }
     snake.insert(0,head);
     if(head[0]==food[0]&&head[1]==food[1]){score+=10;_spawnFood();SoundService.instance.playCorrect();}

@@ -546,8 +546,70 @@ class _StatsTab extends StatelessWidget {
       _Row('Balance', '₦${(profile['wallet_balance'] as num?)?.toStringAsFixed(0) ?? '0'}'),
       _Row('Total Winnings', '₦${(profile['total_winnings'] as num?)?.toStringAsFixed(0) ?? '0'}'),
     ]),
+    const SizedBox(height: 16),
+    _MyScoresSection(userId: profile['id'] as String?),
     const SizedBox(height: 80),
   ]);
+}
+
+/// Personal scorecard — the user's own best score per game they've
+/// played, pulled from game_scores (the same table the leaderboard
+/// reads from).
+class _MyScoresSection extends StatefulWidget {
+  final String? userId;
+  const _MyScoresSection({required this.userId});
+  @override State<_MyScoresSection> createState() => _MyScoresSectionState();
+}
+
+class _MyScoresSectionState extends State<_MyScoresSection> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _bestPerGame = [];
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    if (widget.userId == null) { setState(() => _loading = false); return; }
+    try {
+      final data = await SupabaseService.client.from('game_scores')
+          .select('game_name, score, won, created_at')
+          .eq('user_id', widget.userId!)
+          .order('score', ascending: false);
+      final rows = List<Map<String, dynamic>>.from(data);
+      // Keep only each game's single best score, first occurrence wins
+      // since the query is already sorted highest-first.
+      final seen = <String>{};
+      final best = <Map<String, dynamic>>[];
+      for (final r in rows) {
+        final name = r['game_name'] as String;
+        if (seen.add(name)) best.add(r);
+      }
+      if (mounted) setState(() { _bestPerGame = best; _loading = false; });
+    } catch (_) { if (mounted) setState(() => _loading = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+    if (_bestPerGame.isEmpty) {
+      return Container(padding: const EdgeInsets.all(16), decoration: GacomDecorations.glassCard(context, radius: 16),
+        child: const Text('No game scores yet — play something in the game store to start your scorecard.',
+          style: TextStyle(color: GacomColors.textMuted, fontSize: 13)));
+    }
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: GacomDecorations.glassCard(context, radius: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('My Best Scores', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
+        const SizedBox(height: 12),
+        ..._bestPerGame.map((r) => Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [
+          Expanded(child: Text(r['game_name'] as String? ?? '', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+          Text(r['won'] == true ? 'WIN' : r['won'] == false ? 'LOSS' : '${r['score']}',
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13,
+              color: r['won'] == true ? GacomColors.success : r['won'] == false ? GacomColors.error : GacomColors.deepOrange)),
+        ]))),
+      ]),
+    );
+  }
 }
 
 class _Block extends StatelessWidget {
