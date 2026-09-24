@@ -61,9 +61,14 @@ class ArenaService {
   /// on failure — never silently swallows what actually went wrong, since
   /// that's exactly what let money-losing bugs hide undetected before.
   static Future<Map<String, dynamic>> createMatch({required String gameType, required int stakeAmount}) async {
-    final deductResult = await deductStake(stakeAmount);
-    if (deductResult['success'] != true) {
-      return {'error': 'Could not deduct stake: ${deductResult['error']}'};
+    // Free matches skip stake deduction entirely rather than calling it
+    // with 0 — the RPC may enforce a real minimum stake, which would
+    // wrongly reject a genuinely free match.
+    if (stakeAmount > 0) {
+      final deductResult = await deductStake(stakeAmount);
+      if (deductResult['success'] != true) {
+        return {'error': 'Could not deduct stake: ${deductResult['error']}'};
+      }
     }
     try {
       final channelId = 'arena_${DateTime.now().millisecondsSinceEpoch}';
@@ -79,11 +84,13 @@ class ArenaService {
     } catch (e) {
       debugPrint('createMatch failed, attempting refund: $e');
       bool refundOk = true;
-      try {
-        await refundStake(_uid!, stakeAmount);
-      } catch (refundError) {
-        refundOk = false;
-        debugPrint('REFUND ALSO FAILED: $refundError');
+      if (stakeAmount > 0) {
+        try {
+          await refundStake(_uid!, stakeAmount);
+        } catch (refundError) {
+          refundOk = false;
+          debugPrint('REFUND ALSO FAILED: $refundError');
+        }
       }
       return {
         'error': 'Could not create match: $e',
@@ -95,10 +102,12 @@ class ArenaService {
   static Future<Map<String, dynamic>?> joinMatch(String matchId) async {
     final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
     final stakeAmount = match['stake_amount'] as int;
-    final deductResult = await deductStake(stakeAmount);
-    if (deductResult['success'] != true) {
-      debugPrint('joinMatch: deduct failed — ${deductResult['error']}');
-      return null;
+    if (stakeAmount > 0) {
+      final deductResult = await deductStake(stakeAmount);
+      if (deductResult['success'] != true) {
+        debugPrint('joinMatch: deduct failed — ${deductResult['error']}');
+        return null;
+      }
     }
     try {
       final updated = await _db.from('arena_matches').update({
@@ -109,10 +118,12 @@ class ArenaService {
       return updated;
     } catch (e) {
       debugPrint('joinMatch update failed, attempting refund: $e');
-      try {
-        await refundStake(_uid!, stakeAmount);
-      } catch (refundError) {
-        debugPrint('joinMatch REFUND ALSO FAILED: $refundError');
+      if (stakeAmount > 0) {
+        try {
+          await refundStake(_uid!, stakeAmount);
+        } catch (refundError) {
+          debugPrint('joinMatch REFUND ALSO FAILED: $refundError');
+        }
       }
       return null;
     }

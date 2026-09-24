@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../services/arena_service.dart';
+import '../../../shared/widgets/gacom_snackbar.dart';
 
 /// A standard app-store style layout — featured carousel, search, category
 /// filters, then a grid of listings. Pulls from game_listings so GACOM's
@@ -56,6 +58,24 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
     final route = g['play_route'] as String?;
     if (route != null) { context.push(route); return; }
     context.push('/arena/store/game/${g['id']}');
+  }
+
+  // Only these five have a real multiplayer implementation built — every
+  // other Game Store game is solo-vs-AI only, so no 1v1 button shows for
+  // them at all rather than offering something that doesn't actually work.
+  static const _multiplayerGames = {
+    'Chess': 'chess', 'Tic-Tac-Toe': 'tictactoe', 'RPS Battle': 'rps', 'Trivia': 'trivia', 'Reaction': 'reaction',
+  };
+  String? _multiplayerGameKey(String? name) => _multiplayerGames[name];
+
+  Future<void> _createFree1v1(String gameTypeKey) async {
+    final result = await ArenaService.createMatch(gameType: gameTypeKey, stakeAmount: 0);
+    if (!mounted) return;
+    if (result['match'] != null) {
+      context.push('/arena/match/${result['match']['id']}');
+    } else {
+      GacomSnackbar.show(context, result['error'] ?? 'Could not start match', isError: true);
+    }
   }
 
   @override
@@ -210,6 +230,14 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
                 const SizedBox(width: 2),
                 Text(rating > 0 ? rating.toStringAsFixed(1) : 'New', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 11)),
               ]),
+              if (_multiplayerGameKey(g['name'] as String?) != null) ...[
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, height: 28, child: OutlinedButton(
+                  onPressed: () => _createFree1v1(_multiplayerGameKey(g['name'] as String?)!),
+                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, side: const BorderSide(color: GacomColors.electricBlue)),
+                  child: const Text('1V1 FREE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, color: GacomColors.electricBlue)),
+                )),
+              ],
             ]),
           ),
         );
