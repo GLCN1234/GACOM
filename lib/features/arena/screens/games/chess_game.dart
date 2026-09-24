@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/play_1v1_button.dart';
 
 // ── Chess piece constants ─────────────────────────────────────────────────────
 const empty = 0;
@@ -628,6 +629,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
+        const Play1v1Button(gameTypeKey: 'chess'),
         GestureDetector(
           onTap: (){
             setState((){learnMode=!learnMode; lastExplanation=null;});

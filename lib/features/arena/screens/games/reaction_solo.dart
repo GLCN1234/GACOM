@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../widgets/play_1v1_button.dart';
 
 class ReactionSoloScreen extends StatefulWidget {
   const ReactionSoloScreen({super.key});
@@ -55,7 +56,7 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
   @override
   Widget build(BuildContext ctx) => Scaffold(
     backgroundColor: GacomColors.obsidian,
-    appBar: AppBar(title: const Text('REACTION TEST')),
+    appBar: AppBar(title: const Text('REACTION TEST'), actions: const [Play1v1Button(gameTypeKey: 'reaction')]),
     body: _done ? _buildResults() : _buildGame(),
   );
 

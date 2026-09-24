@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../widgets/play_1v1_button.dart';
 
 /// Free practice match against a local AI opponent — no wallet, no stake,
 /// no Supabase writes at all. The multiplayer TicTacToeGame widget is
@@ -116,6 +117,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
       appBar: AppBar(
         title: const Text('PRACTICE VS RYAN'),
         actions: [
+          const Play1v1Button(gameTypeKey: 'tictactoe'),
           Padding(padding: const EdgeInsets.only(right: 16), child: Center(
             child: Text('W $_wins · L $_losses · D $_draws', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 12, color: GacomColors.textMuted)))),
         ],

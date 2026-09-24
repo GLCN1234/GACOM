@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../widgets/play_1v1_button.dart';
 
 class TriviaSoloScreen extends StatefulWidget {
   const TriviaSoloScreen({super.key});
@@ -83,6 +84,7 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
     return Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('TRIVIA VS RYAN (FREE)'), actions: [
+        const Play1v1Button(gameTypeKey: 'trivia'),
         Padding(padding: const EdgeInsets.only(right: 12), child: Center(child: Text('Score: $_score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.deepOrange)))),
       ]),
       body: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

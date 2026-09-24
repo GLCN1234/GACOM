@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../widgets/play_1v1_button.dart';
 
 // ── RPS solo vs AI (Ryan) ────────────────────────────────────────────────────
 class RpsSoloScreen extends StatefulWidget {
@@ -46,7 +47,7 @@ class _RpsSoloState extends State<RpsSoloScreen> {
   @override
   Widget build(BuildContext ctx) => Scaffold(
     backgroundColor: GacomColors.obsidian,
-    appBar: AppBar(title: const Text('RPS VS RYAN (FREE)')),
+    appBar: AppBar(title: const Text('RPS VS RYAN (FREE)'), actions: const [Play1v1Button(gameTypeKey: 'rps')]),
     body: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         _ScoreBox(label: 'You', score: _myWins, color: GacomColors.deepOrange),
