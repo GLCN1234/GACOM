@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../services/arena_service.dart';
+import '../services/voice_service.dart';
 import 'games/tictactoe_game.dart';
 import 'games/rps_game.dart';
 import 'games/trivia_game.dart';
@@ -27,6 +28,7 @@ class _MatchScreenState extends State<MatchScreen> {
   Timer? _timer;
   int _elapsed = 0;
   String? _uid;
+  final _voice = VoiceService();
 
   @override
   void initState() {
@@ -35,13 +37,26 @@ class _MatchScreenState extends State<MatchScreen> {
     _loadMatch();
     _subscribeMatch();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) { if (mounted) setState(() => _elapsed++); });
+    _voice.onOpponentSpeakingChanged = (speaking) { if (mounted) setState(() => _opponentSpeaking = speaking); };
   }
 
   @override
   void dispose() {
     _matchSub?.cancel();
     _timer?.cancel();
+    _voice.disconnect();
     super.dispose();
+  }
+
+  Future<void> _toggleVoice() async {
+    if (_voiceEnabled) {
+      await _voice.disconnect();
+      if (mounted) setState(() { _voiceEnabled = false; _opponentSpeaking = false; });
+      return;
+    }
+    final roomName = _match?['voice_channel'] as String? ?? widget.matchId;
+    final ok = await _voice.connect(roomName);
+    if (mounted) setState(() => _voiceEnabled = ok);
   }
 
   Future<void> _loadMatch() async {
@@ -235,8 +250,8 @@ class _MatchScreenState extends State<MatchScreen> {
             muted: _micMuted,
             opponentSpeaking: _opponentSpeaking,
             opponentName: opponentName,
-            onToggle: () => setState(() => _voiceEnabled = !_voiceEnabled),
-            onMute: () => setState(() => _micMuted = !_micMuted),
+            onToggle: _toggleVoice,
+            onMute: () { setState(() => _micMuted = !_micMuted); _voice.setMuted(_micMuted); },
           ),
         ],
       ]),
