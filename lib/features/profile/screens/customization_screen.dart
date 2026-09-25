@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/services/supabase_service.dart';
-import '../../core/services/cosmetics_service.dart';
-import '../../features/edu/edu_subscription_service.dart';
-import '../widgets/gacom_snackbar.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/services/cosmetics_service.dart';
+import '../../edu/edu_subscription_service.dart';
+import '../../../shared/widgets/gacom_snackbar.dart';
 
 class CustomizationScreen extends StatefulWidget {
   const CustomizationScreen({super.key});
