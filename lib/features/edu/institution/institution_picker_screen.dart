@@ -22,6 +22,7 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
   String? _selectedLevel;
   bool _noInstitution = false;
   bool _saving = false;
+  bool _creatingInstitution = false;
 
   static const _classLevels = [
     'Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6',
@@ -45,6 +46,60 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
       _search = q;
       _filtered = q.isEmpty ? _institutions : _institutions.where((i) => (i['name'] as String).toLowerCase().contains(q.toLowerCase())).toList();
     });
+  }
+
+  Future<void> _createInstitution() async {
+    final nameCtrl = TextEditingController(text: _search);
+    final stateCtrl = TextEditingController();
+    String type = 'Secondary School';
+    await showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
+      backgroundColor: GacomColors.cardDark,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Add your school', style: TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: nameCtrl, style: const TextStyle(color: GacomColors.textPrimary),
+          decoration: const InputDecoration(labelText: 'School name', labelStyle: TextStyle(color: GacomColors.textMuted))),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: type, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+          decoration: const InputDecoration(labelText: 'Type', labelStyle: TextStyle(color: GacomColors.textMuted)),
+          items: const ['Primary School', 'Secondary School', 'University', 'Other'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          onChanged: (v) => setDlg(() => type = v ?? type),
+        ),
+        const SizedBox(height: 12),
+        TextField(controller: stateCtrl, style: const TextStyle(color: GacomColors.textPrimary),
+          decoration: const InputDecoration(labelText: 'State', labelStyle: TextStyle(color: GacomColors.textMuted))),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted))),
+        ElevatedButton(
+          onPressed: _creatingInstitution ? null : () async {
+            if (nameCtrl.text.trim().isEmpty) return;
+            setState(() => _creatingInstitution = true);
+            try {
+              final row = await SupabaseService.client.from('institutions').insert({
+                'name': nameCtrl.text.trim(), 'type': type, 'state': stateCtrl.text.trim().isEmpty ? null : stateCtrl.text.trim(), 'is_active': true,
+              }).select().single();
+              if (mounted) {
+                Navigator.pop(ctx);
+                setState(() {
+                  _institutions = [..._institutions, row];
+                  _filtered = _institutions;
+                  _selectedId = row['id']; _selectedName = row['name']; _noInstitution = false;
+                  _creatingInstitution = false;
+                });
+              }
+            } catch (e) {
+              setState(() => _creatingInstitution = false);
+              if (mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Could not add school: $e')));
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange),
+          child: _creatingInstitution ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Text('ADD SCHOOL', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
+        ),
+      ],
+    )));
   }
 
   Future<void> _save() async {
@@ -118,6 +173,20 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
               style: const TextStyle(color: GacomColors.textPrimary, fontSize: 14),
               decoration: const InputDecoration(hintText: 'Search for your school...', hintStyle: TextStyle(color: GacomColors.textMuted, fontSize: 13), border: InputBorder.none, isCollapsed: true))),
           ]))),
+
+      if (_search.isNotEmpty && _filtered.isEmpty)
+        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: GestureDetector(onTap: _createInstitution,
+            child: Container(padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
+              child: Row(children: [
+                const Icon(Icons.add_circle_outline_rounded, color: GacomColors.deepOrange, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('"$_search" isn\'t listed yet', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)),
+                  const Text('Tap to add your school — future students from there will find it too', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+                ])),
+              ])))),
 
       // Institution list
       Expanded(child: _loading
