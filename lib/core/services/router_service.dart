@@ -31,6 +31,7 @@ import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/profile/screens/customization_screen.dart';
 import '../../features/houses/houses_screen.dart';
+import '../../features/houses/house_chat_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/store_admin_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
@@ -283,6 +284,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/leaderboard', builder: (_, __) => const LeaderboardScreen()),
       GoRoute(path: '/customization', builder: (_, __) => const CustomizationScreen()),
       GoRoute(path: '/houses', builder: (_, __) => const HousesScreen()),
+      GoRoute(path: '/houses/chat', builder: (_, s) {
+        final extra = s.extra as Map<String, dynamic>? ?? {};
+        return HouseChatScreen(houseId: extra['houseId'] as String? ?? '', houseName: extra['houseName'] as String? ?? 'House');
+      }),
       GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
     ],
   );

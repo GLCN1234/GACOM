@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
 import '../edu/edu_subscription_service.dart';
@@ -144,10 +145,17 @@ class _HousesScreenState extends State<HousesScreen> {
                       Text('${h['points']}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 18, color: color)),
                     ]),
                     const SizedBox(height: 12),
-                    SizedBox(width: double.infinity, child: isMine
-                      ? OutlinedButton(onPressed: () => _leave(h['id']), style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.error)),
-                          child: const Text('LEAVE HOUSE', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))
-                      : ElevatedButton(onPressed: () => _join(h['id']), style: ElevatedButton.styleFrom(backgroundColor: color),
+                    if (isMine) Row(children: [
+                      Expanded(child: ElevatedButton.icon(
+                        onPressed: () => context.push('/houses/chat', extra: {'houseId': h['id'], 'houseName': h['name']}),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 16),
+                        label: const Text('CHAT', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
+                        style: ElevatedButton.styleFrom(backgroundColor: color),
+                      )),
+                      const SizedBox(width: 10),
+                      Expanded(child: OutlinedButton(onPressed: () => _leave(h['id']), style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.error)),
+                        child: const Text('LEAVE', style: TextStyle(color: GacomColors.error, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
+                    ]) else SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () => _join(h['id']), style: ElevatedButton.styleFrom(backgroundColor: color),
                           child: const Text('JOIN HOUSE', style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)))),
                   ]));
               })),
