@@ -10,6 +10,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
+import '../../arena/screens/leaderboard_screen.dart';
 
 final _demoProfile = {
   'id': 'demo',
@@ -51,7 +52,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -447,7 +448,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               labelColor: GacomColors.textPrimary,
               unselectedLabelColor: GacomColors.textMuted,
               labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13),
-              tabs: const [Tab(text: 'POSTS'), Tab(text: 'CLIPS'), Tab(text: 'STATS')],
+              tabs: const [Tab(text: 'POSTS'), Tab(text: 'CLIPS'), Tab(text: 'STATS'), Tab(text: 'LEADERBOARD')],
             )),
           ),
         ],
@@ -457,6 +458,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             _Grid(posts: _posts.where((x) => x['post_type'] != 'clip').toList()),
             _Grid(posts: _posts.where((x) => x['post_type'] == 'clip').toList()),
             _StatsTab(profile: p),
+            const LeaderboardContent(),
           ],
         ),
       ),

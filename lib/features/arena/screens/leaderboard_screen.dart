@@ -6,13 +6,15 @@ import '../../../core/services/supabase_service.dart';
 /// data the store uses) instead of a horizontal scroll of text chips,
 /// and a real podium treatment for the top 3 instead of a flat list —
 /// matches the app's own established visual language rather than
-/// bolting on something disconnected from it.
-class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
-  @override State<LeaderboardScreen> createState() => _LeaderboardScreenState();
+/// bolting on something disconnected from it. No Scaffold/AppBar of its
+/// own — embedded directly as a tab on the profile page, which is where
+/// every leaderboard now lives instead of scattered across the app.
+class LeaderboardContent extends StatefulWidget {
+  const LeaderboardContent({super.key});
+  @override State<LeaderboardContent> createState() => _LeaderboardContentState();
 }
 
-class _LeaderboardScreenState extends State<LeaderboardScreen> {
+class _LeaderboardContentState extends State<LeaderboardContent> {
   bool _loadingGames = true;
   bool _loadingScores = false;
   List<Map<String, dynamic>> _games = [];
@@ -47,10 +49,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: GacomColors.obsidian,
-    appBar: AppBar(title: const Text('LEADERBOARD')),
-    body: _loadingGames
+  Widget build(BuildContext context) => _loadingGames
       ? const Center(child: CircularProgressIndicator())
       : _games.isEmpty
         ? const Center(child: Text('No games available yet.', style: TextStyle(color: GacomColors.textMuted)))
@@ -60,8 +59,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             Expanded(child: _loadingScores
               ? const Center(child: CircularProgressIndicator())
               : _standings()),
-          ]),
-  );
+          ]);
 
   Widget _gamePicker() => SizedBox(
     height: 96,
@@ -161,4 +159,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       ]),
     );
   }
+}
+
+/// Thin standalone wrapper for the existing /leaderboard route — the
+/// real content lives in LeaderboardContent above, embedded directly on
+/// the profile page. Kept only so a direct link to this route still works.
+class LeaderboardScreen extends StatelessWidget {
+  const LeaderboardScreen({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: GacomColors.obsidian,
+    appBar: AppBar(title: const Text('LEADERBOARD')),
+    body: const LeaderboardContent(),
+  );
 }
