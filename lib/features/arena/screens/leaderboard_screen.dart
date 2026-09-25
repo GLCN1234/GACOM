@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/cosmetics_service.dart';
 
 /// A game-picker grid (real icons, pulled from the same game_listings
 /// data the store uses) instead of a horizontal scroll of text chips,
@@ -40,11 +41,28 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
     setState(() { _selectedGame = game; _loadingScores = true; _top = []; });
     try {
       final data = await SupabaseService.client.from('game_scores')
-          .select('score, won, created_at, user:profiles!user_id(display_name, avatar_url)')
+          .select('score, won, created_at, user:profiles!user_id(id, display_name, avatar_url)')
           .eq('game_name', game['name'])
           .order('score', ascending: false)
           .limit(10);
-      if (mounted) setState(() { _top = List<Map<String, dynamic>>.from(data); _loadingScores = false; });
+      final rows = List<Map<String, dynamic>>.from(data);
+      // Second, small query for equipped cosmetics — kept separate from
+      // the main query rather than a complex nested embed, since this
+      // is only ever 10 rows and it's safer to get right.
+      final userIds = rows.map((r) => (r['user'] as Map?)?['id']).whereType<String>().toSet().toList();
+      if (userIds.isNotEmpty) {
+        try {
+          final cosmetics = await SupabaseService.client.from('user_cosmetics')
+              .select('user_id, name_color:cosmetic_items!equipped_name_color(value), badge:cosmetic_items!equipped_badge(value)')
+              .filter('user_id', 'in', '(${userIds.join(',')})');
+          final byUserId = { for (final c in List<Map<String, dynamic>>.from(cosmetics)) c['user_id'] as String: c };
+          for (final row in rows) {
+            final uid = (row['user'] as Map?)?['id'] as String?;
+            if (uid != null && byUserId.containsKey(uid)) row['cosmetics'] = byUserId[uid];
+          }
+        } catch (_) {}
+      }
+      if (mounted) setState(() { _top = rows; _loadingScores = false; });
     } catch (_) { if (mounted) setState(() => _loadingScores = false); }
   }
 
@@ -130,8 +148,12 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
           onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
           child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? Icon(Icons.person, size: rank == 1 ? 26 : 22, color: Colors.white) : null),
         const SizedBox(height: 8),
-        Text(user['display_name'] as String? ?? 'Player', maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textPrimary)),
+        Row(mainAxisSize: MainAxisSize.min, children: [
+          if (CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?) != null)
+            Padding(padding: const EdgeInsets.only(right: 4), child: Icon(CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?), size: 12, color: GacomColors.deepOrange)),
+          Flexible(child: Text(user['display_name'] as String? ?? 'Player', maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: CosmeticsService.nameColorFor(row['cosmetics'] as Map<String, dynamic>?) ?? GacomColors.textPrimary))),
+        ]),
         Text('${row['score']}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 14, color: color)),
         const SizedBox(height: 8),
         Container(width: double.infinity, height: height, margin: const EdgeInsets.symmetric(horizontal: 6),
@@ -154,7 +176,12 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
           onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
           child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 16, color: Colors.white) : null),
         const SizedBox(width: 14),
-        Expanded(child: Text(user['display_name'] as String? ?? 'Player', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary))),
+        Expanded(child: Row(children: [
+          if (CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?) != null)
+            Padding(padding: const EdgeInsets.only(right: 6), child: Icon(CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?), size: 14, color: GacomColors.deepOrange)),
+          Flexible(child: Text(user['display_name'] as String? ?? 'Player', overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: CosmeticsService.nameColorFor(row['cosmetics'] as Map<String, dynamic>?) ?? GacomColors.textPrimary))),
+        ])),
         Text('${row['score']}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 15, color: GacomColors.deepOrange)),
       ]),
     );
