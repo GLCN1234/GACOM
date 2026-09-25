@@ -218,6 +218,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   icon: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.palette_outlined, size: 18, color: Colors.white),
+                  ),
+                  onPressed: () => context.push('/customization'),
+                ),
+              if (_isOwn)
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.settings_outlined, size: 18, color: Colors.white),
                   ),
                   onPressed: () => context.go(AppConstants.settingsRoute),
