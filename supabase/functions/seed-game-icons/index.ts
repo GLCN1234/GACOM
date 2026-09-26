@@ -50,7 +50,7 @@ const ICON_QUERIES: Record<string, string> = {
   'Dots & Boxes': 'dots grid puzzle',
   'Number Duel': 'numbers competition',
   'Snake': 'retro arcade game',
-  'Survival Shooter': 'space shooter arcade',
+  'Survival Shooter': 'gaming controller neon',
   'Whot': 'playing cards deck colorful',
 }
 
