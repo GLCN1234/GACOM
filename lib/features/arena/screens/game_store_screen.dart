@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -68,6 +69,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
             _searchBar(),
+            _downloadGacomBanner(),
             if (_featured.isNotEmpty) _featuredCarousel(),
             _categoryChips(),
             const SizedBox(height: 8),
@@ -92,6 +94,32 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(50), borderSide: BorderSide.none),
       ),
     ),
+  );
+
+  // Only GACOM itself gets this real download treatment — a genuine,
+  // signed APK hosted in Supabase Storage. Developer-submitted games
+  // never get this button; they only ever have a play_route into the
+  // in-app experience.
+  Widget _downloadGacomBanner() => Container(
+    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [GacomColors.deepOrange, Color(0xFFB33600)]),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(children: [
+      const Icon(Icons.android_rounded, color: Colors.white, size: 32),
+      const SizedBox(width: 14),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Get the GACOM App', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: Colors.white)),
+        const Text('Install the real Android app for the full experience', style: TextStyle(fontSize: 11, color: Colors.white70)),
+      ])),
+      ElevatedButton(
+        onPressed: () => launchUrl(Uri.parse('https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk'), mode: LaunchMode.externalApplication),
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
+        child: const Text('DOWNLOAD', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12)),
+      ),
+    ]),
   );
 
   Widget _featuredCarousel() => SizedBox(
