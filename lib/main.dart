@@ -30,6 +30,7 @@ void main() async {
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
       _showFatalErrorOnPage(details.exceptionAsString(), details.stack.toString());
+      _logErrorToDatabase(details.exceptionAsString(), details.stack.toString());
     };
 
     await SupabaseService.initialize();
@@ -46,7 +47,27 @@ void main() async {
   }, (error, stack) {
     debugPrint('ZONE ERROR: $error\n$stack');
     _showFatalErrorOnPage(error.toString(), stack.toString());
+    _logErrorToDatabase(error.toString(), stack.toString());
   });
+}
+
+/// Best-effort, fire-and-forget — logging a crash should never itself
+/// be able to cause a problem. Route is captured from the current URL
+/// on web, since that's the cheapest reliable signal for "where was
+/// the user when this happened" without threading context through
+/// every error handler.
+void _logErrorToDatabase(String error, String stack) {
+  try {
+    final route = Uri.base.path.isNotEmpty ? Uri.base.path : null;
+    SupabaseService.client.from('error_logs').insert({
+      'user_id': SupabaseService.currentUserId,
+      'error': error.length > 4000 ? error.substring(0, 4000) : error,
+      'stack': stack.length > 8000 ? stack.substring(0, 8000) : stack,
+      'route': route,
+    }).then((_) {}, onError: (_) {});
+  } catch (_) {
+    // Never let logging itself throw.
+  }
 }
 
 Future<void> _checkAndVerifyReturningPayment() async {

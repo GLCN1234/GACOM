@@ -130,6 +130,7 @@ class _Sidebar extends StatelessWidget {
           child: ListTile(dense: true, leading: Icon(icons[i], color: sel ? GacomColors.deepOrange : GacomColors.textMuted, size: 20), title: Text(sections[i], style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: sel ? GacomColors.deepOrange : GacomColors.textSecondary)), onTap: () => onSelect(i)));
       })),
       const Divider(color: GacomColors.border, height: 1),
+      ListTile(dense: true, leading: const Icon(Icons.bug_report_outlined, color: GacomColors.textMuted, size: 20), title: const Text('Error Logs', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/errors')),
       ListTile(dense: true, leading: const Icon(Icons.arrow_back_rounded, color: GacomColors.textMuted, size: 20), title: const Text('Back to App', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.go(AppConstants.homeRoute)),
       const SizedBox(height: 8),
     ])));

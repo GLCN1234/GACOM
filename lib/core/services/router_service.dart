@@ -33,6 +33,7 @@ import '../../features/profile/screens/customization_screen.dart';
 import '../../features/houses/houses_screen.dart';
 import '../../features/houses/house_chat_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
+import '../../features/admin/screens/error_logs_screen.dart';
 import '../../features/admin/screens/store_admin_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
@@ -281,6 +282,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: AppConstants.adminRoute, builder: (_, __) => const AdminDashboardScreen()),
+      GoRoute(path: '/admin/errors', builder: (_, __) => const ErrorLogsScreen()),
       GoRoute(path: '/leaderboard', builder: (_, __) => const LeaderboardScreen()),
       GoRoute(path: '/customization', builder: (_, __) => const CustomizationScreen()),
       GoRoute(path: '/houses', builder: (_, __) => const HousesScreen()),
