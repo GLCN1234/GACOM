@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
@@ -128,12 +129,15 @@ class _FriendlyErrorWidget extends StatefulWidget {
 
 class _FriendlyErrorWidgetState extends State<_FriendlyErrorWidget> {
   bool _showDetails = false;
+  bool _copied = false;
 
   @override
   Widget build(BuildContext context) => Container(
     color: const Color(0xFF0A0A0F),
     padding: const EdgeInsets.all(24),
-    alignment: Alignment.center,
+    // Single scrollable surface for the whole screen — no nested
+    // scroll views fighting over touch gestures, which is what made
+    // the technical details unreadable/unscrollable on a real device.
     child: SingleChildScrollView(
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         const Text('⚠', style: TextStyle(fontSize: 40)),
@@ -154,12 +158,28 @@ class _FriendlyErrorWidgetState extends State<_FriendlyErrorWidget> {
           child: Text(_showDetails ? 'Hide technical details' : 'Show technical details', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
         ),
         if (_showDetails) Container(
+          width: double.infinity,
           margin: const EdgeInsets.only(top: 8),
           padding: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 300),
           decoration: BoxDecoration(color: const Color(0xFF1A0000), borderRadius: BorderRadius.circular(8)),
-          child: SingleChildScrollView(child: Text('${widget.error}\n\n${widget.stack}',
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'monospace'))),
+          // No inner scroll view at all — this is now part of the one
+          // outer scroll, so the whole error text is always fully
+          // visible by scrolling the page itself, never cut off.
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SelectableText('${widget.error}\n\n${widget.stack}',
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'monospace')),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: '${widget.error}\n\n${widget.stack}'));
+                setState(() => _copied = true);
+                Future.delayed(const Duration(seconds: 2), () { if (mounted) setState(() => _copied = false); });
+              },
+              icon: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded, size: 16, color: Colors.white),
+              label: Text(_copied ? 'Copied!' : 'Copy full error text', style: const TextStyle(color: Colors.white, fontSize: 12)),
+              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white38)),
+            ),
+          ]),
         ),
       ]),
     ),
