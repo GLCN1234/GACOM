@@ -115,7 +115,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
         const Text('Install the real Android app for the full experience', style: TextStyle(fontSize: 11, color: Colors.white70)),
       ])),
       ElevatedButton(
-        onPressed: () => launchUrl(Uri.parse('https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk'), mode: LaunchMode.externalApplication),
+        onPressed: () => launchUrl(Uri.parse('https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk'), mode: LaunchMode.platformDefault),
         style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10)),
         child: const Text('DOWNLOAD', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12)),
       ),
