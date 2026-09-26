@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Where the downloaded APK is saved before being handed to the
+         installer — matches getTemporaryDirectory() in the Dart code. -->
+    <cache-path name="downloads" path="." />
+    <external-cache-path name="external_downloads" path="." />
+</paths>
