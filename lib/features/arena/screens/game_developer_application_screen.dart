@@ -46,15 +46,15 @@ class _GameDevState extends State<GameDeveloperApplicationScreen> {
   }
 
   Future<void> _pickFile(bool isIcon) async {
-    final result = await FilePicker.platform.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: isIcon ? FileType.image : FileType.any,
-      withData: true,
     );
-    if (result == null) return;
-    final file = result.files.first;
+    if (files.isEmpty) return;
+    final file = files.first;
+    final bytes = await file.readAsBytes();
     setState(() {
-      if (isIcon) { _iconFileName = file.name; _iconBytes = file.bytes; }
-      else { _buildFileName = file.name; _buildBytes = file.bytes; }
+      if (isIcon) { _iconFileName = file.name; _iconBytes = bytes; }
+      else { _buildFileName = file.name; _buildBytes = bytes; }
     });
   }
 

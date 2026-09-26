@@ -49,3 +49,4 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 .env.*
 supabase/.temp/
 *.zip
+android/key.properties

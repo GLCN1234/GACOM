@@ -52,10 +52,10 @@ class _BulkCurriculumUploaderWidgetState extends State<BulkCurriculumUploaderWid
   }
 
   Future<void> _pickAndSubmit() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf'], withData: true);
-    if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
-    final bytes = result.files.first.bytes!;
-    final filename = result.files.first.name;
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    if (files.isEmpty) return;
+    final bytes = await files.first.readAsBytes();
+    final filename = files.first.name;
     setState(() { _submitting = true; _error = null; _proposedTopics = []; _jobReady = false; });
     try {
       final base64Str = base64Encode(bytes);
