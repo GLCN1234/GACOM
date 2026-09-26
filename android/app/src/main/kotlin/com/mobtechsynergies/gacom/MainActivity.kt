@@ -1,4 +1,4 @@
-package com.example.gacom
+package com.mobtechsynergies.gacom
 
 import io.flutter.embedding.android.FlutterActivity
 
