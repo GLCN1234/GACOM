@@ -16,17 +16,7 @@ void main() async {
   // crash and made bugs like this impossible to diagnose from a screenshot.
   // Show the actual error on screen instead so it can just be screenshotted.
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    return Container(
-      color: const Color(0xFF1A0000),
-      padding: const EdgeInsets.all(16),
-      alignment: Alignment.center,
-      child: SingleChildScrollView(
-        child: Text(
-          'Something broke here:\n\n${details.exceptionAsString()}',
-          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
-        ),
-      ),
-    );
+    return _FriendlyErrorWidget(error: details.exceptionAsString(), stack: details.stack.toString());
   };
 
   // runZonedGuarded catches errors that escape Flutter's own error pipeline
@@ -103,4 +93,54 @@ class GacomApp extends ConsumerWidget {
       routerConfig: router,
     );
   }
+}
+
+/// Shown in place of any widget that fails to build — friendly by
+/// default (no raw stack trace thrown at the user), with full details
+/// still one tap away for debugging when genuinely needed.
+class _FriendlyErrorWidget extends StatefulWidget {
+  final String error;
+  final String stack;
+  const _FriendlyErrorWidget({required this.error, required this.stack});
+  @override State<_FriendlyErrorWidget> createState() => _FriendlyErrorWidgetState();
+}
+
+class _FriendlyErrorWidgetState extends State<_FriendlyErrorWidget> {
+  bool _showDetails = false;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    color: const Color(0xFF0A0A0F),
+    padding: const EdgeInsets.all(24),
+    alignment: Alignment.center,
+    child: SingleChildScrollView(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Text('⚠', style: TextStyle(fontSize: 40)),
+        const SizedBox(height: 16),
+        const Text('Something went wrong', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        const Text('This part of the app ran into a problem. The rest of GACOM should still work fine.',
+          textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14)),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () { if (Navigator.of(context).canPop()) Navigator.of(context).pop(); },
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE84B00), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
+          child: const Text('Go Back', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => setState(() => _showDetails = !_showDetails),
+          child: Text(_showDetails ? 'Hide technical details' : 'Show technical details', style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
+        ),
+        if (_showDetails) Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 300),
+          decoration: BoxDecoration(color: const Color(0xFF1A0000), borderRadius: BorderRadius.circular(8)),
+          child: SingleChildScrollView(child: Text('${widget.error}\n\n${widget.stack}',
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontFamily: 'monospace'))),
+        ),
+      ]),
+    ),
+  );
 }
