@@ -326,7 +326,7 @@ class _ChatTile extends StatelessWidget {
             // varied blue/purple/teal rings — hash the name so each contact
             // keeps a stable color across sessions.
             const ringColors = [Color(0xFF5B6CFF), Color(0xFF8B5CF6), Color(0xFF00C2A8), Color(0xFF3D8BFF), Color(0xFFE85B8A)];
-            final ring = ringColors[name.isEmpty ? 0 : name.codeUnits.fold<int>(0, (a, b) => a + b) % ringColors.length];
+            final ring = ringColors[name.isEmpty ? 0 : name.codeUnits.fold<int>(0, (int a, int b) => a + b) % ringColors.length];
             return Container(width: 56, height: 56, padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 2)),
               child: CircleAvatar(radius: 24, backgroundColor: GacomColors.elevatedCard,
