@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
@@ -8,26 +9,14 @@ import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart' a
 
 const _apkUrl = 'https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk';
 
-/// This button lives on the same Game Store screen whether someone's
-/// using the website in a browser or the already-installed app — but
-/// dart:io file operations (and the system installer handoff) genuinely
-/// cannot work in a browser at all. On web, trigger a native browser
-/// download via a hidden anchor click — the page never navigates away
-/// at all, so there's no blank/reload flash.
+/// One real progress-bar experience for both platforms — the only
+/// difference is how the finished file gets delivered at the end,
+/// since a browser can never hand a file directly to the system
+/// installer the way an already-installed app can. On web, it's saved
+/// as a correctly MIME-typed blob, which is what lets Chrome offer its
+/// own "tap to install" action once the download finishes — the same
+/// behavior people are used to seeing from other APK downloads.
 Future<void> downloadAndInstallGacomApk(BuildContext context) async {
-  if (kIsWeb) {
-    web_download.triggerWebDownload(_apkUrl);
-    return;
-  }
-  await _downloadAndInstallOnMobile(context);
-}
-
-/// Real in-app download with progress, instead of handing off to the
-/// browser's own generic download UI — downloads the APK to the app's
-/// own cache, then triggers the system installer directly on
-/// completion, matching how the Play Store's own install flow feels.
-/// Only ever called on a real mobile install, never on web.
-Future<void> _downloadAndInstallOnMobile(BuildContext context) async {
   final progress = ValueNotifier<double>(0);
   final status = ValueNotifier<String>('Starting download...');
 
@@ -61,25 +50,42 @@ Future<void> _downloadAndInstallOnMobile(BuildContext context) async {
   );
 
   try {
-    // Dart's own temp directory — no plugin needed at all, sidesteps
-    // the path_provider Android registration issue entirely.
-    final dir = Directory.systemTemp;
-    final savePath = '${dir.path}/gacom-latest.apk';
+    if (kIsWeb) {
+      // dio works on web too (via the browser's own fetch under the
+      // hood), so the same real progress tracking applies here —
+      // fetching raw bytes rather than saving to a real file system,
+      // since a browser doesn't have one to write to directly.
+      final response = await Dio().get<List<int>>(
+        _apkUrl,
+        options: Options(responseType: ResponseType.bytes),
+        onReceiveProgress: (received, total) {
+          if (total > 0) progress.value = received / total;
+        },
+      );
+      status.value = 'Starting install...';
+      web_download.saveWebDownload(Uint8List.fromList(response.data!), 'gacom-latest.apk');
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    } else {
+      // Dart's own temp directory — no plugin needed at all, sidesteps
+      // the path_provider Android registration issue entirely.
+      final dir = Directory.systemTemp;
+      final savePath = '${dir.path}/gacom-latest.apk';
 
-    await Dio().download(
-      _apkUrl,
-      savePath,
-      onReceiveProgress: (received, total) {
-        if (total > 0) progress.value = received / total;
-      },
-    );
+      await Dio().download(
+        _apkUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total > 0) progress.value = received / total;
+        },
+      );
 
-    status.value = 'Ready to install...';
-    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      status.value = 'Ready to install...';
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
 
-    // Hands the file to Android's own installer — the same "verify and
-    // install" flow the person described, not a raw browser download.
-    await OpenFile.open(savePath);
+      // Hands the file to Android's own installer — the same "verify
+      // and install" flow, not a raw browser download.
+      await OpenFile.open(savePath);
+    }
   } catch (e) {
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop();
