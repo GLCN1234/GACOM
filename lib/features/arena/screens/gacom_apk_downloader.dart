@@ -3,19 +3,20 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:open_file/open_file.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart' as web_download;
 
 const _apkUrl = 'https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk';
 
 /// This button lives on the same Game Store screen whether someone's
 /// using the website in a browser or the already-installed app — but
 /// dart:io file operations (and the system installer handoff) genuinely
-/// cannot work in a browser at all. On web, hand off to the browser's
-/// own native download instead of trying to use mobile-only APIs.
+/// cannot work in a browser at all. On web, trigger a native browser
+/// download via a hidden anchor click — the page never navigates away
+/// at all, so there's no blank/reload flash.
 Future<void> downloadAndInstallGacomApk(BuildContext context) async {
   if (kIsWeb) {
-    await launchUrl(Uri.parse(_apkUrl), mode: LaunchMode.platformDefault);
+    web_download.triggerWebDownload(_apkUrl);
     return;
   }
   await _downloadAndInstallOnMobile(context);
