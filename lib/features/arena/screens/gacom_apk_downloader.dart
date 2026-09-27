@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -43,7 +42,9 @@ Future<void> downloadAndInstallGacomApk(BuildContext context) async {
   );
 
   try {
-    final dir = await getTemporaryDirectory();
+    // Dart's own temp directory — no plugin needed at all, sidesteps
+    // the path_provider Android registration issue entirely.
+    final dir = Directory.systemTemp;
     final savePath = '${dir.path}/gacom-latest.apk';
 
     await Dio().download(
