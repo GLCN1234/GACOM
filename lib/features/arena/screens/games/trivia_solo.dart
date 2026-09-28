@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
+import '../../../../core/services/game_score_service.dart';
 
 class TriviaSoloScreen extends StatefulWidget {
   const TriviaSoloScreen({super.key});
@@ -60,7 +61,11 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
   }
 
   void _nextQ() {
-    if (_idx >= _shuffled.length - 1) { setState(() => _done = true); return; }
+    if (_idx >= _shuffled.length - 1) {
+      GameScoreService.save(gameName: 'Trivia', score: _score);
+      setState(() => _done = true);
+      return;
+    }
     setState(() { _idx++; _selected = null; _answered = false; });
     _startTimer();
   }

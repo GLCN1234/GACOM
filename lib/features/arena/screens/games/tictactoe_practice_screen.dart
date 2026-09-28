@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
+import '../../../../core/services/game_score_service.dart';
 
 /// Free practice match against a local AI opponent — no wallet, no stake,
 /// no Supabase writes at all. The multiplayer TicTacToeGame widget is
@@ -61,6 +62,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
       else if (winner == 'X') { _wins++; _resultText = 'You win!'; }
       else { _losses++; _resultText = 'Ryan wins this one.'; }
     });
+    GameScoreService.save(gameName: 'Tic-Tac-Toe', score: winner == 'X' ? 1 : 0, won: winner == 'X' ? true : (winner == 'draw' ? null : false));
   }
 
   void _reset() {

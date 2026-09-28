@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
+import '../../../../core/services/game_score_service.dart';
 
 // ── RPS solo vs AI (Ryan) ────────────────────────────────────────────────────
 class RpsSoloScreen extends StatefulWidget {
@@ -34,6 +35,9 @@ class _RpsSoloState extends State<RpsSoloScreen> {
     else if (_beats(choice) == ai) { _myWins++; result = 'You win this round!'; }
     else { _aiWins++; result = 'Ryan wins this round!'; }
     setState(() { _myPick = choice; _aiPick = ai; _result = result; _revealed = true; });
+    if (_myWins >= 3 || _aiWins >= 3) {
+      GameScoreService.save(gameName: 'RPS Battle', score: _myWins, won: _myWins >= 3);
+    }
     Future.delayed(const Duration(milliseconds: 1400), () {
       if (mounted) setState(() { _myPick = null; _aiPick = null; _result = null; _revealed = false; _round++; });
     });

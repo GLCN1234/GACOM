@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
+import '../../../../core/services/game_score_service.dart';
 
 class ReactionSoloScreen extends StatefulWidget {
   const ReactionSoloScreen({super.key});
@@ -44,7 +45,12 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
     final ms = DateTime.now().difference(_flashTime!).inMilliseconds;
     _times.add(ms);
     _flashing = false; _waiting = false;
-    if (_times.length >= _rounds) { setState(() => _done = true); }
+    if (_times.length >= _rounds) {
+      final avgMs = _times.reduce((a, b) => a + b) / _times.length;
+      final score = (2000 - avgMs).clamp(0, 2000).round(); // faster reactions score higher
+      GameScoreService.save(gameName: 'Reaction', score: score);
+      setState(() => _done = true);
+    }
     else { Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_scheduleNext();}); setState(() {}); }
   }
 
