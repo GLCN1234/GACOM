@@ -27,7 +27,7 @@ class SoundService {
     } catch (_) {}
   }
 
-  Future<void> _playSfx(String assetName) async {
+  Future<void> _playSfx(String assetName, {Duration? maxDuration}) async {
     if (!_sfxEnabled) return;
     // A fresh, short-lived player per sound effect — not the old shared
     // stop-then-restart approach, which caused an audible crack/skip
@@ -40,6 +40,19 @@ class SoundService {
       final player = AudioPlayer();
       player.onPlayerComplete.listen((_) => player.dispose());
       await player.play(AssetSource('sounds/$assetName'));
+      // For sounds whose source file runs noticeably longer than the
+      // in-game moment it's meant to punctuate (the chess capture
+      // sound specifically was reported as long and "relaying" into
+      // the next move) — cap playback at a fixed, short duration
+      // instead. A clean, deliberate stop here doesn't have the same
+      // crack/skip issue the old shared-player approach had, since
+      // it's a one-time stop on an isolated player, not a
+      // stop-then-immediately-restart on a shared one.
+      if (maxDuration != null) {
+        Future.delayed(maxDuration, () async {
+          try { await player.stop(); await player.dispose(); } catch (_) {}
+        });
+      }
     } catch (_) {
       // Expected until real files exist — never let a sound effect
       // take down a game.
@@ -52,7 +65,7 @@ class SoundService {
   Future<void> playWin() => _playSfx('win.mp3');
   Future<void> playLose() => _playSfx('lose.mp3');
   Future<void> playPieceMove() => _playSfx('piece_move.mp3');
-  Future<void> playPieceCapture() => _playSfx('piece_capture.mp3');
+  Future<void> playPieceCapture() => _playSfx('piece_capture.mp3', maxDuration: const Duration(milliseconds: 400));
   Future<void> playCardFlip() => _playSfx('card_flip.mp3');
   Future<void> playCardShuffle() => _playSfx('card_shuffle.mp3');
   Future<void> playTileSlide() => _playSfx('tile_slide.mp3');
