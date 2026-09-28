@@ -63,16 +63,12 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
       }
       // Race-format standings — only relevant if this competition has a
       // target_score set (the "first to reach X points" format).
+      // Uses the RPC so an institution-scoped competition only shows
+      // standings from that school, not everyone.
       if (comp['target_score'] != null) {
         try {
           final standings = await SupabaseService.client
-              .from('game_scores')
-              .select('score, created_at, user:profiles!user_id(display_name, avatar_url)')
-              .eq('game_name', comp['game_name'])
-              .gte('created_at', comp['starts_at'])
-              .lte('created_at', comp['ends_at'])
-              .order('score', ascending: false)
-              .limit(5);
+              .rpc('get_competition_standings', params: {'p_competition_id': widget.competitionId});
           if (mounted) setState(() => _raceStandings = List<Map<String, dynamic>>.from(standings));
         } catch (_) {}
       }
@@ -248,14 +244,13 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
                       else
                         ..._raceStandings.asMap().entries.map((e) {
                           final i = e.key; final row = e.value;
-                          final user = row['user'] as Map<String, dynamic>? ?? {};
                           final score = (row['score'] as num?)?.toInt() ?? 0;
                           final target = (c['target_score'] as num?)?.toInt() ?? 1;
                           final won = score >= target;
                           return Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [
                             Text('#${i + 1}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textMuted, fontSize: 13)),
                             const SizedBox(width: 10),
-                            Expanded(child: Text(user['display_name'] as String? ?? 'Player', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
+                            Expanded(child: Text(row['display_name'] as String? ?? 'Player', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13))),
                             if (won) const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD700), size: 16),
                             const SizedBox(width: 4),
                             Text('$score / $target', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: won ? const Color(0xFFFFD700) : GacomColors.deepOrange)),
