@@ -40,12 +40,27 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
   Future<void> _selectGame(Map<String, dynamic> game) async {
     setState(() { _selectedGame = game; _loadingScores = true; _top = []; });
     try {
-      final data = await SupabaseService.client.from('game_scores')
-          .select('score, won, created_at, user:profiles!user_id(id, display_name, avatar_url)')
+      // Two separate fetches, not an embedded join — game_scores.user_id
+      // references auth.users, not profiles, so PostgREST has no
+      // declared relationship to embed profiles through here at all.
+      final scores = await SupabaseService.client.from('game_scores')
+          .select('user_id, score, won, created_at')
           .eq('game_name', game['name'])
           .order('score', ascending: false)
           .limit(10);
-      final rows = List<Map<String, dynamic>>.from(data);
+      final scoreRows = List<Map<String, dynamic>>.from(scores);
+      final userIds = scoreRows.map((r) => r['user_id'] as String).toSet().toList();
+      Map<String, Map<String, dynamic>> profilesById = {};
+      if (userIds.isNotEmpty) {
+        final profs = await SupabaseService.client.from('profiles')
+            .select('id, display_name, avatar_url')
+            .filter('id', 'in', '(${userIds.join(',')})');
+        profilesById = { for (final p in List<Map<String, dynamic>>.from(profs)) p['id'] as String: p };
+      }
+      final rows = scoreRows.map((r) => {
+        'score': r['score'], 'won': r['won'], 'created_at': r['created_at'],
+        'user': profilesById[r['user_id']] ?? {'id': r['user_id'], 'display_name': 'Player', 'avatar_url': null},
+      }).toList();
       // Second, small query for equipped cosmetics — kept separate from
       // the main query rather than a complex nested embed, since this
       // is only ever 10 rows and it's safer to get right.
