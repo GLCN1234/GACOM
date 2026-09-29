@@ -21,27 +21,8 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
   List<Map<String, dynamic>> _games = [];
   Map<String, dynamic>? _selectedGame;
   List<Map<String, dynamic>> _top = [];
-  String _scope = 'all'; // 'all' or 'school'
-  String? _myInstitutionId;
-  String? _myInstitutionName;
 
-  @override void initState() { super.initState(); _loadMyInstitution(); _loadGames(); }
-
-  Future<void> _loadMyInstitution() async {
-    final uid = SupabaseService.currentUserId;
-    if (uid == null) return;
-    try {
-      final data = await SupabaseService.client.from('student_institutions')
-          .select('institution_id, institutions(name)')
-          .eq('student_id', uid).maybeSingle();
-      if (data != null && data['institution_id'] != null && mounted) {
-        setState(() {
-          _myInstitutionId = data['institution_id'] as String;
-          _myInstitutionName = (data['institutions'] as Map?)?['name'] as String?;
-        });
-      }
-    } catch (_) {}
-  }
+  @override void initState() { super.initState(); _loadGames(); }
 
   Future<void> _loadGames() async {
     try {
@@ -59,25 +40,12 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
   Future<void> _selectGame(Map<String, dynamic> game) async {
     setState(() { _selectedGame = game; _loadingScores = true; _top = []; });
     try {
-      List<Map<String, dynamic>> rows;
-      if (_scope == 'school' && _myInstitutionId != null) {
-        final data = await SupabaseService.client.rpc('get_school_leaderboard',
-            params: {'p_game_name': game['name'], 'p_institution_id': _myInstitutionId});
-        // Normalize the RPC's flat shape into the same nested shape the
-        // rest of this screen already renders, so the podium/rank-row
-        // widgets don't need two separate code paths.
-        rows = List<Map<String, dynamic>>.from(data).map((r) => {
-          'score': r['score'], 'won': r['won'], 'created_at': r['created_at'],
-          'user': {'id': r['user_id'], 'display_name': r['display_name'], 'avatar_url': r['avatar_url']},
-        }).toList();
-      } else {
-        final data = await SupabaseService.client.from('game_scores')
-            .select('score, won, created_at, user:profiles!user_id(id, display_name, avatar_url)')
-            .eq('game_name', game['name'])
-            .order('score', ascending: false)
-            .limit(10);
-        rows = List<Map<String, dynamic>>.from(data);
-      }
+      final data = await SupabaseService.client.from('game_scores')
+          .select('score, won, created_at, user:profiles!user_id(id, display_name, avatar_url)')
+          .eq('game_name', game['name'])
+          .order('score', ascending: false)
+          .limit(10);
+      final rows = List<Map<String, dynamic>>.from(data);
       // Second, small query for equipped cosmetics — kept separate from
       // the main query rather than a complex nested embed, since this
       // is only ever 10 rows and it's safer to get right.
@@ -105,38 +73,11 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
         ? const Center(child: Text('No games available yet.', style: TextStyle(color: GacomColors.textMuted)))
         : Column(children: [
             _gamePicker(),
-            if (_myInstitutionId != null) _scopeToggle(),
             const Divider(color: GacomColors.border, height: 1),
             Expanded(child: _loadingScores
               ? const Center(child: CircularProgressIndicator())
               : _standings()),
           ]);
-
-  Widget _scopeToggle() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    child: Row(children: [
-      Expanded(child: _scopeChip('All Schools', 'all')),
-      const SizedBox(width: 8),
-      Expanded(child: _scopeChip(_myInstitutionName ?? 'My School', 'school')),
-    ]),
-  );
-
-  Widget _scopeChip(String label, String value) {
-    final selected = _scope == value;
-    return GestureDetector(
-      onTap: () { if (_scope != value) { setState(() => _scope = value); if (_selectedGame != null) _selectGame(_selectedGame!); } },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? GacomColors.deepOrange.withOpacity(0.15) : GacomColors.cardDark,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(color: selected ? GacomColors.deepOrange : GacomColors.border),
-        ),
-        child: Text(label, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: selected ? GacomColors.deepOrange : GacomColors.textMuted)),
-      ),
-    );
-  }
 
   Widget _gamePicker() => SizedBox(
     height: 96,
