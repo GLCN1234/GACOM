@@ -63,8 +63,8 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       }).toList();
       // Second, small query for equipped cosmetics — kept separate from
       // the main query rather than a complex nested embed, since this
-      // is only ever 10 rows and it's safer to get right.
-      final userIds = rows.map((r) => (r['user'] as Map?)?['id']).whereType<String>().toSet().toList();
+      // is only ever 10 rows and it's safer to get right. Reuses the
+      // same userIds already extracted above, not a second copy.
       if (userIds.isNotEmpty) {
         try {
           final cosmetics = await SupabaseService.client.from('user_cosmetics')
