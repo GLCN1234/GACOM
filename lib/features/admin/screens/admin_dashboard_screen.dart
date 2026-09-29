@@ -286,10 +286,13 @@ class _CompetitionsAdminState extends ConsumerState<_CompetitionsAdminSection> {
   void _showCreate() async {
     List<Map<String, dynamic>> institutions = [];
     try {
-      final data = await SupabaseService.client.from('institutions').select('id, name').eq('is_active', true).order('name');
+      final data = await SupabaseService.client.from('institutions').select('id, name, state, country').eq('is_active', true).order('name');
       institutions = List<Map<String, dynamic>>.from(data);
     } catch (_) {}
-    final titleCtrl = TextEditingController(); final gameCtrl = TextEditingController(); final prizeCtrl = TextEditingController(); final entryCtrl = TextEditingController(); final targetScoreCtrl = TextEditingController(); String type = 'free'; DateTime? starts; DateTime? ends; String? institutionId;
+    final titleCtrl = TextEditingController(); final gameCtrl = TextEditingController(); final prizeCtrl = TextEditingController(); final entryCtrl = TextEditingController(); final targetScoreCtrl = TextEditingController(); String type = 'free'; DateTime? starts; DateTime? ends;
+    String scopeType = 'all'; String? scopeInstitutionId; String? scopeState; String? scopeCountry;
+    final states = institutions.map((i) => i['state'] as String?).whereType<String>().toSet().toList()..sort();
+    final countries = institutions.map((i) => i['country'] as String?).whereType<String>().toSet().toList()..sort();
     if (!mounted) return;
     showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(backgroundColor: GacomColors.cardDark, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Text('CREATE COMPETITION', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary, fontSize: 18)),
@@ -298,13 +301,44 @@ class _CompetitionsAdminState extends ConsumerState<_CompetitionsAdminSection> {
         _AdminField(targetScoreCtrl, 'Target score to win (optional — e.g. 1000)', type: TextInputType.number),
         const Padding(padding: EdgeInsets.only(top: 4), child: Text('If set, this becomes a race: first player to reach this score in the game wins, instead of a bracket tournament.', style: TextStyle(color: GacomColors.textMuted, fontSize: 11))),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String?>(
-          value: institutionId, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
-          decoration: const InputDecoration(labelText: 'School (leave blank for open to all)', labelStyle: TextStyle(color: GacomColors.textMuted)),
-          items: [const DropdownMenuItem<String?>(value: null, child: Text('Open to all schools')),
-            ...institutions.map((i) => DropdownMenuItem<String?>(value: i['id'] as String, child: Text(i['name'] as String, overflow: TextOverflow.ellipsis)))],
-          onChanged: (v) => setDlg(() => institutionId = v),
+        DropdownButtonFormField<String>(
+          value: scopeType, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+          decoration: const InputDecoration(labelText: 'Who can compete', labelStyle: TextStyle(color: GacomColors.textMuted)),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('Open to everyone')),
+            DropdownMenuItem(value: 'institution', child: Text('One specific school')),
+            DropdownMenuItem(value: 'state', child: Text('Schools in one state')),
+            DropdownMenuItem(value: 'country', child: Text('Schools in one country')),
+          ],
+          onChanged: (v) => setDlg(() { scopeType = v ?? 'all'; scopeInstitutionId = null; scopeState = null; scopeCountry = null; }),
         ),
+        if (scopeType == 'institution') ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            value: scopeInstitutionId, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+            decoration: const InputDecoration(labelText: 'School', labelStyle: TextStyle(color: GacomColors.textMuted)),
+            items: institutions.map((i) => DropdownMenuItem<String?>(value: i['id'] as String, child: Text(i['name'] as String, overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (v) => setDlg(() => scopeInstitutionId = v),
+          ),
+        ],
+        if (scopeType == 'state') ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            value: scopeState, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+            decoration: const InputDecoration(labelText: 'State', labelStyle: TextStyle(color: GacomColors.textMuted)),
+            items: states.map((s) => DropdownMenuItem<String?>(value: s, child: Text(s))).toList(),
+            onChanged: (v) => setDlg(() => scopeState = v),
+          ),
+        ],
+        if (scopeType == 'country') ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            value: scopeCountry, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+            decoration: const InputDecoration(labelText: 'Country', labelStyle: TextStyle(color: GacomColors.textMuted)),
+            items: countries.map((c) => DropdownMenuItem<String?>(value: c, child: Text(c))).toList(),
+            onChanged: (v) => setDlg(() => scopeCountry = v),
+          ),
+        ],
         const SizedBox(height: 12),
         Row(children: [const Text('Type: ', style: TextStyle(color: GacomColors.textSecondary)), const SizedBox(width: 8), ChoiceChip(label: const Text('Free'), selected: type == 'free', selectedColor: GacomColors.deepOrange, onSelected: (_) => setDlg(() => type = 'free'), labelStyle: TextStyle(color: type == 'free' ? Colors.white : GacomColors.textMuted)),
           const SizedBox(width: 8), ChoiceChip(label: const Text('Paid'), selected: type == 'paid', selectedColor: GacomColors.deepOrange, onSelected: (_) => setDlg(() => type = 'paid'), labelStyle: TextStyle(color: type == 'paid' ? Colors.white : GacomColors.textMuted))]),
@@ -320,7 +354,7 @@ class _CompetitionsAdminState extends ConsumerState<_CompetitionsAdminSection> {
         ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: () async {
           if (titleCtrl.text.isEmpty || gameCtrl.text.isEmpty || starts == null || ends == null) { GacomSnackbar.show(ctx, 'Fill all required fields', isError: true); return; }
           try {
-            await SupabaseService.client.from('competitions').insert({'title': titleCtrl.text.trim(), 'game_name': gameCtrl.text.trim(), 'competition_type': type, 'prize_pool': double.tryParse(prizeCtrl.text) ?? 0, 'entry_fee': double.tryParse(entryCtrl.text) ?? 0, 'target_score': int.tryParse(targetScoreCtrl.text.trim()), 'institution_id': institutionId, 'starts_at': starts!.toIso8601String(), 'ends_at': ends!.toIso8601String(), 'status': 'upcoming', 'created_by': SupabaseService.currentUserId, 'is_admin_created': true});
+            await SupabaseService.client.from('competitions').insert({'title': titleCtrl.text.trim(), 'game_name': gameCtrl.text.trim(), 'competition_type': type, 'prize_pool': double.tryParse(prizeCtrl.text) ?? 0, 'entry_fee': double.tryParse(entryCtrl.text) ?? 0, 'target_score': int.tryParse(targetScoreCtrl.text.trim()), 'scope_type': scopeType, 'institution_id': scopeType == 'institution' ? scopeInstitutionId : null, 'scope_state': scopeType == 'state' ? scopeState : null, 'scope_country': scopeType == 'country' ? scopeCountry : null, 'starts_at': starts!.toIso8601String(), 'ends_at': ends!.toIso8601String(), 'status': 'upcoming', 'created_by': SupabaseService.currentUserId, 'is_admin_created': true});
             Navigator.pop(ctx); _load(); GacomSnackbar.show(context, 'Competition created!', isSuccess: true);
           } catch (e) { GacomSnackbar.show(ctx, 'Error: $e', isError: true); }
         }, child: const Text('CREATE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)))])));
@@ -335,7 +369,7 @@ class _CompetitionsAdminState extends ConsumerState<_CompetitionsAdminSection> {
         final c = _comps[i]; final status = c['status'] as String? ?? 'upcoming';
         final statusColor = status == 'live' ? GacomColors.error : status == 'upcoming' ? GacomColors.info : GacomColors.textMuted;
         return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)),
-          child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(c['title'] ?? 'Untitled', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)), Text('${c['game_name']} · ₦${c['prize_pool'] ?? 0} prize${c['target_score'] != null ? ' · Race to ${c['target_score']} pts' : ''}${c['institution_id'] != null ? ' · School-scoped' : ' · Open to all schools'}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12))])),
+          child: Row(children: [Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(c['title'] ?? 'Untitled', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 15, color: GacomColors.textPrimary)), Text('${c['game_name']} · ₦${c['prize_pool'] ?? 0} prize${c['target_score'] != null ? ' · Race to ${c['target_score']} pts' : ''}${c['scope_type'] == 'institution' ? ' · One school' : c['scope_type'] == 'state' ? ' · ${c['scope_state']} state' : c['scope_type'] == 'country' ? ' · ${c['scope_country']}' : ' · Open to everyone'}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12))])),
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: statusColor.withOpacity(0.12), borderRadius: BorderRadius.circular(50)), child: Text(status.toUpperCase(), style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: statusColor)))]));
       })),
     ]);

@@ -80,6 +80,25 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
   Future<void> _joinCompetition() async {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
+
+    // Real eligibility check — does this student's actual school/state/
+    // country match what this competition is restricted to. Runs once
+    // here at registration, not silently on every score query.
+    try {
+      final eligible = await SupabaseService.client.rpc('check_competition_eligibility',
+          params: {'p_competition_id': widget.competitionId, 'p_user_id': userId});
+      if (eligible != true) {
+        if (mounted) GacomSnackbar.show(context, 'This competition is restricted to a specific school, state, or country you\'re not registered under.', isError: true);
+        return;
+      }
+    } catch (_) {
+      // If the eligibility check itself fails, don't silently let
+      // someone into a restricted competition — block and ask them to
+      // try again rather than fail open.
+      if (mounted) GacomSnackbar.show(context, 'Could not verify eligibility right now. Try again.', isError: true);
+      return;
+    }
+
     final isPaid = _competition?['competition_type'] == 'paid';
     final entryFee = (_competition?['entry_fee'] as num?)?.toDouble() ?? 0;
 
