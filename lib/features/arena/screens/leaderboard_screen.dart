@@ -43,12 +43,28 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       // Two separate fetches, not an embedded join — game_scores.user_id
       // references auth.users, not profiles, so PostgREST has no
       // declared relationship to embed profiles through here at all.
+      // Fetches more rows than the final top-10 needs, since one
+      // player can have many sessions for the same game — without
+      // this, someone who's played 14 times could fill every single
+      // slot with their own attempts instead of one entry per player.
       final scores = await SupabaseService.client.from('game_scores')
           .select('user_id, score, won, created_at')
           .eq('game_name', game['name'])
           .order('score', ascending: false)
-          .limit(10);
-      final scoreRows = List<Map<String, dynamic>>.from(scores);
+          .limit(200);
+      final allRows = List<Map<String, dynamic>>.from(scores);
+      // One entry per player — their single best score for this game,
+      // not every attempt they've ever made. Already sorted
+      // highest-first, so the first row seen per user_id is their best.
+      final seenUsers = <String>{};
+      final scoreRows = <Map<String, dynamic>>[];
+      for (final r in allRows) {
+        final uid = r['user_id'] as String;
+        if (seenUsers.add(uid)) {
+          scoreRows.add(r);
+          if (scoreRows.length >= 10) break;
+        }
+      }
       final userIds = scoreRows.map((r) => r['user_id'] as String).toSet().toList();
       Map<String, Map<String, dynamic>> profilesById = {};
       if (userIds.isNotEmpty) {
