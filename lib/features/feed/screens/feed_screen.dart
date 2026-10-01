@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/edu_prefs.dart' as edu_prefs;
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/services/notification_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -173,7 +174,10 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
           _HeaderBtn(icon: Icons.refresh_rounded, onTap: onSearch),
           const SizedBox(width: 8),
-          _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: true),
+          StreamBuilder<int>(
+            stream: NotificationService.unreadCountStream(),
+            builder: (_, snap) => _HeaderBtn(icon: Icons.notifications_outlined, onTap: onNotifs, hasDot: (snap.data ?? 0) > 0),
+          ),
         ]),
         const SizedBox(height: 14),
         // Row 2: avatar + greeting + name + create-post shortcut
