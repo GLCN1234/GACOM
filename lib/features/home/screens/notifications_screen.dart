@@ -19,11 +19,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (mounted) setState(() { _items = items; _loading = false; });
   }
 
+  // Matches the real notification_type enum already in the database:
+  // follow, like, comment, mention, competition, community, wallet,
+  // system, verification.
   IconData _iconFor(String type) => switch (type) {
-    'house' => Icons.groups_rounded,
+    'follow' => Icons.person_add_rounded,
+    'like' => Icons.favorite_rounded,
+    'comment' => Icons.chat_bubble_rounded,
+    'mention' => Icons.alternate_email_rounded,
     'competition' => Icons.emoji_events_rounded,
-    'chat' => Icons.chat_bubble_rounded,
-    'subscription' => Icons.school_rounded,
+    'community' => Icons.groups_rounded,
+    'wallet' => Icons.account_balance_wallet_rounded,
+    'verification' => Icons.verified_rounded,
     _ => Icons.notifications_rounded,
   };
 
@@ -41,7 +48,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('NOTIFICATIONS'), actions: [
-      if (_items.any((n) => n['read'] != true))
+      if (_items.any((n) => n['is_read'] != true))
         TextButton(
           onPressed: () async { await NotificationService.markAllRead(); _load(); },
           child: const Text('Mark all read', style: TextStyle(color: GacomColors.deepOrange, fontSize: 12)),
@@ -59,12 +66,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, i) {
                 final n = _items[i];
-                final unread = n['read'] != true;
+                final unread = n['is_read'] != true;
+                final data = n['data'] as Map<String, dynamic>?;
                 return InkWell(
                   borderRadius: BorderRadius.circular(14),
                   onTap: () async {
                     if (unread) await NotificationService.markRead(n['id'] as String);
-                    final route = n['link_route'] as String?;
+                    final route = data?['link_route'] as String?;
                     if (route != null && mounted) context.go(route);
                     _load();
                   },
@@ -79,7 +87,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Container(
                         width: 40, height: 40,
                         decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.15), shape: BoxShape.circle),
-                        child: Icon(_iconFor(n['type'] as String? ?? 'general'), color: GacomColors.deepOrange, size: 20),
+                        child: Icon(_iconFor(n['type'] as String? ?? 'system'), color: GacomColors.deepOrange, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
