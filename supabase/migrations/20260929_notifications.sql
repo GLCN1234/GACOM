@@ -11,7 +11,7 @@ create policy "users update own notifications" on notifications for update using
 
 create index if not exists notifications_recipient_unread_idx on notifications(recipient_id, is_read, created_at desc);
 
-alter publication supabase_realtime add table notifications;
+-- Already added to realtime before this migration touched the table.
 
 -- Real trigger: notify a house's creator when someone new joins.
 -- 'community' is the closest existing enum value — this schema's
