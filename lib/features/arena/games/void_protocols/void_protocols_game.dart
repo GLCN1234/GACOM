@@ -203,7 +203,7 @@ class DroneComponent extends PositionComponent
     super.render(canvas);
     final paint = Paint()..color = const Color(0xFFE2E8F0);
     final glow = Paint()
-      ..color = gameRef.frequencyColors[gameRef.currentFrequency].withOpacity(0.6)
+      ..color = VoidProtocolsGame.frequencyColors[gameRef.currentFrequency].withOpacity(0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     final path = Path()

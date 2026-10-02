@@ -182,7 +182,7 @@ class BioDroneComponent extends PositionComponent
     super.render(canvas);
     final paint = Paint()..color = const Color(0xFFE2E8F0);
     final glow = Paint()
-      ..color = gameRef.payloadColors[gameRef.currentPayload].withOpacity(0.7)
+      ..color = ChronoSpireGame.payloadColors[gameRef.currentPayload].withOpacity(0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawOval(const Rect.fromLTWH(2, 6, 26, 20), paint);
