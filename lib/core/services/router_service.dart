@@ -76,6 +76,7 @@ import '../../features/arena/screens/leaderboard_screen.dart';
 import '../../features/arena/screens/game_detail_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
+import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -274,6 +275,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'survival',
                     builder: (_, __) => const SurvivalShooterScreen(),
+                  ),
+                  GoRoute(
+                    path: 'void-protocols',
+                    builder: (_, __) => const VoidProtocolsScreen(),
                   ),
                 ],
               ),
