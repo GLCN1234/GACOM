@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONNECT FOUR
@@ -73,7 +74,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
   void _reset(){setState((){board=List.generate(rows,(_)=>List.filled(cols,0));turn=1;over=false;status='Your turn';});}
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'connect_four', title: 'HOW TO PLAY CONNECT FOUR', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Drop a piece', description: 'Tap a column to drop your piece into it'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Connect 4', description: 'First to line up 4 in a row — any direction — wins')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('CONNECT FOUR'), actions:[
       Text('You $wScore — AI $aScore',style:const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)),
@@ -102,7 +103,8 @@ class _ConnectFourState extends State<ConnectFourGame> {
         child: ElevatedButton(onPressed:_reset,style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
           child: const Text('NEW GAME',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white))))),
     ]),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -204,7 +206,7 @@ class _ReversiState extends State<ReversiGame>{
   @override
   Widget build(BuildContext ctx){
     final valid=_valid(board,1);
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'reversi', title: 'HOW TO PLAY REVERSI', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Flank the opponent', description: 'Place a piece that traps opponent pieces between two of yours'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Most pieces wins', description: 'Trapped pieces flip to your color — whoever has the most when the board fills wins')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('REVERSI')),
       body: Column(children:[
@@ -233,6 +235,7 @@ class _ReversiState extends State<ReversiGame>{
           child: ElevatedButton(onPressed:_reset,style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
             child: const Text('NEW GAME',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white))))),
       ]),
+    ),
     );
   }
 }
@@ -277,7 +280,7 @@ class _MemoryMatchState extends State<MemoryMatchGame>{
     }
   }
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'memory_match', title: 'HOW TO PLAY MEMORY MATCH', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Flip two cards', description: 'Tap two cards to reveal them'), HowToPlayStep(icon: Icons.psychology_rounded, title: 'Find the pairs', description: 'Matching cards stay face up — clear the board in as few moves as possible')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('MEMORY MATCH'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Moves: $moves  Pairs: $pairs/12',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
@@ -300,7 +303,8 @@ class _MemoryMatchState extends State<MemoryMatchGame>{
         child: ElevatedButton(onPressed:_reset,style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
           child: const Text('NEW GAME',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white))))),
     ]),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -336,7 +340,7 @@ class _WordScrambleState extends State<WordScrambleGame>{
     }
   }
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'word_scramble', title: 'HOW TO PLAY WORD SCRAMBLE', steps: const [HowToPlayStep(icon: Icons.keyboard_rounded, title: 'Unscramble the word', description: 'Type the correctly spelled word from the scrambled letters shown'), HowToPlayStep(icon: Icons.local_fire_department_rounded, title: 'Build a streak', description: 'Consecutive correct answers earn bonus points')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('WORD SCRAMBLE'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Score: $score',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.deepOrange)))),
@@ -362,7 +366,8 @@ class _WordScrambleState extends State<WordScrambleGame>{
       const SizedBox(height:8),
       TextButton(onPressed:_next,child: const Text('SKIP',style:TextStyle(color:GacomColors.textMuted,fontFamily:'Rajdhani',fontWeight:FontWeight.w700))),
     ])),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -428,7 +433,7 @@ class _Game2048State extends State<Game2048>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>GestureDetector(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'game_2048', title: 'HOW TO PLAY 2048', steps: const [HowToPlayStep(icon: Icons.swipe_rounded, title: 'Swipe to slide', description: 'Swipe up, down, left, or right to slide all tiles that way'), HowToPlayStep(icon: Icons.merge_rounded, title: 'Merge matching tiles', description: 'Two tiles with the same number combine into one when they collide')], child: GestureDetector(
     onHorizontalDragEnd:(d){if(d.primaryVelocity!>0)_doSlide('right');else _doSlide('left');},
     onVerticalDragEnd:(d){if(d.primaryVelocity!>0)_doSlide('down');else _doSlide('up');},
     child: Scaffold(backgroundColor: GacomColors.obsidian,
@@ -456,7 +461,8 @@ class _Game2048State extends State<Game2048>{
             child: const Text('NEW GAME',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white))))),
       ]),
     ),
-  );
+  ),
+    );
 
   void _doSlide(String dir){
     if(over)return;
@@ -507,7 +513,7 @@ class _HangmanState extends State<HangmanGame>{
   @override
   Widget build(BuildContext ctx){
     final display=word.split('').map((l)=>guessed.contains(l)?l:'_').join(' ');
-    return Scaffold(backgroundColor: GacomColors.obsidian,
+    return HowToPlayOverlay(gameKey: 'hangman', title: 'HOW TO PLAY HANGMAN', steps: const [HowToPlayStep(icon: Icons.keyboard_rounded, title: 'Guess a letter', description: 'Tap letters to guess what the hidden word is'), HowToPlayStep(icon: Icons.favorite_rounded, title: 'Limited guesses', description: 'Each wrong letter costs a life — guess the word before you run out')], child: Scaffold(backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('HANGMAN'), actions:[
         Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Score: $score',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.deepOrange)))),
       ]),
@@ -536,6 +542,7 @@ class _HangmanState extends State<HangmanGame>{
           style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
           child: const Text('NEW WORD',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white)))),
       ])),
+    ),
     );
   }
 }
@@ -580,7 +587,7 @@ class _SpeedMathState extends State<SpeedMathGame>{
   @override void dispose(){_timer?.cancel();_ctrl.dispose();super.dispose();}
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'speed_math', title: 'HOW TO PLAY SPEED MATH', steps: const [HowToPlayStep(icon: Icons.calculate_rounded, title: 'Solve fast', description: 'Type the answer to each equation as quickly as you can'), HowToPlayStep(icon: Icons.timer_rounded, title: 'Beat the clock', description: 'Answer as many as possible before time runs out')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('SPEED MATH')),
     body: Padding(padding: const EdgeInsets.all(16),child: Column(mainAxisAlignment:MainAxisAlignment.center,children:[
@@ -611,7 +618,8 @@ class _SpeedMathState extends State<SpeedMathGame>{
           child: const Text('SUBMIT',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:18,color:Colors.white)))),
       ],
     ])),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -668,7 +676,7 @@ class _SimonSaysState extends State<SimonSaysGame>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'simon_says', title: 'HOW TO PLAY SIMON SAYS', steps: const [HowToPlayStep(icon: Icons.visibility_rounded, title: 'Watch the sequence', description: 'Pay attention to the order the tiles light up'), HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Repeat it back', description: 'Tap the tiles in the exact same order — it gets longer each round')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('SIMON SAYS'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Score: $score',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.deepOrange)))),
@@ -696,7 +704,8 @@ class _SimonSaysState extends State<SimonSaysGame>{
               child: Center(child: Text(_labels[i],style: const TextStyle(fontSize:48))))))),
       ],
     ])),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -752,7 +761,7 @@ class _MinesweeperState extends State<MinesweeperGame>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'minesweeper', title: 'HOW TO PLAY MINESWEEPER', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Reveal tiles', description: 'Tap a tile to reveal it — numbers show how many mines are nearby'), HowToPlayStep(icon: Icons.dangerous_rounded, title: 'Avoid the mines', description: 'Use the numbers to figure out where it is safe to tap next')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('MINESWEEPER'), actions:[
       IconButton(icon: const Icon(Icons.refresh_rounded,color:GacomColors.deepOrange),onPressed:_reset),
@@ -782,7 +791,8 @@ class _MinesweeperState extends State<MinesweeperGame>{
         },
       )))),
     ]),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -847,7 +857,7 @@ class _BlackjackState extends State<BlackjackGame>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'blackjack', title: 'HOW TO PLAY BLACKJACK', steps: const [HowToPlayStep(icon: Icons.add_rounded, title: 'Hit or Stand', description: 'Draw more cards (Hit) or keep your hand as is (Stand)'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Get closer to 21', description: 'Beat the dealer without going over 21')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('BLACKJACK'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $dScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
@@ -879,7 +889,8 @@ class _BlackjackState extends State<BlackjackGame>{
           child: const Text('STAND',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:16,color:Colors.white)))),
       ]),
     ])),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -965,7 +976,7 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
   @override
   Widget build(BuildContext ctx){
     final w=(MediaQuery.of(ctx).size.width-32)/(n);
-    return Scaffold(backgroundColor: GacomColors.obsidian,
+    return HowToPlayOverlay(gameKey: 'dots_boxes', title: 'HOW TO PLAY DOTS AND BOXES', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Draw a line', description: 'Tap a space between two dots to draw a line there'), HowToPlayStep(icon: Icons.check_box_rounded, title: 'Complete boxes', description: 'Closing the 4th side of a box claims it and gives you another turn')], child: Scaffold(backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('DOTS & BOXES'), actions:[
         Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
       ]),
@@ -991,6 +1002,7 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
           child: ElevatedButton(onPressed:_reset,style:ElevatedButton.styleFrom(backgroundColor:GacomColors.deepOrange,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))),
             child: const Text('NEW GAME',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,color:Colors.white))))),
       ]),
+    ),
     );
   }
 }
@@ -1064,7 +1076,7 @@ class _NumberQuizState extends State<NumberQuizGame>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'number_duel', title: 'HOW TO PLAY NUMBER DUEL', steps: const [HowToPlayStep(icon: Icons.calculate_rounded, title: 'Solve first', description: 'Type the correct answer before the AI does'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Speed matters', description: 'It is a race — whoever answers correctly first scores the point')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('NUMBER DUEL'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
@@ -1086,7 +1098,8 @@ class _NumberQuizState extends State<NumberQuizGame>{
           child: const Text('SUBMIT',style:TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:18,color:Colors.white)))),
       ],
     ])),
-  );
+  ),
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1134,7 +1147,7 @@ class _SnakeState extends State<SnakeGame>{
   @override void dispose(){_timer?.cancel();super.dispose();}
 
   @override
-  Widget build(BuildContext ctx)=>Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'snake', title: 'HOW TO PLAY SNAKE', steps: const [HowToPlayStep(icon: Icons.swipe_rounded, title: 'Swipe to steer', description: 'Swipe in any direction to change the snake direction'), HowToPlayStep(icon: Icons.restaurant_rounded, title: 'Eat to grow', description: 'Eating food grows your snake — avoid hitting the walls or yourself')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('SNAKE'), actions:[
       Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('Score: $score',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:14,color:GacomColors.deepOrange)))),
@@ -1167,7 +1180,8 @@ class _SnakeState extends State<SnakeGame>{
         ElevatedButton(onPressed:()=>_setDir(1,0),style:ElevatedButton.styleFrom(backgroundColor:GacomColors.elevatedCard,shape: const CircleBorder(),padding: const EdgeInsets.all(14)),child: const Icon(Icons.arrow_downward_rounded,color:GacomColors.deepOrange)),
       ])),
     ]),
-  );
+  ),
+    );
 }
 class _SnakePainter extends CustomPainter{
   final List<List<int>> snake;final List<int> food;final int g;
