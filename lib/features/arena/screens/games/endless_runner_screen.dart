@@ -67,6 +67,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
 
   _Phase _phase = _Phase.intro;
   int _lane = 1;
+  double _dragAccumulator = 0;
   int _lives = 3;
   int _score = 0;
   int _correctCount = 0;
@@ -301,10 +302,36 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
         const SizedBox(height: 10),
         Expanded(
           child: GestureDetector(
-            onHorizontalDragEnd: (details) {
-              final v = details.primaryVelocity ?? 0;
-              if (v > 80) _changeLane(1);
-              if (v < -80) _changeLane(-1);
+            onHorizontalDragStart: (_) => _dragAccumulator = 0,
+            // Distance-based, not velocity-based — a slow, deliberate
+            // swipe used to fall under the speed threshold and get
+            // silently ignored, which is exactly what felt like the
+            // swipe "hanging." Tracking cumulative distance during the
+            // drag itself means any real swipe registers immediately,
+            // regardless of how fast or slow it's made.
+            onHorizontalDragUpdate: (details) {
+              _dragAccumulator += details.delta.dx;
+              const threshold = 28.0;
+              if (_dragAccumulator > threshold) {
+                _changeLane(1);
+                _dragAccumulator = 0;
+              } else if (_dragAccumulator < -threshold) {
+                _changeLane(-1);
+                _dragAccumulator = 0;
+              }
+            },
+            onHorizontalDragEnd: (_) => _dragAccumulator = 0,
+            // A direct alternative to swiping — tap anywhere in a lane
+            // to move straight there. Some players find tapping more
+            // reliable and intuitive than a swipe gesture; this gives
+            // that choice instead of forcing one input method.
+            onTapDown: (details) {
+              final w = context.size?.width ?? 1;
+              final tappedLane = (details.localPosition.dx / (w / 3)).floor().clamp(0, 2);
+              // Jump straight to the tapped lane in one move, not a
+              // single step at a time like a swipe — that's the whole
+              // point of offering a direct-tap alternative.
+              if (tappedLane != _lane) _changeLane(tappedLane - _lane);
             },
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth, h = constraints.maxHeight;

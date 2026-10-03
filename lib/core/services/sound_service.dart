@@ -14,6 +14,20 @@ class SoundService {
   bool _sfxEnabled = true;
   bool _initialized = false;
 
+  // A small pool of pre-built, reusable players instead of
+  // constructing a brand new native AudioPlayer on every single sound
+  // trigger. That per-call construction was the real cause behind
+  // reports of sound lagging noticeably behind the game event it was
+  // meant to punctuate, especially in fast games like Signal Run where
+  // several sounds can fire in quick succession — each new player
+  // involves real platform-channel setup overhead, and under rapid
+  // firing that overhead was audible as delay. Cycling through a
+  // fixed pool round-robin still lets sounds overlap (each pool slot
+  // is independent), just without rebuilding the player every time.
+  static const _poolSize = 6;
+  final List<AudioPlayer> _sfxPool = List.generate(_poolSize, (_) => AudioPlayer());
+  int _poolIndex = 0;
+
   bool get musicEnabled => _musicEnabled;
   bool get sfxEnabled => _sfxEnabled;
 
@@ -25,32 +39,33 @@ class SoundService {
       _musicEnabled = prefs.getBool('sound_music_enabled') ?? true;
       _sfxEnabled = prefs.getBool('sound_sfx_enabled') ?? true;
     } catch (_) {}
+    // Low-latency mode plays assets from memory instead of re-reading
+    // from disk on every call — the other half of fixing the lag,
+    // alongside not rebuilding the player itself each time.
+    for (final p in _sfxPool) {
+      try { await p.setPlayerMode(PlayerMode.lowLatency); } catch (_) {}
+    }
   }
 
   Future<void> _playSfx(String assetName, {Duration? maxDuration}) async {
     if (!_sfxEnabled) return;
-    // A fresh, short-lived player per sound effect — not the old shared
-    // stop-then-restart approach, which caused an audible crack/skip
-    // whenever two sounds fired close together (e.g. a chess capture
-    // triggering move + capture almost simultaneously): stopping a
-    // still-playing sound truncates its waveform abruptly, which is
-    // exactly what that glitch was. Independent players let sounds
-    // overlap and finish naturally instead of cutting each other off.
     try {
-      final player = AudioPlayer();
-      player.onPlayerComplete.listen((_) => player.dispose());
+      final player = _sfxPool[_poolIndex];
+      _poolIndex = (_poolIndex + 1) % _poolSize;
+      // stop() before replaying this pool slot — necessary since it's
+      // reused, but unlike the old shared-single-player approach this
+      // only ever interrupts this one slot's own previous sound, never
+      // a sound still in use elsewhere, so it doesn't reintroduce the
+      // original overlapping-sounds crackle.
+      await player.stop();
       await player.play(AssetSource('sounds/$assetName'));
       // For sounds whose source file runs noticeably longer than the
       // in-game moment it's meant to punctuate (the chess capture
       // sound specifically was reported as long and "relaying" into
-      // the next move) — cap playback at a fixed, short duration
-      // instead. A clean, deliberate stop here doesn't have the same
-      // crack/skip issue the old shared-player approach had, since
-      // it's a one-time stop on an isolated player, not a
-      // stop-then-immediately-restart on a shared one.
+      // the next move) — cap playback at a fixed, short duration.
       if (maxDuration != null) {
         Future.delayed(maxDuration, () async {
-          try { await player.stop(); await player.dispose(); } catch (_) {}
+          try { await player.stop(); } catch (_) {}
         });
       }
     } catch (_) {
