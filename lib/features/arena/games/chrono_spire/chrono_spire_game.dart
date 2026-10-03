@@ -40,6 +40,7 @@ class ChronoSpireGame extends FlameGame with HasCollisionDetection, DragCallback
 
   late BioDroneComponent player;
   late JoystickComponent joystick;
+  late JoystickComponent aimJoystick;
   double _spawnTimer = 0;
   double _waveTimer = 0;
   static const _waveDuration = 20.0;
@@ -61,9 +62,20 @@ class ChronoSpireGame extends FlameGame with HasCollisionDetection, DragCallback
       margin: const EdgeInsets.only(left: 32, bottom: 32),
     );
 
+    // Real second stick for aiming and firing — a true twin-stick
+    // control, not auto-targeting the nearest enemy. Nothing fires
+    // unless this stick is actually being pushed.
+    final aimKnobPaint = Paint()..color = const Color(0xFF34D399).withOpacity(0.85);
+    final aimBackgroundPaint = Paint()..color = const Color(0xFF34D399).withOpacity(0.18);
+    aimJoystick = JoystickComponent(
+      knob: CircleComponent(radius: 20, paint: aimKnobPaint),
+      background: CircleComponent(radius: 50, paint: aimBackgroundPaint),
+      margin: const EdgeInsets.only(right: 32, bottom: 32),
+    );
+
     player = BioDroneComponent()..position = size / 2;
 
-    addAll([joystick, player]);
+    addAll([joystick, aimJoystick, player]);
   }
 
   double get fireRateMultiplier => 1.0 + (_fireRateStacks * 0.15).clamp(0, 0.6);
@@ -194,26 +206,16 @@ class BioDroneComponent extends PositionComponent
     super.update(dt);
     _fireCooldown -= dt;
     final rate = _baseFireRate / gameRef.fireRateMultiplier;
-    if (_fireCooldown <= 0) {
-      final target = _findNearestEnemy();
-      if (target != null) {
-        _fireCooldown = rate;
-        final dir = (target.position - position).normalized();
-        gameRef.add(PayloadComponent(direction: dir, payloadType: gameRef.currentPayload)
-          ..position = position.clone());
-        SoundService.instance.playShoot();
-      }
+    // Manual, deliberate firing — only shoots while the aim stick is
+    // actually being pushed, in whatever direction it's pushed. No
+    // auto-targeting at all; where you aim is entirely your choice.
+    if (_fireCooldown <= 0 && !gameRef.aimJoystick.delta.isZero()) {
+      _fireCooldown = rate;
+      final dir = gameRef.aimJoystick.relativeDelta.normalized();
+      gameRef.add(PayloadComponent(direction: dir, payloadType: gameRef.currentPayload)
+        ..position = position.clone());
+      SoundService.instance.playShoot();
     }
-  }
-
-  BioBeastComponent? _findNearestEnemy() {
-    BioBeastComponent? nearest;
-    double nearestDist = double.infinity;
-    for (final e in gameRef.children.whereType<BioBeastComponent>()) {
-      final d = e.position.distanceToSquared(position);
-      if (d < nearestDist) { nearestDist = d; nearest = e; }
-    }
-    return nearest;
   }
 }
 
@@ -266,8 +268,11 @@ class BioBeastComponent extends PositionComponent
   int? _lastPayloadType;
   double _lastPayloadTime = -10;
   late Vector2 _weakPointOffset;
+  double _attackCooldown = 1.5;
   static const _speed = 50.0;
   static const _comboWindow = 1.2; // seconds — acid then thermal within this window combos
+  static const _attackRange = 220.0;
+  static const _attackCooldownMax = 2.2;
 
   BioBeastComponent({required double startHealth, required this.weakPoint})
       : health = startHealth,
@@ -306,8 +311,19 @@ class BioBeastComponent extends PositionComponent
     if (_slowTimer > 0) _slowTimer -= dt;
     if (_disableAttackTimer > 0) _disableAttackTimer -= dt;
     final speedMult = _slowTimer > 0 ? 0.35 : 1.0;
-    final dir = (gameRef.player.position - position).normalized();
+    final toPlayer = gameRef.player.position - position;
+    final dir = toPlayer.normalized();
     position += dir * _speed * speedMult * dt;
+
+    // The real bullet-hell threat the player actually has to dodge —
+    // not just contact damage from walking into them. A respiratory
+    // weak-point hit disables this specific attack, which is the real
+    // payoff for choosing that target: one fewer thing shooting at you.
+    _attackCooldown -= dt;
+    if (_attackCooldown <= 0 && _disableAttackTimer <= 0 && toPlayer.length < _attackRange) {
+      _attackCooldown = _attackCooldownMax;
+      gameRef.add(EnemyProjectileComponent(direction: dir)..position = position.clone());
+    }
   }
 
   void takeDamage(double amount, int payloadType, bool hitWeakPoint, PayloadComponent source) {
@@ -407,6 +423,42 @@ class GeneticNodeComponent extends PositionComponent
     super.onCollisionStart(points, other);
     if (other is BioDroneComponent) {
       gameRef.collectGeneticNode();
+      removeFromParent();
+    }
+  }
+}
+
+/// A bio-beast's ranged attack — a spore the player has to actually
+/// see coming and dodge, since the dodge roll's invincibility is the
+/// real counter to this, not standing still and tanking hits.
+class EnemyProjectileComponent extends CircleComponent
+    with HasGameRef<ChronoSpireGame>, CollisionCallbacks {
+  final Vector2 direction;
+  static const _speed = 150.0;
+  double _life = 3.0;
+
+  EnemyProjectileComponent({required this.direction})
+      : super(radius: 6, paint: Paint()..color = const Color(0xFFFB7185));
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    add(CircleHitbox());
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    position += direction * _speed * dt;
+    _life -= dt;
+    if (_life <= 0) removeFromParent();
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> points, PositionComponent other) {
+    super.onCollisionStart(points, other);
+    if (other is BioDroneComponent) {
+      gameRef.takeDamage(9);
       removeFromParent();
     }
   }

@@ -11,6 +11,7 @@ class ChronoSpireScreen extends StatefulWidget {
 
 class _ChronoSpireScreenState extends State<ChronoSpireScreen> {
   late ChronoSpireGame _game;
+  bool _showHowToPlay = true;
 
   @override
   void initState() {
@@ -80,39 +81,42 @@ class _ChronoSpireScreenState extends State<ChronoSpireScreen> {
             ]),
           ),
 
-          // Bottom-right action buttons: payload switch + dodge roll
+          // Top-right action row: payload switch + dodge roll — moved
+          // up here since the bottom-right is now the real aim stick,
+          // used for manual firing, not auto-fire.
           Positioned(
-            bottom: 24, right: 24,
-            child: Column(children: [
-              ValueListenableBuilder<double>(
-                valueListenable: _game.dodgeCooldownNotifier,
-                builder: (_, cd, __) => GestureDetector(
-                  onTap: cd <= 0 ? _game.activateDodge : null,
-                  child: Container(
-                    width: 56, height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: cd <= 0 ? GacomColors.deepOrange : Colors.white.withOpacity(0.1),
-                    ),
-                    child: cd > 0
-                      ? Center(child: Text(cd.ceil().toString(), style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18)))
-                      : const Icon(Icons.directions_run_rounded, color: Colors.white, size: 26),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
+            top: 86, right: 16,
+            child: Row(children: [
               ValueListenableBuilder<int>(
                 valueListenable: _game.payloadNotifier,
                 builder: (_, payload, __) => GestureDetector(
                   onTap: _game.cyclePayload,
                   child: Container(
-                    width: 56, height: 56,
+                    width: 48, height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: ChronoSpireGame.payloadColors[payload],
+                      border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
                     ),
                     child: Center(child: Text(ChronoSpireGame.payloadNames[payload][0],
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 20))),
+                      style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 18))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              ValueListenableBuilder<double>(
+                valueListenable: _game.dodgeCooldownNotifier,
+                builder: (_, cd, __) => GestureDetector(
+                  onTap: cd <= 0 ? _game.activateDodge : null,
+                  child: Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: cd <= 0 ? GacomColors.deepOrange : Colors.white.withOpacity(0.1),
+                    ),
+                    child: cd > 0
+                      ? Center(child: Text(cd.ceil().toString(), style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)))
+                      : const Icon(Icons.directions_run_rounded, color: Colors.white, size: 22),
                   ),
                 ),
               ),
@@ -153,8 +157,47 @@ class _ChronoSpireScreenState extends State<ChronoSpireScreen> {
               );
             },
           ),
+          if (_showHowToPlay) _howToPlayOverlay(),
         ]),
       ),
     );
   }
+
+  Widget _howToPlayOverlay() => Container(
+    color: Colors.black.withOpacity(0.85),
+    child: Center(
+      child: Container(
+        margin: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(24),
+        decoration: GacomDecorations.glassCard(context, radius: 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('HOW TO PLAY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white)),
+          const SizedBox(height: 16),
+          _howToRow(Icons.control_camera_rounded, 'Left stick', 'Move your bio-drone around the arena'),
+          _howToRow(Icons.gps_fixed_rounded, 'Right stick', 'Aim and fire — nothing shoots until you push this'),
+          _howToRow(Icons.science_rounded, 'Payload button', 'Cycles Acid, Thermal, Electro — hit Acid then Thermal quickly for a bonus explosion'),
+          _howToRow(Icons.directions_run_rounded, 'Dodge button', 'A short burst of speed and brief invincibility'),
+          _howToRow(Icons.my_location_rounded, 'Weak points', 'The glowing dot on each enemy — gold slows them, blue stops their attack'),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)), padding: const EdgeInsets.symmetric(vertical: 14)),
+            onPressed: () => setState(() => _showHowToPlay = false),
+            child: const Text('START', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)),
+          )),
+        ]),
+      ),
+    ),
+  );
+
+  Widget _howToRow(IconData icon, String title, String desc) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: GacomColors.accentCyan, size: 18),
+      const SizedBox(width: 10),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Colors.white)),
+        Text(desc, style: const TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+      ])),
+    ]),
+  );
 }
