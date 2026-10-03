@@ -236,17 +236,17 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/signalmatch', builder: (_, __) => const SignalMatchScreen()),
               GoRoute(path: 'practice/weaponduel', builder: (_, __) => const ArenaGauntletScreen()),
               GoRoute(path: 'practice/astracolony', builder: (_, __) => const AstraColonyScreen()),
-              GoRoute(path: 'practice/spatialquiz', builder: (_, __) => const SpatialQuizScreen()),
               GoRoute(path: 'practice/reaction', builder: (_, __) => const ReactionSoloScreen()),
-              GoRoute(path: 'practice/algebra', builder: (_, __) => const AlgebraGame()),
-              GoRoute(path: 'practice/physics', builder: (_, __) => const PhysicsGame()),
-              // Edu curriculum game routes
+              // Edu curriculum game routes — Algebra, Physics, and
+              // Spatial Quiz are curriculum drills, not fun Arena
+              // games, so they live under /edu/, not /arena/practice/.
               GoRoute(path: 'edu/game/algebra_eq', builder: (_, __) => const AlgebraGame()),
               GoRoute(path: 'edu/game/simultaneous', builder: (_, __) => const AlgebraGame()),
               GoRoute(path: 'edu/game/geometry', builder: (_, __) => const AlgebraGame()),
               GoRoute(path: 'edu/game/physics_quiz', builder: (_, __) => const PhysicsGame()),
               GoRoute(path: 'edu/game/chem_quiz', builder: (_, __) => const PhysicsGame()),
               GoRoute(path: 'edu/game/bio_quiz', builder: (_, __) => const TriviaSoloScreen()),
+              GoRoute(path: 'edu/game/spatial_quiz', builder: (_, __) => const SpatialQuizScreen()),
               GoRoute(path: 'practice/connect4', builder: (_, __) => const ConnectFourGame()),
               GoRoute(path: 'practice/reversi', builder: (_, __) => const ReversiGame()),
               GoRoute(path: 'practice/memory', builder: (_, __) => const MemoryMatchGame()),
