@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 class ReactionSoloScreen extends StatefulWidget {
   const ReactionSoloScreen({super.key});
@@ -60,11 +61,12 @@ class _ReactionSoloState extends State<ReactionSoloScreen> {
   @override void dispose() { _waitTimer?.cancel(); super.dispose(); }
 
   @override
-  Widget build(BuildContext ctx) => Scaffold(
+  Widget build(BuildContext ctx) => HowToPlayOverlay(gameKey: 'reaction_solo', title: 'HOW TO PLAY REACTION', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Wait for green', description: 'Tap the screen the instant it turns green'), HowToPlayStep(icon: Icons.speed_rounded, title: 'Faster is better', description: 'Your average reaction time across all rounds is your score')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('REACTION TEST'), actions: const [Play1v1Button(gameTypeKey: 'reaction')]),
     body: _done ? _buildResults() : _buildGame(),
-  );
+  ),
+    );
 
   Widget _buildGame() => GestureDetector(onTap: _tap, child: Container(color: Colors.transparent, child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
     Text('Round ${_times.length + 1} / $_rounds', style: const TextStyle(color: GacomColors.textMuted, fontSize: 14)),

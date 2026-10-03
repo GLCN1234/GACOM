@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 class TriviaSoloScreen extends StatefulWidget {
   const TriviaSoloScreen({super.key});
@@ -86,7 +87,7 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
 
     final q = _shuffled[_idx];
     final opts = List<String>.from(q['opts'] as List);
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'trivia_solo', title: 'HOW TO PLAY TRIVIA', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Pick an answer', description: 'Tap the option you think is correct before time runs out'), HowToPlayStep(icon: Icons.timer_rounded, title: 'Beat the clock', description: 'Each question has a time limit')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('TRIVIA VS RYAN (FREE)'), actions: [
         const Play1v1Button(gameTypeKey: 'trivia'),
@@ -123,6 +124,7 @@ class _TriviaSoloState extends State<TriviaSoloScreen> {
           );
         }),
       ])),
+    ),
     );
   }
 }

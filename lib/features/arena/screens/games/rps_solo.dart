@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 // ── RPS solo vs AI (Ryan) ────────────────────────────────────────────────────
 class RpsSoloScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _RpsSoloState extends State<RpsSoloScreen> {
   void _reset() => setState(() { _myWins = 0; _aiWins = 0; _round = 1; _myPick = null; _aiPick = null; _result = null; _revealed = false; });
 
   @override
-  Widget build(BuildContext ctx) => Scaffold(
+  Widget build(BuildContext ctx) => HowToPlayOverlay(gameKey: 'rps_solo', title: 'HOW TO PLAY RPS BATTLE', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Pick your move', description: 'Tap Rock, Paper, or Scissors each round'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Best of 5', description: 'First to 3 wins takes the match')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('RPS VS RYAN (FREE)'), actions: const [Play1v1Button(gameTypeKey: 'rps')]),
     body: Padding(padding: const EdgeInsets.all(16), child: Column(children: [
@@ -85,7 +86,8 @@ class _RpsSoloState extends State<RpsSoloScreen> {
         const SizedBox(height: 24),
       ],
     ])),
-  );
+  ),
+    );
 }
 
 class _ScoreBox extends StatelessWidget {

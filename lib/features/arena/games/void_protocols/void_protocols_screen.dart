@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'void_protocols_game.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 class VoidProtocolsScreen extends StatefulWidget {
   const VoidProtocolsScreen({super.key});
@@ -49,7 +50,7 @@ class _VoidProtocolsScreenState extends State<VoidProtocolsScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'void_protocols', title: 'HOW TO PLAY VOID PROTOCOLS', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Drag to aim', description: 'Drag anywhere on the field to set your launch angle'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Fire once', description: 'One shot at a time — it genuinely curves around gravity wells based on real physics'), HowToPlayStep(icon: Icons.swap_horiz_rounded, title: 'Polarity', description: 'Some levels need a well switched between Attract and Repel before firing')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       body: SafeArea(
         child: AnimatedBuilder(
@@ -92,6 +93,7 @@ class _VoidProtocolsScreenState extends State<VoidProtocolsScreen> with SingleTi
           ]),
         ),
       ),
+    ),
     );
   }
 

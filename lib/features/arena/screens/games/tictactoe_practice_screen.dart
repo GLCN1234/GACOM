@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/play_1v1_button.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 /// Free practice match against a local AI opponent — no wallet, no stake,
 /// no Supabase writes at all. The multiplayer TicTacToeGame widget is
@@ -114,7 +115,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'tictactoe', title: 'HOW TO PLAY TIC-TAC-TOE', steps: const [HowToPlayStep(icon: Icons.grid_3x3_rounded, title: 'Take turns', description: 'Tap an empty square to place your mark'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Three in a row wins', description: 'Line up three marks horizontally, vertically, or diagonally')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(
         title: const Text('PRACTICE VS RYAN'),
@@ -183,6 +184,7 @@ class _TicTacToePracticeScreenState extends State<TicTacToePracticeScreen> {
           ],
         ]),
       ),
+    ),
     );
   }
 }
