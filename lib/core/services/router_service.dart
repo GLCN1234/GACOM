@@ -76,6 +76,8 @@ import '../../features/arena/screens/leaderboard_screen.dart';
 import '../../features/arena/screens/game_detail_screen.dart';
 import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
+import '../../features/arena/screens/games/ludo_screen.dart';
+import '../../features/arena/screens/games/ayo_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
@@ -261,6 +263,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/numberduel', builder: (_, __) => const NumberQuizGame()),
               GoRoute(path: 'practice/snake', builder: (_, __) => const SnakeGame()),
               GoRoute(path: 'practice/whot', builder: (_, __) => const WhotGame()),
+              GoRoute(path: 'practice/ludo', builder: (_, __) => const LudoScreen()),
+              GoRoute(path: 'practice/ayo', builder: (_, __) => const AyoScreen()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),
