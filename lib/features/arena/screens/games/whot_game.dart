@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 /// Whot — the real Nigerian card game. 5 suits (Circle, Triangle, Cross,
 /// Square, Star) plus wild "Whot" cards. Special numbers: 1 Hold On
@@ -229,7 +230,7 @@ class _WhotGameState extends State<WhotGame> {
   Widget build(BuildContext context) {
     final top = discard.last;
     final activeSuit = calledSuit ?? top.suit;
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'whot', title: 'HOW TO PLAY WHOT', steps: const [HowToPlayStep(icon: Icons.style_rounded, title: 'Match the top card', description: 'Play a card matching the shape or number on top of the pile'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Special cards', description: '1=Hold On (skip), 2=Pick Two, 8=Suspension, 14=General Market, 20=Whot wild (pick any shape)'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Win', description: 'First to empty their hand wins the round')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('WHOT'), actions: [
         Container(margin: const EdgeInsets.only(right: 12), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -284,6 +285,7 @@ class _WhotGameState extends State<WhotGame> {
           const SizedBox(height: 12),
         ]),
       ),
+    ),
     );
   }
 }

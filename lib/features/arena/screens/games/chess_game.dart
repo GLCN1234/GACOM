@@ -6,6 +6,7 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/play_1v1_button.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 // ── Chess piece constants ─────────────────────────────────────────────────────
 const empty = 0;
@@ -626,7 +627,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
 
   @override
   Widget build(BuildContext ctx){
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'chess', title: 'HOW TO PLAY CHESS', steps: const [HowToPlayStep(icon: Icons.drag_indicator_rounded, title: 'Move pieces', description: 'Tap a piece, then tap where to move it'), HowToPlayStep(icon: Icons.smart_toy_rounded, title: 'Play vs AI', description: 'Checkmate the AI king before it checkmates yours'), HowToPlayStep(icon: Icons.replay_rounded, title: 'Standard rules', description: 'Castling, en passant, and promotion all work as normal chess')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
         const Play1v1Button(gameTypeKey: 'chess'),
@@ -691,6 +692,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
             child: const Text('NEW GAME', style: TextStyle(color:GacomColors.deepOrange,fontFamily:'Rajdhani',fontWeight:FontWeight.w800)))),
         ])),
       ]),
+    ),
     );
   }
 }

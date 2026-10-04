@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'shooter_game.dart';
+import '../../widgets/how_to_play_overlay.dart';
 
 class SurvivalShooterScreen extends StatefulWidget {
   const SurvivalShooterScreen({super.key});
@@ -24,7 +25,7 @@ class _SurvivalShooterScreenState extends State<SurvivalShooterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HowToPlayOverlay(gameKey: 'survival_shooter', title: 'HOW TO PLAY SURVIVAL SHOOTER', steps: const [HowToPlayStep(icon: Icons.control_camera_rounded, title: 'Move', description: 'Drag the on-screen joystick to move around'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Auto-fire', description: 'Your drone fires automatically at the nearest enemy'), HowToPlayStep(icon: Icons.favorite_rounded, title: 'Survive', description: 'Avoid contact with enemies and survive as many waves as you can')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       body: SafeArea(
         child: Stack(children: [
@@ -103,6 +104,7 @@ class _SurvivalShooterScreenState extends State<SurvivalShooterScreen> {
           ),
         ]),
       ),
+    ),
     );
   }
 }
