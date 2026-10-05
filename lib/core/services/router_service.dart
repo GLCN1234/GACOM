@@ -78,6 +78,11 @@ import '../../features/arena/screens/game_developer_application_screen.dart';
 import '../../features/arena/games/shooter/survival_shooter_screen.dart';
 import '../../features/arena/screens/games/ludo_screen.dart';
 import '../../features/arena/screens/games/ayo_screen.dart';
+import '../../features/arena/screens/games/checkers_screen.dart';
+import '../../features/arena/screens/games/battleship_screen.dart';
+import '../../features/arena/screens/games/rummy_screen.dart';
+import '../../features/arena/screens/games/solitaire_screen.dart';
+import '../../features/arena/screens/games/puzzle_rush_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
@@ -265,6 +270,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/whot', builder: (_, __) => const WhotGame()),
               GoRoute(path: 'practice/ludo', builder: (_, __) => const LudoScreen()),
               GoRoute(path: 'practice/ayo', builder: (_, __) => const AyoScreen()),
+              GoRoute(path: 'practice/checkers', builder: (_, __) => const CheckersScreen()),
+              GoRoute(path: 'practice/battleship', builder: (_, __) => const BattleshipScreen()),
+              GoRoute(path: 'practice/rummy', builder: (_, __) => const RummyScreen()),
+              GoRoute(path: 'practice/solitaire', builder: (_, __) => const SolitaireScreen()),
+              GoRoute(path: 'practice/puzzlerush', builder: (_, __) => const PuzzleRushScreen()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),

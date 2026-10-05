@@ -56,6 +56,11 @@ const ICON_QUERIES: Record<string, string> = {
   'Ayo': 'wooden board game seeds',
   'Void Protocols': 'abstract space neon',
   'Chrono-Spire': 'microscope cells biology',
+  'Checkers': 'checkers board game',
+  'Battleship': 'navy warship ocean',
+  'Rummy': 'playing cards rummy',
+  'Solitaire': 'solitaire playing cards green',
+  'Chess Puzzle Rush': 'chess pieces board',
 }
 
 Deno.serve(async (req) => {
