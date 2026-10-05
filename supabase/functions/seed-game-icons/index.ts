@@ -61,6 +61,11 @@ const ICON_QUERIES: Record<string, string> = {
   'Rummy': 'playing cards rummy',
   'Solitaire': 'solitaire playing cards green',
   'Chess Puzzle Rush': 'chess pieces board',
+  'Sudoku': 'sudoku puzzle numbers',
+  'Block Drop': 'colorful blocks puzzle',
+  'Color Clash': 'colorful playing cards',
+  'Bubble Shooter': 'colorful bubbles',
+  'Stack Tower': 'stacked colorful blocks',
 }
 
 Deno.serve(async (req) => {

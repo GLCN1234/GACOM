@@ -83,6 +83,11 @@ import '../../features/arena/screens/games/battleship_screen.dart';
 import '../../features/arena/screens/games/rummy_screen.dart';
 import '../../features/arena/screens/games/solitaire_screen.dart';
 import '../../features/arena/screens/games/puzzle_rush_screen.dart';
+import '../../features/arena/screens/games/sudoku_screen.dart';
+import '../../features/arena/screens/games/block_drop_screen.dart';
+import '../../features/arena/screens/games/color_clash_screen.dart';
+import '../../features/arena/screens/games/bubble_shooter_screen.dart';
+import '../../features/arena/screens/games/stack_tower_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
@@ -275,6 +280,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/rummy', builder: (_, __) => const RummyScreen()),
               GoRoute(path: 'practice/solitaire', builder: (_, __) => const SolitaireScreen()),
               GoRoute(path: 'practice/puzzlerush', builder: (_, __) => const PuzzleRushScreen()),
+              GoRoute(path: 'practice/sudoku', builder: (_, __) => const SudokuScreen()),
+              GoRoute(path: 'practice/blockdrop', builder: (_, __) => const BlockDropScreen()),
+              GoRoute(path: 'practice/colorclash', builder: (_, __) => const ColorClashScreen()),
+              GoRoute(path: 'practice/bubbleshooter', builder: (_, __) => const BubbleShooterScreen()),
+              GoRoute(path: 'practice/stacktower', builder: (_, __) => const StackTowerScreen()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),
