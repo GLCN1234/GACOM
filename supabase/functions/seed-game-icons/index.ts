@@ -66,6 +66,13 @@ const ICON_QUERIES: Record<string, string> = {
   'Color Clash': 'colorful playing cards',
   'Bubble Shooter': 'colorful bubbles',
   'Stack Tower': 'stacked colorful blocks',
+  'Sky Hopper': 'blue sky clouds',
+  'Dash Runner': 'running track sunset',
+  'Star Blaster': 'space galaxy stars',
+  'Target Gallery': 'shooting range targets',
+  'Fruit Slice': 'fresh fruit colorful',
+  'Basketball Shootout': 'basketball hoop',
+  'Darts': 'dartboard',
 }
 
 Deno.serve(async (req) => {

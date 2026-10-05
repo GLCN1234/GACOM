@@ -88,6 +88,13 @@ import '../../features/arena/screens/games/block_drop_screen.dart';
 import '../../features/arena/screens/games/color_clash_screen.dart';
 import '../../features/arena/screens/games/bubble_shooter_screen.dart';
 import '../../features/arena/screens/games/stack_tower_screen.dart';
+import '../../features/arena/screens/games/sky_hopper_screen.dart';
+import '../../features/arena/screens/games/dash_runner_screen.dart';
+import '../../features/arena/screens/games/star_blaster_screen.dart';
+import '../../features/arena/screens/games/target_gallery_screen.dart';
+import '../../features/arena/screens/games/fruit_slice_screen.dart';
+import '../../features/arena/screens/games/basketball_screen.dart';
+import '../../features/arena/screens/games/darts_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
@@ -285,6 +292,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/colorclash', builder: (_, __) => const ColorClashScreen()),
               GoRoute(path: 'practice/bubbleshooter', builder: (_, __) => const BubbleShooterScreen()),
               GoRoute(path: 'practice/stacktower', builder: (_, __) => const StackTowerScreen()),
+              GoRoute(path: 'practice/skyhopper', builder: (_, __) => const SkyHopperScreen()),
+              GoRoute(path: 'practice/dashrunner', builder: (_, __) => const DashRunnerScreen()),
+              GoRoute(path: 'practice/starblaster', builder: (_, __) => const StarBlasterScreen()),
+              GoRoute(path: 'practice/targetgallery', builder: (_, __) => const TargetGalleryScreen()),
+              GoRoute(path: 'practice/fruitslice', builder: (_, __) => const FruitSliceScreen()),
+              GoRoute(path: 'practice/basketball', builder: (_, __) => const BasketballScreen()),
+              GoRoute(path: 'practice/darts', builder: (_, __) => const DartsScreen()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),
