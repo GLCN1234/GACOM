@@ -21,3 +21,6 @@ where not exists (select 1 from game_listings where name = 'Mini Crossword');
 insert into game_listings (name, tagline, description, category, developer_name, play_route, is_featured, status, is_gacom_official)
 select 'Jigsaw Puzzle', 'Rebuild the picture', 'Drag real jigsaw-shaped pieces into place to rebuild the picture. Choose 9, 16 or 25 pieces and five different scenes.', 'Puzzle', 'GACOM', '/arena/practice/jigsaw', false, 'approved', true
 where not exists (select 1 from game_listings where name = 'Jigsaw Puzzle');
+
+
+notify pgrst, 'reload schema';

@@ -15,3 +15,6 @@ as $$
 $$;
 
 grant execute on function public.user_game_totals(uuid) to authenticated;
+
+
+notify pgrst, 'reload schema';

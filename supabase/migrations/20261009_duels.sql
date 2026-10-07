@@ -374,3 +374,6 @@ select m.game_key,
 
 grant select on public.duel_standings to authenticated;
 grant select on public.duel_standings_by_game to authenticated;
+
+
+notify pgrst, 'reload schema';

@@ -40,3 +40,6 @@ create policy life_quest_progress_own_update on public.life_quest_progress
   for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
 grant select, insert, update on public.life_quest_progress to authenticated;
+
+
+notify pgrst, 'reload schema';

@@ -405,3 +405,6 @@ grant execute on function public.duel_join(uuid) to authenticated;
 grant execute on function public.duel_cancel(uuid) to authenticated;
 grant execute on function public.duel_forfeit(uuid) to authenticated;
 grant execute on function public.duel_claim(uuid) to authenticated;
+
+
+notify pgrst, 'reload schema';

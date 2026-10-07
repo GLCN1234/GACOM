@@ -106,7 +106,13 @@ class DuelService {
       return 'Not enough balance for this stake. Top up your arena wallet or pick a smaller stake.';
     }
     if (t.contains('taken')) return 'That duel was just taken.';
-    return 'Could not start a duel. Check your connection and try again.';
+    if (t.contains('pgrst202') || t.contains('404') || t.contains('could not find the function') || t.contains('42883')) {
+      return 'Duels are not switched on yet on the server. Ask an admin to run the duel database setup.';
+    }
+    if (t.contains('socket') || t.contains('failed host lookup') || t.contains('clientexception') || t.contains('timeout')) {
+      return 'Could not reach the server. Check your connection and try again.';
+    }
+    return 'Could not start a duel. Please try again in a moment.';
   }
 
   static Future<DuelMatch> join(String id) async {

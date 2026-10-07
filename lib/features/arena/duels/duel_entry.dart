@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
+import '../../../shared/widgets/pc_controls_gate.dart';
 import '../services/duel_service.dart';
 import 'duel_registry.dart';
 
@@ -38,8 +39,8 @@ class _DuelEntryState extends State<DuelEntry> {
 
   @override
   Widget build(BuildContext context) {
-    if (DuelSession.current != null || DuelRegistry.byKey(widget.gameKey) == null) return widget.child;
-    return Stack(
+    if (DuelSession.current != null || DuelRegistry.byKey(widget.gameKey) == null) return PcControlsGate(gameKey: widget.gameKey, child: widget.child);
+    return PcControlsGate(gameKey: widget.gameKey, child: Stack(
       fit: StackFit.expand,
       children: [
         widget.child,
@@ -70,6 +71,6 @@ class _DuelEntryState extends State<DuelEntry> {
           ),
         ),
       ],
-    );
+    ));
   }
 }

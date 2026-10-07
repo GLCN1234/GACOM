@@ -6,6 +6,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../../core/services/duel_session.dart';
 import '../duels/duel_registry.dart';
 import '../services/duel_service.dart';
+import '../../../shared/widgets/pc_controls_gate.dart';
 import '../widgets/game_logo.dart';
 
 /// One head-to-head duel: wait for an opponent, play the same game with the
@@ -127,7 +128,7 @@ class _DuelScreenState extends State<DuelScreen> {
     final DuelSession s = DuelSession(seed: m.seed, onScore: _onScore);
     _session = s;
     s.start();
-    _gameWidget = g.build();
+    _gameWidget = PcControlsGate(gameKey: g.key, child: g.build());
     if (g.scoring != DuelScoring.firstResult && g.seconds > 0) {
       _limitLeft = g.seconds;
       _limit = Timer.periodic(const Duration(seconds: 1), (t) {

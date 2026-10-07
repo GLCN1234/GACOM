@@ -48,6 +48,7 @@ import '../../features/arena/screens/duel_screen.dart';
 import '../../features/edu/quests/quest_hub_screen.dart';
 import '../../features/edu/odyssey/odyssey_hub_screen.dart';
 import '../../features/edu/edu_more_games_screen.dart';
+import '../../shared/widgets/pc_controls_gate.dart';
 import '../../features/edu/realms/realm_hub_screen.dart';
 import '../../features/edu/realms/realm_kit.dart';
 import '../../features/edu/realms/realm_registry.dart';
@@ -263,7 +264,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           }),
           GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),
-          GoRoute(path: '/edu/odyssey/play', builder: (_, s) => OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig())),
+          GoRoute(path: '/edu/odyssey/play', builder: (_, s) => PcControlsGate(gameKey: 'odyssey', child: OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig()))),
           GoRoute(path: '/edu/quest/:id', builder: (_, s) => QuestPlayScreen(questId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/paywall',  builder: (_, s) => EduPaywallScreen(lockedSubject: s.extra as String?)),
           GoRoute(path: '/edu/subject/:id', builder: (_, s) => EduSubjectScreen(subjectId: s.pathParameters['id']!)),
