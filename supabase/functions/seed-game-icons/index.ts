@@ -73,6 +73,12 @@ const ICON_QUERIES: Record<string, string> = {
   'Fruit Slice': 'fresh fruit colorful',
   'Basketball Shootout': 'basketball hoop',
   'Darts': 'dartboard',
+  'Air Hockey': 'air hockey table puck',
+  '8-Ball Pool': 'pool table billiard balls',
+  'Pinball': 'pinball machine',
+  'Tower Defense': 'medieval castle tower',
+  'Mini Crossword': 'crossword puzzle',
+  'Jigsaw Puzzle': 'jigsaw puzzle pieces',
 }
 
 Deno.serve(async (req) => {

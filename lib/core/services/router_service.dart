@@ -95,6 +95,12 @@ import '../../features/arena/screens/games/target_gallery_screen.dart';
 import '../../features/arena/screens/games/fruit_slice_screen.dart';
 import '../../features/arena/screens/games/basketball_screen.dart';
 import '../../features/arena/screens/games/darts_screen.dart';
+import '../../features/arena/screens/games/air_hockey_screen.dart';
+import '../../features/arena/screens/games/pool_screen.dart';
+import '../../features/arena/screens/games/pinball_screen.dart';
+import '../../features/arena/screens/games/tower_defense_screen.dart';
+import '../../features/arena/screens/games/mini_crossword_screen.dart';
+import '../../features/arena/screens/games/jigsaw_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
@@ -299,6 +305,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/fruitslice', builder: (_, __) => const FruitSliceScreen()),
               GoRoute(path: 'practice/basketball', builder: (_, __) => const BasketballScreen()),
               GoRoute(path: 'practice/darts', builder: (_, __) => const DartsScreen()),
+              GoRoute(path: 'practice/airhockey', builder: (_, __) => const AirHockeyScreen()),
+              GoRoute(path: 'practice/pool', builder: (_, __) => const PoolScreen()),
+              GoRoute(path: 'practice/pinball', builder: (_, __) => const PinballScreen()),
+              GoRoute(path: 'practice/towerdefense', builder: (_, __) => const TowerDefenseScreen()),
+              GoRoute(path: 'practice/minicrossword', builder: (_, __) => const MiniCrosswordScreen()),
+              GoRoute(path: 'practice/jigsaw', builder: (_, __) => const JigsawScreen()),
               GoRoute(
                 path: 'store',
                 builder: (_, __) => const GameStoreScreen(),
