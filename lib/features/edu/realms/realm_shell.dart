@@ -379,7 +379,16 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   Widget _hud(RealmLogic l) {
     final List<RealmChip> chips = l.chips;
     final int hearts = l.hearts;
-    return Stack(children: <Widget>[
+    // A game HUD that has nothing to show used to return a plain empty box.
+    // As the only unpositioned child it shrank this whole Stack to nothing and
+    // hid the pause button, hearts and action buttons. Always give the Stack
+    // the full screen, and pin any unpositioned game HUD to the top left.
+    Widget? gameHud;
+    if (widget.hud != null) {
+      final Widget built = widget.hud!(context, l, () => setState(() {}));
+      gameHud = built is Positioned ? built : Positioned(left: 0, top: 0, child: built);
+    }
+    return Stack(fit: StackFit.expand, children: <Widget>[
       Positioned(
         left: 12,
         right: 4,
@@ -414,7 +423,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
           if (_inDuel) _pill('${(widget.duelSeconds - l.time).clamp(0.0, 9999.0).ceil()}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
-      if (widget.hud != null) widget.hud!(context, l, () => setState(() {})),
+      if (gameHud != null) gameHud,
       if (widget.actions.isNotEmpty && !l.modal)
         Positioned(
           right: 18,

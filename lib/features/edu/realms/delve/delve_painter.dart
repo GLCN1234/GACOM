@@ -30,8 +30,12 @@ class DelvePainter extends CustomPainter {
     if (_tintDepth == g.depth) return;
     _tintDepth = g.depth;
     _tintBase = g.tint;
-    _floorA = realmDarken(_tintBase, 0.30);
-    _floorB = realmDarken(_tintBase, 0.36);
+    // Always a readable stone tone of the subject's hue. Dark subject colours
+    // used to make the floor pure black, so the torch lit nothing.
+    final HSLColor hsl = HSLColor.fromColor(_tintBase);
+    final double sat = _cl(hsl.saturation, 0.25, 0.5);
+    _floorA = HSLColor.fromAHSL(1.0, hsl.hue, sat, 0.30).toColor();
+    _floorB = HSLColor.fromAHSL(1.0, hsl.hue, sat, 0.25).toColor();
   }
 
   @override
