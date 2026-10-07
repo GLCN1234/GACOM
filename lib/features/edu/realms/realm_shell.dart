@@ -9,6 +9,9 @@ import '../../../core/services/sound_service.dart';
 import '../edu_progress_recorder.dart';
 import '../odyssey/odyssey_engine.dart' show OdyMistake;
 import '../odyssey/odyssey_questions.dart';
+import '../../../shared/tutorial/how_to_gate.dart';
+import '../../../shared/tutorial/how_to_model.dart';
+import '../../../shared/tutorial/how_to_registry.dart';
 import 'realm_kit.dart';
 
 /// A button drawn at the bottom right that calls [RealmLogic.onAction].
@@ -269,6 +272,17 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     return KeyEventResult.handled;
   }
 
+  String get _howKey => widget.gameName.toLowerCase().replaceAll(' ', '');
+
+  void _showHowTo() {
+    final GameHowTo? h = HowToRegistry.byKey(_howKey);
+    if (h == null) return;
+    Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (BuildContext c) => HowToScreen(gameKey: _howKey, howTo: h, first: false, onDone: () => Navigator.of(c).pop()),
+    ));
+  }
+
   Future<bool> _confirmLeave() async {
     final RealmLogic? l = _logic;
     if (l == null || _ended || _intro || l.time < 8) return true;
@@ -512,6 +526,10 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                     _paused = false;
                     _last = null;
                   })),
+              if (HowToRegistry.byKey(_howKey) != null) ...<Widget>[
+                const SizedBox(height: 10),
+                _bigButton('HOW TO PLAY', _showHowTo, secondary: true),
+              ],
               const SizedBox(height: 10),
               _bigButton('LEAVE', () async {
                 if (await _confirmLeave() && mounted) _exit();

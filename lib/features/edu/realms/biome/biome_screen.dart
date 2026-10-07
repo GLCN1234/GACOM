@@ -37,7 +37,10 @@ Widget _hud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
   if (b == null || g.over && b.outcome != 4) return const SizedBox.shrink();
   final Color accent = g.content.subject(b.wild.subjectId).color;
   return Positioned.fill(
-    child: Padding(
+    child: Center(
+     child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 620),
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(10, 96, 10, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
@@ -52,6 +55,8 @@ Widget _hud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
           ),
         ),
       ]),
+    ),
+    ),
     ),
   );
 }

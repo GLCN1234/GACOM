@@ -5,6 +5,19 @@ import 'biome_logic.dart';
 
 double _cl(double v, double lo, double hi) => v < lo ? lo : (v > hi ? hi : v);
 
+/// Ground colour for a subject: always a readable mid-dark tone of its hue,
+/// never near-black (dark subject colours used to turn the map black).
+Color _groundBase(Color c) {
+  final HSLColor h = HSLColor.fromColor(c);
+  return HSLColor.fromAHSL(1.0, h.hue, _cl(h.saturation, 0.3, 0.55), 0.27).toColor();
+}
+
+/// Scenery tint: bright enough to stand out from the ground.
+Color _sceneTint(Color c) {
+  final HSLColor h = HSLColor.fromColor(c);
+  return HSLColor.fromAHSL(1.0, h.hue, _cl(h.saturation, 0.35, 0.7), 0.5).toColor();
+}
+
 // scenery kinds
 const int _kTuft = 0;
 const int _kBush = 1;
@@ -42,11 +55,10 @@ class BiomePainter extends CustomPainter {
     final List<int> th = <int>[];
     for (int i = 0; i < n; i++) {
       final String id = g.content.subjectIds[i];
-      final Color base = g.content.subject(id).color;
-      final Color d = realmDarken(base, 0.3);
+      final Color d = _groundBase(g.content.subject(id).color);
       gr.add(d);
-      gr.add(realmLighten(d, 0.03));
-      gr.add(realmLighten(d, 0.06));
+      gr.add(realmLighten(d, 0.035));
+      gr.add(realmLighten(d, 0.07));
       int h = 0;
       for (final int c in id.codeUnits) {
         h = (h * 31 + c) & 0x7fffffff;
@@ -94,7 +106,7 @@ class BiomePainter extends CustomPainter {
     for (int ty = ty0; ty <= ty1; ty++) {
       for (int tx = tx0; tx <= tx1; tx++) {
         final int ri = g.regionIndexAt(tx * _tile + _tile / 2, ty * _tile + _tile / 2);
-        final Color sc = g.content.subject(g.content.subjectIds[ri]).color;
+        final Color sc = _sceneTint(g.content.subject(g.content.subjectIds[ri]).color);
         final List<int> th = _themes[_themeOf[ri]];
         for (int k = 0; k < 2; k++) {
           final int hh = realmHash(tx * 2 + k, ty, seed + 7);
@@ -462,7 +474,7 @@ class BiomePainter extends CustomPainter {
   // ---- battle -----------------------------------------------------------------
 
   void _paintBattle(Canvas canvas, Size size, BiomeBattle b) {
-    _p.color = Colors.black.withValues(alpha: 0.55);
+    _p.color = Colors.black.withValues(alpha: 0.32);
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), _p);
     final double areaTop = 190;
     double areaBottom = size.height - 360;
@@ -471,7 +483,7 @@ class BiomePainter extends CustomPainter {
     final double s = _cl(span / 190, 0.9, 2.3);
     final Offset wildPos = Offset(size.width * 0.70, areaTop + span * 0.42);
     final Offset myPos = Offset(size.width * 0.28, areaTop + span * 0.86);
-    final Color ground = realmLighten(realmDarken(g.content.subject(b.wild.subjectId).color, 0.2), 0.05);
+    final Color ground = realmLighten(_groundBase(g.content.subject(b.wild.subjectId).color), 0.06);
     _p.color = ground.withValues(alpha: 0.9);
     canvas.drawOval(Rect.fromCenter(center: wildPos + Offset(0, 6 * s), width: 120 * s, height: 34 * s), _p);
     canvas.drawOval(Rect.fromCenter(center: myPos + Offset(0, 6 * s), width: 120 * s, height: 34 * s), _p);

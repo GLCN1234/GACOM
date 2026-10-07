@@ -150,6 +150,7 @@ class PcControlsGate extends StatefulWidget {
 class _PcControlsGateState extends State<PcControlsGate> {
   bool _keyboard = true;
   bool _asked = false;
+  bool _ready = false;
 
   PcControlsGuide? get _guide => PcControlsGuides.all[widget.gameKey];
   String get _prefKey => 'pc_controls_${widget.gameKey}';
@@ -174,7 +175,11 @@ class _PcControlsGateState extends State<PcControlsGate> {
   }
 
   Future<void> _start() async {
-    if (!mounted || !_active) return;
+    if (!mounted) return;
+    if (!_active) {
+      setState(() => _ready = true);
+      return;
+    }
     String? saved;
     try {
       final SharedPreferences p = await SharedPreferences.getInstance();
@@ -182,10 +187,14 @@ class _PcControlsGateState extends State<PcControlsGate> {
     } catch (_) {}
     if (!mounted) return;
     if (saved == 'keyboard' || saved == 'mouse') {
-      setState(() => _keyboard = saved == 'keyboard');
+      setState(() {
+        _keyboard = saved == 'keyboard';
+        _ready = true;
+      });
       return;
     }
     await _ask(first: true);
+    if (mounted) setState(() => _ready = true);
   }
 
   Future<void> _ask({required bool first}) async {
@@ -210,6 +219,8 @@ class _PcControlsGateState extends State<PcControlsGate> {
   @override
   Widget build(BuildContext context) {
     if (!_active) return widget.child;
+    // The game only starts once the player has chosen how to play.
+    if (!_ready) return const ColoredBox(color: Colors.black);
     return PcControls(
       keyboard: _keyboard,
       child: Stack(
