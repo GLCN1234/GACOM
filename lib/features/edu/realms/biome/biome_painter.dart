@@ -131,7 +131,7 @@ class BiomePainter extends CustomPainter {
       _wild(canvas, w, cx, cy, size);
     }
     _companion(canvas);
-    RealmDraw.person(canvas, g.px, g.py, phase: g.walkPhase, moving: g.moving, facing: g.facing);
+    RealmDraw.person(canvas, g.px, g.py, phase: g.walkPhase, moving: g.moving, facing: g.facing, hero: true);
     for (final BiomeCreature w in g.wilds) {
       if (w.y <= g.py) continue;
       _wild(canvas, w, cx, cy, size);

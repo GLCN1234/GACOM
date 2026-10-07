@@ -32,6 +32,8 @@ import '../../features/profile/screens/settings_screen.dart';
 import '../../features/profile/screens/customization_screen.dart';
 import '../../features/houses/houses_screen.dart';
 import '../../features/houses/house_chat_screen.dart';
+import '../../features/houses/house_detail_screen.dart';
+import '../../features/houses/house_manage_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/error_logs_screen.dart';
 import '../../features/admin/screens/store_admin_screen.dart';
@@ -380,6 +382,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         final extra = s.extra as Map<String, dynamic>? ?? {};
         return HouseChatScreen(houseId: extra['houseId'] as String? ?? '', houseName: extra['houseName'] as String? ?? 'House');
       }),
+      GoRoute(path: '/houses/:id', builder: (_, s) => HouseDetailScreen(houseId: s.pathParameters['id'] ?? '')),
+      GoRoute(path: '/houses/:id/manage', builder: (_, s) => HouseManageScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
     ],
   );

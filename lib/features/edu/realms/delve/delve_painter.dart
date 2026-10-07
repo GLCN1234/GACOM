@@ -232,7 +232,7 @@ class DelvePainter extends CustomPainter {
   void _drawPlayer(Canvas canvas) {
     final bool blink = g.invuln > 0 && ((g.time * 12).floor() % 2 == 0);
     if (!blink) {
-      RealmDraw.person(canvas, g.px, g.py - 6, phase: g.walk, moving: g.moving, facing: g.facing);
+      RealmDraw.person(canvas, g.px, g.py - 6, phase: g.walk, moving: g.moving, facing: g.facing, hero: true);
     }
     final double fx = g.facing >= 0 ? 1.0 : -1.0;
     final double flick = 1 + sin(g.time * 17) * 0.06 + sin(g.time * 7.3) * 0.05;

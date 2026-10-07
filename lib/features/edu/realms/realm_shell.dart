@@ -91,6 +91,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick);
+    HeroLook.ensureLoaded();
     _setup();
     _startMusic();
   }

@@ -8,6 +8,7 @@ import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
 import '../../../core/services/sound_service.dart';
 import '../edu_progress_recorder.dart';
+import '../realms/realm_kit.dart' show HeroLook, RealmDraw, realmDarken, realmLighten;
 import 'odyssey_engine.dart';
 import 'odyssey_questions.dart';
 
@@ -65,6 +66,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    HeroLook.ensureLoaded();
     _ticker = createTicker(_onTick);
     _setup();
     _startMusic();
@@ -1016,6 +1018,7 @@ class _WorldPainter extends CustomPainter {
     final double fx = engine.facingX >= 0 ? 1.0 : -1.0;
     final double lean = moving ? (engine.vx / OdysseyEngine.dashSpeed) * 0.35 : 0.0;
     final double footY = y + 18;
+    final HeroLook look = HeroLook.current;
 
     canvas.save();
     canvas.translate(x, footY);
@@ -1030,26 +1033,33 @@ class _WorldPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
+    if (moving) {
+      canvas.save();
+      canvas.translate(x, y);
+      RealmDraw.heroTrail(canvas, look.trail, look.trailColor, cyc, fx);
+      canvas.restore();
+    }
+
     // back arm and back leg
     stroke.strokeWidth = 5;
-    stroke.color = const Color(0xFFE0A070);
+    stroke.color = realmDarken(look.skin, 0.06);
     canvas.drawLine(Offset(x - 8 * fx, y - 3 - bob), Offset(x - 11 * fx - swing * 6 * fx, y + 8 - bob), stroke);
     stroke.strokeWidth = 6;
-    stroke.color = const Color(0xFF1F2A44);
+    stroke.color = realmDarken(look.pants, 0.08);
     canvas.drawLine(Offset(x - 3, y + 7 - bob), Offset(x - 3 - swing * 7 * fx, footY - 1), stroke);
 
     // body
-    _p.color = const Color(0xFFFF6A00);
+    _p.color = look.shirt;
     canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 9, y - 8 - bob, 18, 20), const Radius.circular(7)), _p);
-    _p.color = const Color(0xFFFFB066);
+    _p.color = realmLighten(look.shirt, 0.15);
     canvas.drawRect(Rect.fromLTWH(x - 9, y + 1 - bob, 18, 3), _p);
 
     // front leg and front arm
     stroke.strokeWidth = 6;
-    stroke.color = const Color(0xFF2A3A63);
+    stroke.color = look.pants;
     canvas.drawLine(Offset(x + 3, y + 7 - bob), Offset(x + 3 + swing * 7 * fx, footY - 1), stroke);
     stroke.strokeWidth = 5;
-    stroke.color = const Color(0xFFF2B785);
+    stroke.color = look.skin;
     canvas.drawLine(Offset(x + 8 * fx, y - 3 - bob), Offset(x + 11 * fx + swing * 6 * fx, y + 8 - bob), stroke);
 
     // shoes
@@ -1059,10 +1069,10 @@ class _WorldPainter extends CustomPainter {
 
     // head
     final double hy = y - 17 - bob;
-    _p.color = const Color(0xFFF2B785);
+    _p.color = look.skin;
     canvas.drawCircle(Offset(x, hy), 9.5, _p);
     // hair
-    _p.color = const Color(0xFF2B1B12);
+    _p.color = look.hair;
     canvas.drawArc(Rect.fromCircle(center: Offset(x, hy), radius: 10), pi, pi, true, _p);
     canvas.drawCircle(Offset(x - 6 * fx, hy - 2), 4.2, _p);
     // eyes look where the hero walks

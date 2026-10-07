@@ -10,7 +10,10 @@ import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
+import '../../../core/services/cosmetics_service.dart';
+import '../../../shared/widgets/cosmetic_avatar.dart';
 import '../../arena/screens/leaderboard_screen.dart';
+import '../../houses/widgets/house_profile_card.dart';
 
 final _demoProfile = {
   'id': 'demo',
@@ -45,6 +48,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   bool _loading = true;
   bool _isFollowing = false;
   bool _followLoading = false;
+  Map<String, dynamic>? _cosm; // equipped cosmetics of the profile owner
   late TabController _tab;
 
   bool get _isOwn => SupabaseService.currentUserId == widget.userId;
@@ -77,8 +81,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             .eq('follower_id', myId).eq('following_id', widget.userId).maybeSingle();
         following = chk != null;
       }
+      final cosm = await CosmeticsService.equipped(widget.userId);
       if (mounted) {
         setState(() {
+          _cosm = cosm;
           _profile = p;
           _posts = List<Map<String, dynamic>>.from(posts);
           _isFollowing = following;
@@ -88,6 +94,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     } catch (_) {
       if (mounted) setState(() { _profile = Map<String, dynamic>.from(_demoProfile); _loading = false; });
     }
+  }
+
+  Future<void> _reloadCosmetics() async {
+    final c = await CosmeticsService.equipped(widget.userId);
+    if (mounted) setState(() => _cosm = c);
+  }
+
+  Widget _avatar(Map<String, dynamic> p) {
+    if (cosmeticFrameColors(equipped: _cosm) != null) {
+      return Padding(
+        padding: const EdgeInsets.all(2),
+        child: CosmeticAvatar(
+          radius: 40,
+          avatarUrl: p['avatar_url'] as String?,
+          name: (p['display_name'] ?? 'G').toString(),
+          equipped: _cosm,
+        ),
+      );
+    }
+    return Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          // Dark ring separates avatar from banner and page background
+                          border: Border.all(color: GacomColors.obsidian, width: 3),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.transparent, border: Border.all(color: GacomColors.deepOrange, width: 3),
+                            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.25), blurRadius: 16)],
+                          ),
+                          child: Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: GacomColors.obsidian,
+                          ),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundColor: GacomColors.cardDark,
+                            backgroundImage: p['avatar_url'] != null
+                                ? CachedNetworkImageProvider(p['avatar_url'])
+                                : null,
+                            child: p['avatar_url'] == null
+                                ? Text(
+                                    (p['display_name'] ?? 'G')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                        color: GacomColors.textPrimary,
+                                        fontFamily: 'Rajdhani',
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 30),
+                                  )
+                                : null,
+                          ),
+                        )),
+                      );
   }
 
   Future<void> _toggleFollow() async {
@@ -229,7 +291,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.palette_outlined, size: 18, color: Colors.white),
                   ),
-                  onPressed: () => context.push('/customization'),
+                  onPressed: () => context.push('/customization').then((_) { if (mounted) _reloadCosmetics(); }),
                 ),
               if (_isOwn)
                 IconButton(
@@ -246,7 +308,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               collapseMode: CollapseMode.parallax,
               background: Stack(fit: StackFit.expand, children: [
                 // Banner background
-                p['banner_url'] != null
+                ProfileBanner.colorsFor(equipped: _cosm) != null
+                    ? ProfileBanner(equipped: _cosm)
+                    : p['banner_url'] != null
                     ? CachedNetworkImage(imageUrl: p['banner_url'], fit: BoxFit.cover)
                     : Container(
                         decoration: BoxDecoration(
@@ -285,43 +349,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   // Avatar with camera button
                   Stack(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          // Dark ring separates avatar from banner and page background
-                          border: Border.all(color: GacomColors.obsidian, width: 3),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(2.5),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.transparent, border: Border.all(color: GacomColors.deepOrange, width: 3),
-                            boxShadow: [BoxShadow(color: GacomColors.deepOrange.withOpacity(0.25), blurRadius: 16)],
-                          ),
-                          child: Container(
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: GacomColors.obsidian,
-                          ),
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: GacomColors.cardDark,
-                            backgroundImage: p['avatar_url'] != null
-                                ? CachedNetworkImageProvider(p['avatar_url'])
-                                : null,
-                            child: p['avatar_url'] == null
-                                ? Text(
-                                    (p['display_name'] ?? 'G')[0].toUpperCase(),
-                                    style: const TextStyle(
-                                        color: GacomColors.textPrimary,
-                                        fontFamily: 'Rajdhani',
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 30),
-                                  )
-                                : null,
-                          ),
-                        )),
-                      ),
+                      _avatar(p),
                       if (_isOwn)
                         Positioned(
                           bottom: 2,
@@ -381,8 +409,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
                 // Name + verified
                 Row(children: [
+                  if (CosmeticsService.badgeFor(_cosm) != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(CosmeticsService.badgeFor(_cosm), size: 20, color: GacomColors.deepOrange),
+                    ),
                   Expanded(child: Text(p['display_name'] ?? '',
-                      style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: GacomColors.textPrimary))),
+                      style: TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w800, color: CosmeticsService.nameColorFor(_cosm) ?? GacomColors.textPrimary))),
                   if (verified)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -415,6 +448,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   Text(p['bio'], style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.5)),
                 ],
 
+                const SizedBox(height: 16),
+
+                HouseProfileCard(userId: widget.userId),
                 const SizedBox(height: 16),
 
                 // Stats bar

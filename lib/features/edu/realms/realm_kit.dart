@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../core/services/cosmetics_service.dart';
 import '../../../core/services/duel_session.dart';
 import '../odyssey/odyssey_engine.dart' show OdyMistake;
 import '../odyssey/odyssey_questions.dart';
@@ -219,6 +220,64 @@ Color realmDarken(Color c, double amount) {
   return h.withLightness((h.lightness - amount).clamp(0.0, 1.0)).withSaturation((h.saturation * 0.85).clamp(0.0, 1.0)).toColor();
 }
 
+/// What the player's hero looks like, from the equipped outfit and trail.
+/// Synchronous: reads the cached loadout and falls back to the classic look
+/// until it has loaded.
+class HeroLook {
+  final Color shirt;
+  final Color pants;
+  final Color skin;
+  final Color hair;
+  final String trail;
+  final Color trailColor;
+
+  const HeroLook({
+    this.shirt = const Color(0xFFFF6A00),
+    this.pants = const Color(0xFF2A3A63),
+    this.skin = const Color(0xFFF2B785),
+    this.hair = const Color(0xFF2B1B12),
+    this.trail = 'none',
+    this.trailColor = const Color(0xFFFFF176),
+  });
+
+  static const HeroLook classic = HeroLook();
+  static Object? _from;
+  static HeroLook _cached = classic;
+
+  /// Starts loading the loadout if needed. Safe to call often; never throws.
+  static void ensureLoaded() {
+    try {
+      CosmeticsService.ensureLoaded();
+    } catch (_) {}
+  }
+
+  static HeroLook get current {
+    final Map<String, dynamic>? src = CosmeticsService.myLoadout.value;
+    if (src == null) return classic;
+    if (identical(src, _from)) return _cached;
+    _from = src;
+    _cached = _build(src);
+    return _cached;
+  }
+
+  static HeroLook _build(Map<String, dynamic> src) {
+    try {
+      final Map<String, dynamic> o = CosmeticsService.assetOf(src, 'hero_outfit');
+      final Map<String, dynamic> t = CosmeticsService.assetOf(src, 'trail');
+      return HeroLook(
+        shirt: CosmeticsService.parseColor(o['shirt']?.toString()) ?? classic.shirt,
+        pants: CosmeticsService.parseColor(o['pants']?.toString()) ?? classic.pants,
+        skin: CosmeticsService.parseColor(o['skin']?.toString()) ?? classic.skin,
+        hair: CosmeticsService.parseColor(o['hair']?.toString()) ?? classic.hair,
+        trail: (t['kind']?.toString() ?? 'none'),
+        trailColor: CosmeticsService.parseColor(t['color']?.toString()) ?? classic.trailColor,
+      );
+    } catch (_) {
+      return classic;
+    }
+  }
+}
+
 /// Drawing helpers shared by realm games.
 class RealmDraw {
   static final Paint _p = Paint();
@@ -260,10 +319,79 @@ class RealmDraw {
     canvas.drawCircle(c, radius, _p);
   }
 
+  /// The equipped trail, drawn behind a walking hero in the hero's local
+  /// space. [phase] is the walking phase; [fx] is the facing (-1 or 1).
+  static void heroTrail(Canvas canvas, String kind, Color color, double phase, double fx) {
+    if (kind == 'none' || kind.isEmpty) return;
+    const int n = 7;
+    if (kind == 'rainbow') {
+      const List<Color> bands = <Color>[Color(0xFFFF1744), Color(0xFFFF9100), Color(0xFFFFEA00), Color(0xFF00E676), Color(0xFF00B0FF), Color(0xFF7C4DFF)];
+      final double wave = sin(phase * 1.5) * 1.5;
+      for (int i = 0; i < bands.length; i++) {
+        final double by = 2.0 + i * 3.4;
+        final double x0 = -fx * 6;
+        final double x1 = -fx * 46;
+        final Paint bp = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 3.4
+          ..shader = LinearGradient(
+            begin: fx > 0 ? Alignment.centerRight : Alignment.centerLeft,
+            end: fx > 0 ? Alignment.centerLeft : Alignment.centerRight,
+            colors: <Color>[bands[i].withValues(alpha: 0.75), bands[i].withValues(alpha: 0.0)],
+          ).createShader(Rect.fromLTRB(min(x0, x1), by - 2, max(x0, x1), by + 2));
+        canvas.drawLine(Offset(-fx * 8, by + wave * (i.isEven ? 1 : -1)), Offset(-fx * 46, by + wave * (i.isEven ? -1 : 1)), bp);
+      }
+      return;
+    }
+    for (int i = 0; i < n; i++) {
+      double f = phase * 0.13 + i / n;
+      f = f - f.floorToDouble();
+      final int seed = (phase * 0.13 + i / n).floor() * 7 + i;
+      final double jitter = realmUnit(seed, i, 3) - 0.5;
+      final double px = -fx * (8 + f * 38);
+      switch (kind) {
+        case 'flame': {
+          final double py = 12 - f * 14 + jitter * 6;
+          final double r = 6.5 * (1 - f) + 1.2;
+          final Color c = Color.lerp(color, const Color(0xFFFFEB3B), 1 - f)!;
+          glow(canvas, Offset(px, py), r * 1.6, color, alpha: 0.18 * (1 - f));
+          glow(canvas, Offset(px, py), r, c, alpha: 0.85 * (1 - f));
+          break;
+        }
+        default: {
+          // sparkle and stars: small four point stars that twinkle out
+          final double py = 6 + jitter * 22;
+          final double r = (kind == 'stars' ? 4.2 : 3.2) * (1 - f) + 0.8;
+          final Paint sp = Paint()..color = color.withValues(alpha: 0.9 * (1 - f));
+          final Path star = Path()
+            ..moveTo(px, py - r * 1.5)
+            ..lineTo(px + r * 0.4, py - r * 0.4)
+            ..lineTo(px + r * 1.5, py)
+            ..lineTo(px + r * 0.4, py + r * 0.4)
+            ..lineTo(px, py + r * 1.5)
+            ..lineTo(px - r * 0.4, py + r * 0.4)
+            ..lineTo(px - r * 1.5, py)
+            ..lineTo(px - r * 0.4, py - r * 0.4)
+            ..close();
+          canvas.drawPath(star, sp);
+          break;
+        }
+      }
+    }
+  }
+
   /// A small person. (x, y) is the middle of the torso; the feet touch y + 18.
   /// [phase] drives the walking swing, [moving] turns it on, [facing] is
   /// -1 or 1 for left or right.
-  static void person(Canvas canvas, double x, double y, {double phase = 0, bool moving = false, double facing = 1, Color shirt = const Color(0xFFFF6A00), Color pants = const Color(0xFF2A3A63), Color skin = const Color(0xFFF2B785), Color hair = const Color(0xFF2B1B12), double scale = 1.0}) {
+  static void person(Canvas canvas, double x, double y, {double phase = 0, bool moving = false, double facing = 1, Color shirt = const Color(0xFFFF6A00), Color pants = const Color(0xFF2A3A63), Color skin = const Color(0xFFF2B785), Color hair = const Color(0xFF2B1B12), double scale = 1.0, bool hero = false}) {
+    if (hero) {
+      final HeroLook look = HeroLook.current;
+      shirt = look.shirt;
+      pants = look.pants;
+      skin = look.skin;
+      hair = look.hair;
+    }
     canvas.save();
     canvas.translate(x, y);
     canvas.scale(scale, scale);
@@ -272,6 +400,10 @@ class RealmDraw {
     final double fx = facing >= 0 ? 1.0 : -1.0;
     final double footY = 18;
     shadow(canvas, 0, footY + 1, 30);
+    if (hero && moving) {
+      final HeroLook look = HeroLook.current;
+      heroTrail(canvas, look.trail, look.trailColor, phase, fx);
+    }
     final Paint stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

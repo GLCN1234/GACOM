@@ -70,7 +70,7 @@ class CaseFilesPainter extends CustomPainter {
     _props(canvas, view, tm);
     _villagers(canvas, view, tm);
     _target(canvas, tm);
-    RealmDraw.person(canvas, logic.px, logic.py - 18, phase: logic.walkPhase, moving: logic.moving, facing: logic.facing);
+    RealmDraw.person(canvas, logic.px, logic.py - 18, phase: logic.walkPhase, moving: logic.moving, facing: logic.facing, hero: true);
     for (final CasePlace pl in casePlaces) {
       if (view.overlaps(Rect.fromLTRB(pl.l - 20, pl.t - 40, pl.r + 20, pl.b + 40))) _marker(canvas, pl, tm);
     }

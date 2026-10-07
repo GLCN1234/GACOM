@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cosmetics_service.dart';
+import '../../../shared/widgets/cosmetic_avatar.dart';
 import '../widgets/game_logo.dart';
 
 /// A game-picker grid (real icons, pulled from the same game_listings
@@ -85,7 +86,7 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       if (userIds.isNotEmpty) {
         try {
           final cosmetics = await SupabaseService.client.from('user_cosmetics')
-              .select('user_id, name_color:cosmetic_items!equipped_name_color(value), badge:cosmetic_items!equipped_badge(value)')
+              .select('user_id, name_color:cosmetic_items!equipped_name_color(value), badge:cosmetic_items!equipped_badge(value), avatar_frame:cosmetic_items!equipped_avatar_frame(value,asset)')
               .filter('user_id', 'in', '(${userIds.join(',')})');
           final byUserId = { for (final c in List<Map<String, dynamic>>.from(cosmetics)) c['user_id'] as String: c };
           for (final row in rows) {
@@ -179,10 +180,11 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       final height = rank == 1 ? 150.0 : rank == 2 ? 120.0 : 100.0;
       final color = rank == 1 ? const Color(0xFFFFD700) : rank == 2 ? const Color(0xFFC0C0C0) : const Color(0xFFCD7F32);
       return Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-        CircleAvatar(radius: rank == 1 ? 26 : 22, backgroundColor: GacomColors.border,
-          backgroundImage: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? NetworkImage(user['avatar_url']) : null,
-          onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
-          child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? Icon(Icons.person, size: rank == 1 ? 26 : 22, color: Colors.white) : null),
+        CosmeticAvatar(
+          radius: rank == 1 ? 26 : 22,
+          avatarUrl: user['avatar_url'] as String?,
+          name: user['display_name'] as String? ?? 'Player',
+          equipped: row['cosmetics'] as Map<String, dynamic>?),
         const SizedBox(height: 8),
         Row(mainAxisSize: MainAxisSize.min, children: [
           if (CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?) != null)
@@ -207,10 +209,11 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14)),
       child: Row(children: [
         SizedBox(width: 28, child: Text('$rank', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textMuted))),
-        CircleAvatar(radius: 16, backgroundColor: GacomColors.border,
-          backgroundImage: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? NetworkImage(user['avatar_url']) : null,
-          onBackgroundImageError: (user['avatar_url'] != null && (user['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null,
-          child: (user['avatar_url'] == null || (user['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 16, color: Colors.white) : null),
+        CosmeticAvatar(
+          radius: 16,
+          avatarUrl: user['avatar_url'] as String?,
+          name: user['display_name'] as String? ?? 'Player',
+          equipped: row['cosmetics'] as Map<String, dynamic>?),
         const SizedBox(width: 14),
         Expanded(child: Row(children: [
           if (CosmeticsService.badgeFor(row['cosmetics'] as Map<String, dynamic>?) != null)
