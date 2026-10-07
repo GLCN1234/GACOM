@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'game_logo.dart';
 
 /// Clamps a double and always returns a double.
 double clampD(double v, double lo, double hi) => v < lo ? lo : (v > hi ? hi : v);
@@ -27,7 +28,10 @@ class ArcadeStartView extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: GacomColors.deepOrange, size: 54),
+        if (GameLogos.lookup(title) != null)
+          SizedBox(width: 92, height: 92, child: GameLogo(name: title, radius: 22))
+        else
+          Icon(icon, color: GacomColors.deepOrange, size: 54),
         const SizedBox(height: 14),
         Text(title, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
         const SizedBox(height: 6),

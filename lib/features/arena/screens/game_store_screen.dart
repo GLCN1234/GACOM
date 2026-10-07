@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'gacom_apk_downloader.dart';
+import '../widgets/game_logo.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 
@@ -140,15 +141,21 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
             child: Stack(fit: StackFit.expand, children: [
               // Real image background — falls back to the gradient only
               // if this game has no image yet, never a broken/empty tile.
-              if (iconUrl != null && iconUrl.isNotEmpty)
-                Image.network(iconUrl, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(decoration: BoxDecoration(gradient: LinearGradient(
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))))
-              else
-                Container(decoration: BoxDecoration(gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))),
+              GameLogo(
+                name: g['name'] as String?,
+                radius: 0,
+                glyphAlignment: const Alignment(0.7, -0.35),
+                glyphScale: 0.62,
+                glyphOpacity: 0.55,
+                fallback: (iconUrl != null && iconUrl.isNotEmpty)
+                  ? Image.network(iconUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(decoration: BoxDecoration(gradient: LinearGradient(
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                        colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))))
+                  : Container(decoration: BoxDecoration(gradient: LinearGradient(
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      colors: [GacomColors.deepOrange.withOpacity(0.85), GacomColors.electricBlue.withOpacity(0.65)]))),
+              ),
               // Dark scrim so the title text stays legible over any photo.
               Container(decoration: const BoxDecoration(gradient: LinearGradient(
                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -219,10 +226,14 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               AspectRatio(aspectRatio: 1, child: Container(
                 decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
-                child: g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty
-                  ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(g['icon_url'], fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32)))
-                  : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32),
+                child: GameLogo(
+                  name: g['name'] as String?,
+                  radius: 14,
+                  fallback: g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty
+                    ? ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.network(g['icon_url'], fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32)))
+                    : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 32),
+                ),
               )),
               const SizedBox(height: 10),
               Text(g['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,

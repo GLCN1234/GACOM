@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/game_logo.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 
@@ -66,10 +67,14 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
         Row(children: [
           Container(width: 80, height: 80,
             decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(18)),
-            child: g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty
-              ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.network(g['icon_url'], fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 36)))
-              : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 36)),
+            child: GameLogo(
+              name: g['name'] as String?,
+              radius: 18,
+              fallback: g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty
+                ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.network(g['icon_url'], fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 36)))
+                : const Icon(Icons.sports_esports_rounded, color: GacomColors.deepOrange, size: 36),
+            )),
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(g['name'] as String? ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 20, color: GacomColors.textPrimary)),

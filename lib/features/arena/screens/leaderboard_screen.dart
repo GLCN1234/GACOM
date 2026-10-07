@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cosmetics_service.dart';
+import '../widgets/game_logo.dart';
 
 /// A game-picker grid (real icons, pulled from the same game_listings
 /// data the store uses) instead of a horizontal scroll of text chips,
@@ -130,9 +131,13 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
                   border: Border.all(color: selected ? GacomColors.deepOrange : GacomColors.border, width: selected ? 2.5 : 1),
                   color: GacomColors.cardDark,
                 ),
-                child: ClipOval(child: (g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty)
-                  ? Image.network(g['icon_url'], fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22))
-                  : const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22)),
+                child: GameLogo(
+                  name: g['name'] as String?,
+                  circle: true,
+                  fallback: ClipOval(child: (g['icon_url'] != null && (g['icon_url'] as String).isNotEmpty)
+                    ? Image.network(g['icon_url'], fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22))
+                    : const Icon(Icons.sports_esports_rounded, color: GacomColors.textMuted, size: 22)),
+                ),
               ),
               const SizedBox(height: 4),
               Text(g['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
