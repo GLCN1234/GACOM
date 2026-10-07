@@ -7,6 +7,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 class BdShape {
   final int n; // size of the square the piece rotates inside
@@ -240,7 +241,7 @@ class BlockDropScreen extends StatefulWidget {
 }
 
 class _BlockDropScreenState extends State<BlockDropScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   BlockDropEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

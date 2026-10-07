@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 const List<Color> kBbColors = [
   Color(0xFFEF5350),
@@ -340,7 +341,7 @@ class BubbleShooterScreen extends StatefulWidget {
 }
 
 class _BubbleShooterScreenState extends State<BubbleShooterScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   BubbleEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

@@ -43,6 +43,10 @@ import '../../features/support/screens/agent_chat_screen.dart';
 import '../../features/exco/screens/exco_dashboard_screen.dart';
 import '../../features/arena/screens/arena_screen.dart';
 import '../../features/arena/screens/match_screen.dart';
+import '../../features/arena/screens/duel_lobby_screen.dart';
+import '../../features/arena/screens/duel_screen.dart';
+import '../../features/edu/quests/quest_hub_screen.dart';
+import '../../features/edu/quests/quest_play_screen.dart';
 import '../../features/arena/screens/games/tictactoe_practice_screen.dart';
 import '../../features/arena/screens/games/chess_game.dart';
 import '../../features/arena/screens/games/extra_games.dart';
@@ -240,6 +244,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/edu/parent',   builder: (_, __) => const EduParentScreen()),
           GoRoute(path: '/edu/chat',     builder: (_, __) => const EduChatScreen()),
           GoRoute(path: '/edu/compete',  builder: (_, __) => const EduCompeteLobbyScreen()),
+          GoRoute(path: '/edu/quests',   builder: (_, __) => const QuestHubScreen()),
+          GoRoute(path: '/edu/quest/:id', builder: (_, s) => QuestPlayScreen(questId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/paywall',  builder: (_, s) => EduPaywallScreen(lockedSubject: s.extra as String?)),
           GoRoute(path: '/edu/subject/:id', builder: (_, s) => EduSubjectScreen(subjectId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/curriculum/:id', builder: (_, s) => CurriculumGamePickerScreen(curriculumId: s.pathParameters['id']!)),
@@ -251,6 +257,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'match/:id',
                 builder: (_, s) => MatchScreen(matchId: s.pathParameters['id']!),
               ),
+              GoRoute(path: 'duels', builder: (_, __) => const DuelLobbyScreen()),
+              GoRoute(path: 'duel/:id', builder: (_, s) => DuelScreen(duelId: s.pathParameters['id']!)),
               GoRoute(path: 'practice/tictactoe', builder: (_, __) => const TicTacToePracticeScreen()),
               GoRoute(path: 'practice/chess', builder: (_, __) => const ChessPracticeScreen()),
               GoRoute(path: 'practice/rps', builder: (_, __) => const RpsSoloScreen()),

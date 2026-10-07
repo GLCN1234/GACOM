@@ -219,6 +219,33 @@ class _EduHomeState extends State<EduHomeScreen> {
           ])),
         const SizedBox(height: 20),
 
+        // Life Quests
+        GestureDetector(
+          onTap: () => context.push('/edu/quests'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF0277BD), Color(0xFF00ACC1)]),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('LIFE QUESTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white, letterSpacing: 1)),
+                SizedBox(height: 2),
+                Text('Learn by living the story: run a market stall, beat Lagos traffic, save a community.', style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.35)),
+              ])),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 20),
+
         // Quick play
         Row(children: [
           const Text('PLAY NOW', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),

@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// One full move: a single step, or a whole chain of jumps.
 class CMove {
@@ -227,7 +228,7 @@ class _CheckersScreenState extends State<CheckersScreen> {
   int _epoch = 0;
   List<int>? _sel;
   String _msg = '';
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
 
   bool _dead(int epoch) => !mounted || epoch != _epoch;
 

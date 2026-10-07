@@ -5,6 +5,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class DartMark {
   final double x;
@@ -151,7 +152,7 @@ class _DartsScreenState extends State<DartsScreen> {
   static const List<double> _sigmaMax = [20.0, 24.0, 28.0];
   static const double _fingerLift = 46.0;
 
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   DartsEngine? _e;
   int _level = 1;
   bool _saved = false;

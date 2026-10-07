@@ -6,6 +6,7 @@ import '../../../edu/edu_progress_recorder.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
+import '../../../../core/services/duel_session.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
@@ -89,7 +90,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
 
   final List<_RunnerItem> _items = [];
   Timer? _timer;
-  final _rng = Random();
+  final _rng = duelRandom();
 
   // Slower start, gentler and longer ramp — a new player needs to read
   // the question and options before reacting, not just react on reflex.

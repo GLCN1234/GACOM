@@ -1,11 +1,14 @@
 import '../services/supabase_service.dart';
 import 'streak_service.dart';
+import 'duel_session.dart';
 
 /// One call from any game's game-over moment saves the result — this is
 /// what the leaderboard and personal scorecard actually read from.
 /// Best-effort: a failed save never interrupts the game itself.
 class GameScoreService {
   static Future<void> save({required String gameName, required int score, bool? won}) async {
+    // Inside a duel the result also goes to the duel, which decides the winner.
+    DuelSession.current?.onScore(score, won);
     final uid = SupabaseService.currentUserId;
     if (uid == null) return;
     try {

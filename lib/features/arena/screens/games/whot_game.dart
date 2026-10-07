@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// Whot — the real Nigerian card game. 5 suits (Circle, Triangle, Cross,
 /// Square, Star) plus wild "Whot" cards. Special numbers: 1 Hold On
@@ -104,7 +105,7 @@ class _WhotGameState extends State<WhotGame> {
         _pickSuitDialog();
         return; // suit picker continues the flow
       } else {
-        calledSuit = _suits[Random().nextInt(_suits.length)];
+        calledSuit = _suits[duelRandom().nextInt(_suits.length)];
       }
     }
 

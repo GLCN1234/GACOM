@@ -191,6 +191,26 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
               ? _ArenaDisabled()
               : Column(children: [
                   _WalletBar(balance: _walletBalance),
+                  GestureDetector(
+                    onTap: () => context.push('/arena/duels'),
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFFFF6A00), Color(0xFFB23B00)]),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
+                        const SizedBox(width: 10),
+                        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('DUELS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
+                          Text('Race another player in any game. Free to play.', style: TextStyle(fontSize: 11.5, color: Colors.white70)),
+                        ])),
+                        const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                      ]),
+                    ),
+                  ),
                   TabBar(
                     controller: _tab,
                     indicatorColor: GacomColors.deepOrange,

@@ -7,6 +7,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class BzBullet {
   double x;
@@ -267,7 +268,7 @@ class StarBlasterScreen extends StatefulWidget {
 }
 
 class _StarBlasterScreenState extends State<StarBlasterScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   BlasterEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

@@ -7,6 +7,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../games/chess_rush/chess_rules.dart';
 import '../../games/chess_rush/chess_puzzles_data.dart';
+import '../../../../core/services/duel_session.dart';
 
 class _Puzzle {
   final String fen;
@@ -135,7 +136,7 @@ class _PuzzleRushScreenState extends State<PuzzleRushScreen> {
 
   void _loadPuzzle() {
     if (_qi >= _queue.length) {
-      _queue.shuffle(Random());
+      _queue.shuffle(duelRandom());
       _qi = 0;
     }
     final p = _queue[_qi];

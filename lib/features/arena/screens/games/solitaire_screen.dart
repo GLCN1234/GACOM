@@ -5,6 +5,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/playing_card.dart';
+import '../../../../core/services/duel_session.dart';
 
 class SCard {
   final PlayingCard card;
@@ -159,7 +160,7 @@ class SolitaireScreen extends StatefulWidget {
 }
 
 class _SolitaireScreenState extends State<SolitaireScreen> {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   SolState? _s;
   final List<SolState> _undo = <SolState>[];
   int _draw = 1;

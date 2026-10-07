@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 const List<Color> kCcColors = [Color(0xFFE53935), Color(0xFFFBC02D), Color(0xFF43A047), Color(0xFF1E88E5), Color(0xFF212121)];
 const List<String> kCcColorNames = ['Red', 'Yellow', 'Green', 'Blue'];
@@ -220,7 +221,7 @@ class ColorClashScreen extends StatefulWidget {
 }
 
 class _ColorClashScreenState extends State<ColorClashScreen> {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   ColorClashEngine? _g;
   int _opps = 2;
   bool _busy = false;

@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class PoolBall {
   final int id;
@@ -615,7 +616,7 @@ class _PoolScreenState extends State<PoolScreen> with SingleTickerProviderStateM
     Color(0xFF111111),
   ];
 
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   PoolEngine? _e;
   int _level = 1;
   late final Ticker _ticker;

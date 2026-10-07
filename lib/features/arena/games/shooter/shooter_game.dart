@@ -6,6 +6,7 @@ import 'package:flame/events.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// A top-down survival shooter: joystick to move, auto-fires at the
 /// nearest enemy. No networking at all — this is the free, fully local
@@ -82,7 +83,7 @@ class ShooterGame extends FlameGame
 
   void _spawnEnemy() {
     // Spawn just outside the visible screen, on a random edge
-    final rng = Random();
+    final rng = duelRandom();
     final edge = rng.nextInt(4);
     late Vector2 pos;
     switch (edge) {

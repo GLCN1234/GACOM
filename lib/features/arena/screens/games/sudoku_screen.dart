@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 class SudokuPuzzle {
   final List<List<int>> given;
@@ -164,7 +165,7 @@ class _SudokuScreenState extends State<SudokuScreen> {
   static const List<int> _levelClues = [40, 32, 26];
   static const List<int> _levelBase = [100, 200, 300];
 
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   SudokuPuzzle? _pz;
   List<List<int>> _cur = <List<int>>[];
   List<List<int>> _notes = <List<int>>[];

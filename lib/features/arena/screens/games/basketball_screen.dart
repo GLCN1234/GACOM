@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// Side-view free throws on a 100 x 150 court. y grows downward.
 class BasketEngine {
@@ -189,7 +190,7 @@ class BasketballScreen extends StatefulWidget {
 }
 
 class _BasketballScreenState extends State<BasketballScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   BasketEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

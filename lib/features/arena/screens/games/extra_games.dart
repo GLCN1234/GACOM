@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONNECT FOUR
@@ -322,7 +323,7 @@ class _WordScrambleState extends State<WordScrambleGame>{
 
   @override void initState(){super.initState();_next();}
   void _next(){
-    word=_words[Random().nextInt(_words.length)];
+    word=_words[duelRandom().nextInt(_words.length)];
     final l=word.split('')..shuffle();
     scrambled=l.join();
     _ctrl.clear(); setState((){msg='';});
@@ -394,8 +395,8 @@ class _Game2048State extends State<Game2048>{
     final empty=[];
     for(int r=0;r<4;r++)for(int c=0;c<4;c++)if(board[r][c]==0)empty.add([r,c]);
     if(empty.isEmpty)return;
-    final pos=empty[Random().nextInt(empty.length)];
-    board[pos[0]][pos[1]]=Random().nextDouble()<0.9?2:4;
+    final pos=empty[duelRandom().nextInt(empty.length)];
+    board[pos[0]][pos[1]]=duelRandom().nextDouble()<0.9?2:4;
   }
 
   bool _slide(String dir){
@@ -493,7 +494,7 @@ class _HangmanState extends State<HangmanGame>{
   int wrong=0; int score=0;
 
   @override void initState(){super.initState();_next();}
-  void _next(){word=_words[Random().nextInt(_words.length)];guessed={};wrong=0;setState((){}); }
+  void _next(){word=_words[duelRandom().nextInt(_words.length)];guessed={};wrong=0;setState((){}); }
 
   void _guess(String l){
     if(guessed.contains(l))return;
@@ -571,8 +572,8 @@ class _SpeedMathState extends State<SpeedMathGame>{
 
   void _next(){
     final ops=['+','-','×'];
-    op=ops[Random().nextInt(3)];
-    a=Random().nextInt(20)+1; b=Random().nextInt(20)+1;
+    op=ops[duelRandom().nextInt(3)];
+    a=duelRandom().nextInt(20)+1; b=duelRandom().nextInt(20)+1;
     if(op=='-'&&b>a){final t=a;a=b;b=t;}
     answer=op=='+'?a+b:op=='-'?a-b:a*b;
     _ctrl.clear(); setState((){});
@@ -637,7 +638,7 @@ class _SimonSaysState extends State<SimonSaysGame>{
   void _start(){setState((){started=true;sequence=[];input=[];score=0;_addAndShow();});}
 
   void _addAndShow(){
-    sequence.add(Random().nextInt(4));
+    sequence.add(duelRandom().nextInt(4));
     input=[]; showing=true;
     _playSequence();
   }
@@ -970,7 +971,7 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
     }
     void doMove(Function() m){m();final s=_check();final total=boxes.expand((x)=>x).where((x)=>x!=0).length;if(total==n*n){setState((){over=true;});return;}if(!s)setState((){turn=1;});else{setState((){});Future.delayed(const Duration(milliseconds:300),(){if(mounted)_aiMove();});}}
     if(complete.isNotEmpty)doMove(complete.first);
-    else if(other.isNotEmpty)doMove(other[Random().nextInt(other.length)]);
+    else if(other.isNotEmpty)doMove(other[duelRandom().nextInt(other.length)]);
   }
 
   @override
@@ -1056,14 +1057,14 @@ class _NumberQuizState extends State<NumberQuizGame>{
   void _next(){
     _aiTimer?.cancel();
     final ops=['+','-','×','÷'];
-    op=ops[Random().nextInt(ops.length)];
-    if(op=='÷'){b=Random().nextInt(9)+1;a=b*(Random().nextInt(9)+1);}
-    else{a=Random().nextInt(30)+1;b=Random().nextInt(30)+1;}
+    op=ops[duelRandom().nextInt(ops.length)];
+    if(op=='÷'){b=duelRandom().nextInt(9)+1;a=b*(duelRandom().nextInt(9)+1);}
+    else{a=duelRandom().nextInt(30)+1;b=duelRandom().nextInt(30)+1;}
     answer=op=='+'?a+b:op=='-'?a-b:op=='×'?a*b:a~/b;
     if(op=='-'&&answer<0){answer=-answer;final t=a;a=b;b=t;}
     _ctrl.clear();answered=false;msg='';
     // AI answers in 2-4 seconds
-    final delay=Duration(milliseconds:2000+Random().nextInt(2000));
+    final delay=Duration(milliseconds:2000+duelRandom().nextInt(2000));
     _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='AI answered first!';answered=true;});SoundService.instance.playLose();Future.delayed(const Duration(milliseconds:1200),(){if(mounted)_next();});}});
     setState((){});
   }
@@ -1126,7 +1127,7 @@ class _SnakeState extends State<SnakeGame>{
   }
 
   void _spawnFood(){
-    do{food=[Random().nextInt(gridSize),Random().nextInt(gridSize)];}
+    do{food=[duelRandom().nextInt(gridSize),duelRandom().nextInt(gridSize)];}
     while(snake.any((s)=>s[0]==food[0]&&s[1]==food[1]));
   }
 

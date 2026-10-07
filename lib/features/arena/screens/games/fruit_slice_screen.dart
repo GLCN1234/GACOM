@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class SliceItem {
   final bool bomb;
@@ -185,7 +186,7 @@ class FruitSliceScreen extends StatefulWidget {
 }
 
 class _FruitSliceScreenState extends State<FruitSliceScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   SliceEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

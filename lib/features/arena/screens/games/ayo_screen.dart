@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// Board: 12 pits in a loop. Pits 0-5 belong to the human (bottom row,
 /// left to right), pits 6-11 to the AI (top row, shown right to left).
@@ -202,7 +203,7 @@ class _AyoScreenState extends State<AyoScreen> {
   bool _saved = false;
   int _epoch = 0;
   String _msg = '';
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
 
   bool _dead(int epoch) => !mounted || epoch != _epoch;
 

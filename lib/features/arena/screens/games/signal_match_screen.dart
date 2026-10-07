@@ -6,6 +6,7 @@ import '../../../edu/edu_progress_recorder.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
+import '../../../../core/services/duel_session.dart';
 
 // A distinct, vibrant palette — warm sunset gradient, not the dark
 // cyan/panel look used by Signal Run or Drone Breach.
@@ -84,7 +85,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
   final List<_Gem> _gems = [];
   final List<Offset> _trail = [];
   Timer? _timer;
-  final _rng = Random();
+  final _rng = duelRandom();
   bool _waveActive = false;
 
   void _begin() {

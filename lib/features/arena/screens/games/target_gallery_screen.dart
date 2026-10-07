@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class GalleryTarget {
   final int type; // 0 normal, 1 small, 2 gold, 3 friendly
@@ -175,7 +176,7 @@ class TargetGalleryScreen extends StatefulWidget {
 }
 
 class _TargetGalleryScreenState extends State<TargetGalleryScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   GalleryEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;

@@ -5,6 +5,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/playing_card.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// A group of cards on the table: a set (same rank, different suits)
 /// or a run (same suit, consecutive ranks). Runs are kept in sequence
@@ -357,7 +358,7 @@ class RummyScreen extends StatefulWidget {
 }
 
 class _RummyScreenState extends State<RummyScreen> {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   RummyGame? _g;
   int _phase = 0; // 0 draw, 1 act, 2 AI turn, 3 over
   final Set<int> _sel = <int>{};

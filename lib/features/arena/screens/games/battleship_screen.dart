@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 const List<String> kShipNames = ['Carrier', 'Battleship', 'Cruiser', 'Submarine', 'Destroyer'];
 const List<int> kShipLens = [5, 4, 3, 3, 2];
@@ -202,7 +203,7 @@ class _BattleshipScreenState extends State<BattleshipScreen> {
   int _shots = 0;
   int _epoch = 0;
   String _msg = 'Place your fleet';
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   late BsAi _ai = BsAi(_level, _rng);
 
   bool _dead(int epoch) => !mounted || epoch != _epoch;

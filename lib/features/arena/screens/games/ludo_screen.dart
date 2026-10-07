@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_session.dart';
 
 const List<Color> _ludoColors = [Color(0xFFE53935), Color(0xFF43A047), Color(0xFFFDD835), Color(0xFF1E88E5)];
 const List<String> _ludoNames = ['Red', 'Green', 'Yellow', 'Blue'];
@@ -62,7 +63,7 @@ class LudoEngine {
 
   final List<int> active;
   final List<List<int>> pos = List.generate(4, (_) => List<int>.filled(4, -1));
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   int turn = 0;
   int? die;
   int sixesInRow = 0;
@@ -271,7 +272,7 @@ class _LudoScreenState extends State<LudoScreen> {
   bool _saved = false;
   bool _humanExtra = false;
   List<int> _movable = <int>[];
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
 
   static List<int> _activeFor(int opponents) =>
       opponents == 1 ? [0, 2] : (opponents == 2 ? [0, 1, 2] : [0, 1, 2, 3]);

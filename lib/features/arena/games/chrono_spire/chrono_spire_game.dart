@@ -6,6 +6,7 @@ import 'package:flame/events.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/services/duel_session.dart';
 
 /// Chrono-Spire: The Cellular Siege — a top-down twin-stick shooter.
 /// The Chemistry mechanic: payloads (Acid/Thermal/Electro) actually
@@ -117,7 +118,7 @@ class ChronoSpireGame extends FlameGame with HasCollisionDetection, DragCallback
   }
 
   void _spawnEnemy() {
-    final rng = Random();
+    final rng = duelRandom();
     final edge = rng.nextInt(4);
     late Vector2 pos;
     switch (edge) {
@@ -278,7 +279,7 @@ class BioBeastComponent extends PositionComponent
       : health = startHealth,
         maxHealth = startHealth,
         super(size: Vector2.all(26), anchor: Anchor.center) {
-    final rng = Random();
+    final rng = duelRandom();
     final angle = rng.nextDouble() * 2 * pi;
     _weakPointOffset = Vector2(cos(angle), sin(angle)) * 8;
   }
@@ -355,7 +356,7 @@ class BioBeastComponent extends PositionComponent
     if (health <= 0) {
       gameRef.addScore(hitWeakPoint ? 18 : 12);
       SoundService.instance.playExplosion();
-      if (Random().nextDouble() < 0.35) {
+      if (duelRandom().nextDouble() < 0.35) {
         gameRef.add(GeneticNodeComponent()..position = position.clone());
       }
       removeFromParent();
