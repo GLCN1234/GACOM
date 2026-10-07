@@ -3,7 +3,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/arena/screens/gacom_apk_downloader.dart';
 import '../theme/app_theme.dart';
@@ -88,18 +87,12 @@ class AppUpdateService {
     return info.fullUrl;
   }
 
-  static Future<int> currentBuild() async {
-    try {
-      final PackageInfo p = await PackageInfo.fromPlatform();
-      final int n = int.tryParse(p.buildNumber) ?? 0;
-      // Flutter's per-phone-type builds add 1000s to the version code
-      // (the 64-bit build of build 2 reports 2002), so keep only the real
-      // build number. Keep build numbers in pubspec.yaml below 1000.
-      return n % 1000;
-    } catch (_) {
-      return 0;
-    }
-  }
+  /// The build number this app was compiled with. release_android.sh passes
+  /// it with --dart-define=APP_BUILD=<number>. A build made without it is 0,
+  /// and then no update prompt is shown.
+  static const int _compiledBuild = int.fromEnvironment('APP_BUILD', defaultValue: 0);
+
+  static Future<int> currentBuild() async => _compiledBuild;
 
   /// Call once the app is on screen. Shows a dialog only when a newer build exists.
   static Future<void> maybePrompt(BuildContext context) async {
