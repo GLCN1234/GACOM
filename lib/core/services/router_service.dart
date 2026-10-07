@@ -47,6 +47,8 @@ import '../../features/arena/screens/duel_lobby_screen.dart';
 import '../../features/arena/screens/duel_screen.dart';
 import '../../features/edu/quests/quest_hub_screen.dart';
 import '../../features/edu/odyssey/odyssey_hub_screen.dart';
+import '../../features/edu/edu_more_games_screen.dart';
+import '../../features/arena/screens/games/vault_break_screen.dart';
 import '../../features/edu/odyssey/odyssey_screen.dart';
 import '../../features/arena/duels/duel_entry.dart';
 import '../../features/edu/quests/quest_play_screen.dart';
@@ -249,6 +251,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/edu/compete',  builder: (_, __) => const EduCompeteLobbyScreen()),
           GoRoute(path: '/edu/quests',   builder: (_, __) => const QuestHubScreen()),
           GoRoute(path: '/edu/quest',    builder: (_, __) => const QuestHubScreen()),
+          GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),
           GoRoute(path: '/edu/odyssey/play', builder: (_, s) => OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig())),
           GoRoute(path: '/edu/quest/:id', builder: (_, s) => QuestPlayScreen(questId: s.pathParameters['id']!)),
@@ -324,6 +327,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(path: 'practice/pinball', builder: (_, __) => DuelEntry(gameKey: 'pinball', child: const PinballScreen())),
               GoRoute(path: 'practice/towerdefense', builder: (_, __) => DuelEntry(gameKey: 'towerdefense', child: const TowerDefenseScreen())),
               GoRoute(path: 'practice/minicrossword', builder: (_, __) => DuelEntry(gameKey: 'minicrossword', child: const MiniCrosswordScreen())),
+              GoRoute(path: 'practice/vaultbreak', builder: (_, __) => const VaultBreakScreen()),
               GoRoute(path: 'practice/jigsaw', builder: (_, __) => DuelEntry(gameKey: 'jigsaw', child: const JigsawScreen())),
               GoRoute(
                 path: 'store',

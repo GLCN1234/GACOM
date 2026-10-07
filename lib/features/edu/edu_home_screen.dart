@@ -51,10 +51,6 @@ class _EduHomeState extends State<EduHomeScreen> {
   ];
 
   final _quickGames = [
-    {'name': 'Signal Run', 'icon': Icons.directions_run_rounded, 'route': '/arena/practice/endlessrunner'},
-    {'name': 'Drone Breach', 'icon': Icons.gps_fixed_rounded, 'route': '/arena/practice/dronebreach'},
-    {'name': 'Signal Match', 'icon': Icons.gesture_rounded, 'route': '/arena/practice/signalmatch'},
-    {'name': 'Vault Break', 'icon': Icons.rotate_right_rounded, 'route': '/arena/practice/vaultbreak'},
     {'name': 'Colony Siege', 'icon': Icons.view_in_ar_rounded,   'route': '/arena/practice/colonybuilder'},
     {'name': 'Arena Gauntlet',    'icon': Icons.shield_rounded, 'route': '/arena/practice/weaponduel'},
     {'name': 'Speed Math',    'icon': Icons.bolt_rounded,          'route': '/arena/practice/speedmath'},
@@ -249,10 +245,10 @@ class _EduHomeState extends State<EduHomeScreen> {
 
         // Quick play
         Row(children: [
-          const Text('PLAY NOW', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
+          const Text('MORE GAMES', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.textMuted, letterSpacing: 1)),
           const Spacer(),
-          GestureDetector(onTap: () => context.push('/edu/subjects'),
-            child: const Text('All games', style: TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
+          GestureDetector(onTap: () => context.push('/edu/more-games'),
+            child: const Text('See all', style: TextStyle(color: GacomColors.deepOrange, fontSize: 12, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),
         ]),
         const SizedBox(height: 12),
         SizedBox(height: 88, child: ListView.builder(
