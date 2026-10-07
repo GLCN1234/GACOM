@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'edu_subscription_service.dart';
+import '../arena/widgets/game_logo.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
@@ -219,26 +220,26 @@ class _EduHomeState extends State<EduHomeScreen> {
           ])),
         const SizedBox(height: 20),
 
-        // Life Quests
+        // Odyssey
         GestureDetector(
-          onTap: () => context.push('/edu/quests'),
+          onTap: () => context.push('/edu/odyssey'),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF0277BD), Color(0xFF00ACC1)]),
+              gradient: const LinearGradient(colors: [Color(0xFF0D47A1), Color(0xFF00897B)]),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 26),
+                child: const Icon(Icons.explore_rounded, color: Colors.white, size: 26),
               ),
               const SizedBox(width: 14),
               const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('LIFE QUESTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white, letterSpacing: 1)),
+                Text('ODYSSEY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white, letterSpacing: 1)),
                 SizedBox(height: 2),
-                Text('Learn by living the story: run a market stall, beat Lagos traffic, save a community.', style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.35)),
+                Text('An open world for every subject. Roam, dodge, answer, level up. Plays your own school curriculum.', style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.35)),
               ])),
               const Icon(Icons.chevron_right_rounded, color: Colors.white),
             ]),
@@ -264,7 +265,7 @@ class _EduHomeState extends State<EduHomeScreen> {
               child: Container(width: 76, margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.border)),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(g['icon'] as IconData, color: GacomColors.deepOrange, size: 26),
+                  SizedBox(width: 30, height: 30, child: GameLogo(name: g['name'] as String, radius: 8, fallback: Icon(g['icon'] as IconData, color: GacomColors.deepOrange, size: 26))),
                   const SizedBox(height: 6),
                   Text(g['name'] as String, textAlign: TextAlign.center, maxLines: 2,
                     style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 10, color: GacomColors.textPrimary, height: 1.2)),

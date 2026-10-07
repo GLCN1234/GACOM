@@ -32,6 +32,7 @@ import '../screens/games/whot_game.dart';
 import '../games/shooter/survival_shooter_screen.dart';
 import '../games/void_protocols/void_protocols_screen.dart';
 import '../games/chrono_spire/chrono_spire_screen.dart';
+import '../../edu/odyssey/odyssey_screen.dart';
 
 /// How a duel turns a game's reported scores into one number.
 enum DuelScoring {
@@ -111,6 +112,7 @@ class DuelRegistry {
     DuelGame(key: 'dronebreach', name: 'Drone Breach', blurb: 'Highest score', build: () => const DroneBreachScreen()),
     DuelGame(key: 'survival', name: 'Survival Shooter', blurb: 'Outlast the waves', build: () => const SurvivalShooterScreen()),
     DuelGame(key: 'voidprotocols', name: 'Void Protocols', blurb: 'Highest score', build: () => const VoidProtocolsScreen()),
+    DuelGame(key: 'odyssey', name: 'Odyssey', blurb: 'Most knowledge points in 150 seconds', build: () => const OdysseyScreen()),
     DuelGame(key: 'chronospire', name: 'Chrono-Spire', blurb: 'Climb the highest', build: () => const ChronoSpireScreen()),
   ];
 

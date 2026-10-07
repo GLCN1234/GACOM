@@ -8,6 +8,7 @@ import '../../../core/services/supabase_service.dart';
 import '../services/arena_service.dart';
 
 import 'match_screen.dart';
+import '../widgets/game_logo.dart';
 
 class ArenaScreen extends ConsumerStatefulWidget {
   const ArenaScreen({super.key});
@@ -181,6 +182,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
               ),
             ),
           ),
+          IconButton(icon: const Icon(Icons.sports_kabaddi_rounded), tooltip: '1v1 Duels', onPressed: () => context.push('/arena/duels')),
           IconButton(icon: const Icon(Icons.storefront_outlined), tooltip: 'Game Store', onPressed: () => context.push('/arena/store')),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
         ],
@@ -275,7 +277,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                         decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.14), borderRadius: BorderRadius.circular(6)),
                         child: Text(g['tag'] as String, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: GacomColors.deepOrange)))),
                     Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text(g['icon'] as String, style: const TextStyle(fontSize: 32)),
+                      SizedBox(width: 44, height: 44, child: GameLogo(name: g['name'] as String, radius: 12, fallback: Text(g['icon'] as String, style: const TextStyle(fontSize: 32)))),
                       const SizedBox(height: 8),
                       Text(g['name'] as String, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: sel ? GacomColors.deepOrange : GacomColors.txtPrimary(context))),
                       Text(gEnabled ? g['meta'] as String : 'Disabled', style: const TextStyle(fontSize: 11, color: GacomColors.textMuted)),
@@ -397,7 +399,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: GacomColors.card(context), borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.borderColor(context), width: 0.5)),
                 child: Row(children: [
-                  Container(width: 44, height: 44, decoration: BoxDecoration(color: game['bg'] as Color, borderRadius: BorderRadius.circular(12)), child: Center(child: Text(game['icon'] as String, style: const TextStyle(fontSize: 22)))),
+                  Container(width: 44, height: 44, decoration: BoxDecoration(color: game['bg'] as Color, borderRadius: BorderRadius.circular(12)), child: GameLogo(name: game['name'] as String, radius: 12, fallback: Center(child: Text(game['icon'] as String, style: const TextStyle(fontSize: 22))))),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(name, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.txtPrimary(context))),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../duels/duel_registry.dart';
+import '../services/duel_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/game_logo.dart';
 import '../../../core/services/supabase_service.dart';
@@ -99,6 +102,24 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
           child: const Text('PLAY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: Colors.white)),
         )),
+        if (DuelRegistry.games.any((d) => d.name.toLowerCase() == (g['name'] as String? ?? '').toLowerCase())) ...[
+          const SizedBox(height: 10),
+          SizedBox(width: double.infinity, child: OutlinedButton.icon(
+            onPressed: () async {
+              final String nm = (g['name'] as String? ?? '').toLowerCase();
+              final duel = DuelRegistry.games.firstWhere((d) => d.name.toLowerCase() == nm);
+              try {
+                final m = await DuelService.quick(duel);
+                if (context.mounted) context.push('/arena/duel/${m.id}');
+              } catch (_) {
+                if (context.mounted) GacomSnackbar.show(context, 'Could not start a duel. Try again.', isError: true);
+              }
+            },
+            icon: const Icon(Icons.bolt_rounded, color: GacomColors.deepOrange),
+            label: const Text('CHALLENGE A PLAYER', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.deepOrange)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: GacomColors.deepOrange), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
+          )),
+        ],
         const SizedBox(height: 28),
         const Text('RATE THIS GAME', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.textMuted, letterSpacing: 1)),
         const SizedBox(height: 10),

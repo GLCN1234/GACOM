@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
+import '../../../../core/services/duel_session.dart';
 
 class PinSeg {
   final double x1, y1, x2, y2;
@@ -301,7 +302,7 @@ class PinballScreen extends StatefulWidget {
 }
 
 class _PinballScreenState extends State<PinballScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = Random();
+  final Random _rng = duelRandom();
   PinballEngine? _e;
   late final Ticker _ticker;
   Duration _last = Duration.zero;
