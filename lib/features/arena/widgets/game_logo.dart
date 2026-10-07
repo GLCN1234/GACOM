@@ -66,6 +66,11 @@ class GameLogos {
     'REACTION': GameLogoData(Icons.flash_on_rounded, Color(0xFFFFB300), Color(0xFFFF6F00)),
     'COLONY SIEGE': GameLogoData(Icons.shield_rounded, Color(0xFF37474F), Color(0xFF66BB6A)),
     'ASTRA COLONY': GameLogoData(Icons.public_rounded, Color(0xFF1A237E), Color(0xFF00BFA5)),
+    'BIOME': GameLogoData(Icons.pets_rounded, Color(0xFF33691E), Color(0xFFCDDC39)),
+    'WINDWARD': GameLogoData(Icons.sailing_rounded, Color(0xFF01579B), Color(0xFF4FC3F7)),
+    'DELVE': GameLogoData(Icons.flashlight_on_rounded, Color(0xFF1A0033), Color(0xFFFFB300)),
+    'CASE FILES': GameLogoData(Icons.manage_search_rounded, Color(0xFF7F0000), Color(0xFFFF8A65)),
+    'FRONTIER': GameLogoData(Icons.holiday_village_rounded, Color(0xFFBF360C), Color(0xFFFFCA28)),
     'ODYSSEY': GameLogoData(Icons.explore_rounded, Color(0xFF0D47A1), Color(0xFF00E676)),
     'ARENA GAUNTLET': GameLogoData(Icons.whatshot_rounded, Color(0xFFB71C1C), Color(0xFFFF6A00)),
   };

@@ -48,6 +48,9 @@ import '../../features/arena/screens/duel_screen.dart';
 import '../../features/edu/quests/quest_hub_screen.dart';
 import '../../features/edu/odyssey/odyssey_hub_screen.dart';
 import '../../features/edu/edu_more_games_screen.dart';
+import '../../features/edu/realms/realm_hub_screen.dart';
+import '../../features/edu/realms/realm_kit.dart';
+import '../../features/edu/realms/realm_registry.dart';
 import '../../features/arena/screens/games/vault_break_screen.dart';
 import '../../features/edu/odyssey/odyssey_screen.dart';
 import '../../features/arena/duels/duel_entry.dart';
@@ -251,6 +254,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/edu/compete',  builder: (_, __) => const EduCompeteLobbyScreen()),
           GoRoute(path: '/edu/quests',   builder: (_, __) => const QuestHubScreen()),
           GoRoute(path: '/edu/quest',    builder: (_, __) => const QuestHubScreen()),
+          GoRoute(path: '/edu/realms', builder: (_, s) => RealmHubScreen(initialSubject: s.uri.queryParameters['subject'])),
+          GoRoute(path: '/edu/realm/:id', builder: (_, s) {
+            final RealmGameInfo? info = RealmRegistry.byId(s.pathParameters['id']!);
+            if (info == null) return const RealmHubScreen();
+            final RealmConfig cfg = s.extra is RealmConfig ? s.extra as RealmConfig : const RealmConfig();
+            return DuelEntry(gameKey: info.id, child: info.build(cfg));
+          }),
           GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),
           GoRoute(path: '/edu/odyssey/play', builder: (_, s) => OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig())),

@@ -33,6 +33,11 @@ import '../games/shooter/survival_shooter_screen.dart';
 import '../games/void_protocols/void_protocols_screen.dart';
 import '../games/chrono_spire/chrono_spire_screen.dart';
 import '../../edu/odyssey/odyssey_screen.dart';
+import '../../edu/realms/biome/biome_screen.dart';
+import '../../edu/realms/casefiles/casefiles_screen.dart';
+import '../../edu/realms/delve/delve_screen.dart';
+import '../../edu/realms/frontier/frontier_screen.dart';
+import '../../edu/realms/windward/windward_screen.dart';
 
 /// How a duel turns a game's reported scores into one number.
 enum DuelScoring {
@@ -112,6 +117,11 @@ class DuelRegistry {
     DuelGame(key: 'dronebreach', name: 'Drone Breach', blurb: 'Highest score', build: () => const DroneBreachScreen()),
     DuelGame(key: 'survival', name: 'Survival Shooter', blurb: 'Outlast the waves', build: () => const SurvivalShooterScreen()),
     DuelGame(key: 'voidprotocols', name: 'Void Protocols', blurb: 'Highest score', build: () => const VoidProtocolsScreen()),
+    DuelGame(key: 'biome', name: 'Biome', blurb: 'Most creatures tamed, same world', build: () => const BiomeScreen()),
+    DuelGame(key: 'windward', name: 'Windward', blurb: 'Richest captain, same sea', build: () => const WindwardScreen()),
+    DuelGame(key: 'delve', name: 'Delve', blurb: 'Deepest descent, same caves', build: () => const DelveScreen()),
+    DuelGame(key: 'casefiles', name: 'Case Files', blurb: 'Best detective, same cases', build: () => const CaseFilesScreen()),
+    DuelGame(key: 'frontier', name: 'Frontier', blurb: 'Strongest settlement, same land', build: () => const FrontierScreen()),
     DuelGame(key: 'odyssey', name: 'Odyssey', blurb: 'Most knowledge points in 150 seconds', build: () => const OdysseyScreen()),
     DuelGame(key: 'chronospire', name: 'Chrono-Spire', blurb: 'Climb the highest', build: () => const ChronoSpireScreen()),
   ];

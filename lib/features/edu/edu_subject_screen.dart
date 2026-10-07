@@ -225,6 +225,19 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
         Expanded(child: TabBarView(controller: _tab, children: [
           // ── GAMES ────────────────────────────────────────────────────────
           ListView(padding: const EdgeInsets.all(16), children: [
+            GestureDetector(
+              onTap: () => context.push('/edu/realms?subject=${widget.subjectId}'),
+              child: Container(margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF0D47A1), Color(0xFF00897B)]), borderRadius: BorderRadius.circular(16)),
+                child: Row(children: [
+                  const Icon(Icons.explore_rounded, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('REALMS FOR ${(meta['label'] as String).toUpperCase()}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: Colors.white, letterSpacing: 0.8)),
+                    const Text('Open worlds that teach this subject. Ryan suggests where to start.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  ])),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ]))),
             if (!_dataLoaded)
               Container(padding: const EdgeInsets.all(16), margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: color.withOpacity(0.2))),

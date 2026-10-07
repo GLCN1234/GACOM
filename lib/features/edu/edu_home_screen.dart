@@ -216,9 +216,9 @@ class _EduHomeState extends State<EduHomeScreen> {
           ])),
         const SizedBox(height: 20),
 
-        // Odyssey
+        // Realms
         GestureDetector(
-          onTap: () => context.push('/edu/odyssey'),
+          onTap: () => context.push('/edu/realms'),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -233,9 +233,9 @@ class _EduHomeState extends State<EduHomeScreen> {
               ),
               const SizedBox(width: 14),
               const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('ODYSSEY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white, letterSpacing: 1)),
+                Text('REALMS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white, letterSpacing: 1)),
                 SizedBox(height: 2),
-                Text('An open world for every subject. Roam, dodge, answer, level up. Plays your own school curriculum.', style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.35)),
+                Text('Six open worlds: roam, battle, sail, explore, investigate, build. Ryan picks for you daily.', style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.35)),
               ])),
               const Icon(Icons.chevron_right_rounded, color: Colors.white),
             ]),
