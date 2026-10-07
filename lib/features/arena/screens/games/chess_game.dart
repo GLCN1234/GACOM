@@ -627,7 +627,7 @@ class _ChessPracticeState extends State<ChessPracticeScreen>{
 
   @override
   Widget build(BuildContext ctx){
-    return HowToPlayOverlay(gameKey: 'chess', title: 'HOW TO PLAY CHESS', steps: const [HowToPlayStep(icon: Icons.drag_indicator_rounded, title: 'Move pieces', description: 'Tap a piece, then tap where to move it'), HowToPlayStep(icon: Icons.smart_toy_rounded, title: 'Play vs AI', description: 'Checkmate the AI king before it checkmates yours'), HowToPlayStep(icon: Icons.replay_rounded, title: 'Standard rules', description: 'Castling, en passant, and promotion all work as normal chess')], child: Scaffold(
+    return HowToPlayOverlay(gameKey: 'chess', title: 'HOW TO PLAY CHESS', steps: const [HowToPlayStep(icon: Icons.drag_indicator_rounded, title: 'Move pieces', description: 'Tap a piece, then tap where to move it'), HowToPlayStep(icon: Icons.smart_toy_rounded, title: 'Play vs Ryan', description: 'Checkmate Ryan\'s king before he checkmates yours'), HowToPlayStep(icon: Icons.replay_rounded, title: 'Standard rules', description: 'Castling, en passant, and promotion all work as normal chess')], child: Scaffold(
       backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('CHESS VS RYAN'), actions:[
         const Play1v1Button(gameTypeKey: 'chess'),

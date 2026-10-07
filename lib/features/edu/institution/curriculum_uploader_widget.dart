@@ -104,7 +104,7 @@ class _CurriculumUploaderWidgetState extends State<CurriculumUploaderWidget> {
   Widget build(BuildContext ctx) => SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: GacomColors.accentCyan.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.accentCyan.withOpacity(0.2))),
       child: const Row(children: [Icon(Icons.auto_awesome_rounded, color: GacomColors.accentCyan, size: 18), SizedBox(width: 10),
-        Expanded(child: Text('Upload curriculum text and AI will generate 300 gamified questions across 5 difficulty levels. Takes 3-5 minutes — please keep this screen open.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4)))])),
+        Expanded(child: Text('Upload curriculum text and Ryan will generate 300 gamified questions across 5 difficulty levels. Takes 3-5 minutes — please keep this screen open.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4)))])),
     const SizedBox(height: 16),
     _field(_subjectCtrl, 'Subject *', 'e.g. Mathematics, Physics', Icons.book_outlined),
     const SizedBox(height: 12),

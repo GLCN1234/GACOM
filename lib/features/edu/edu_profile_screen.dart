@@ -167,7 +167,7 @@ class _EduProfileState extends State<EduProfileScreen> {
                 const SizedBox(height: 8),
                 Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: GacomColors.elevatedCard, borderRadius: BorderRadius.circular(12)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('AI INSIGHT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
+                    const Text('RYAN INSIGHT', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 11, color: GacomColors.textMuted, letterSpacing: 1)),
                     const SizedBox(height: 6),
                     Row(children: [
                       const Icon(Icons.military_tech_rounded, size: 14, color: GacomColors.success),

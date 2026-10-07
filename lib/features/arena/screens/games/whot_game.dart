@@ -92,7 +92,7 @@ class _WhotGameState extends State<WhotGame> {
     if (!playerTurn || over) return;
     _drawIfEmpty();
     if (deck.isEmpty) return;
-    setState(() { playerHand.add(deck.removeLast()); playerTurn = false; status = 'AI thinking...'; });
+    setState(() { playerHand.add(deck.removeLast()); playerTurn = false; status = 'Ryan thinking...'; });
     SoundService.instance.playCardFlip();
     Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();});
   }
@@ -112,27 +112,27 @@ class _WhotGameState extends State<WhotGame> {
     void proceed() {
       switch (c.number) {
         case 1: // Hold On — same player goes again
-          setState(() { playerTurn = isPlayer; status = isPlayer ? 'Hold On! Go again' : 'AI holds on...'; });
+          setState(() { playerTurn = isPlayer; status = isPlayer ? 'Hold On! Go again' : 'Ryan holds on...'; });
           if (!isPlayer) Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();});
           return;
         case 2: // Pick Two
           _drawIfEmpty();
           final target = isPlayer ? aiHand : playerHand;
           for (int i = 0; i < 2 && deck.isNotEmpty; i++) target.add(deck.removeLast());
-          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'AI picks 2 — your turn' : 'You pick 2 — AI\'s turn'; });
+          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'Ryan picks 2 — your turn' : 'You pick 2 — Ryan\'s turn'; });
           break;
         case 8: // Suspension — skip opponent
-          setState(() { playerTurn = isPlayer; status = isPlayer ? 'Opponent suspended! Go again' : 'You are suspended — AI goes again'; });
+          setState(() { playerTurn = isPlayer; status = isPlayer ? 'Opponent suspended! Go again' : 'You are suspended — Ryan goes again'; });
           if (!isPlayer) { Future.delayed(const Duration(milliseconds: 500), (){if(mounted)_aiPlay();}); return; }
           break;
         case 14: // General Market — opponent draws 1
           _drawIfEmpty();
           final target = isPlayer ? aiHand : playerHand;
           if (deck.isNotEmpty) target.add(deck.removeLast());
-          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'AI draws from the market' : 'You draw from the market'; });
+          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'Ryan draws from the market' : 'You draw from the market'; });
           break;
         default:
-          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'AI thinking...' : 'Your turn'; });
+          setState(() { playerTurn = !isPlayer; status = isPlayer ? 'Ryan thinking...' : 'Your turn'; });
       }
       if (playerHand.isEmpty || aiHand.isEmpty) { _endGame(); return; }
       if (!playerTurn) Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
@@ -158,7 +158,7 @@ class _WhotGameState extends State<WhotGame> {
   void _onSuitChosen(BuildContext dialogContext, String s) {
     Navigator.of(dialogContext).pop();
     if (!mounted) return;
-    setState(() { calledSuit = s; playerTurn = false; status = 'You called $s — AI thinking...'; });
+    setState(() { calledSuit = s; playerTurn = false; status = 'You called $s — Ryan thinking...'; });
     if (playerHand.isEmpty) { _endGame(); return; }
     Future.delayed(const Duration(milliseconds: 600), (){if(mounted)_aiPlay();});
   }
@@ -183,7 +183,7 @@ class _WhotGameState extends State<WhotGame> {
   void _endGame() {
     setState(() { over = true; });
     if (playerHand.isEmpty) { pScore++; status = 'You win!'; SoundService.instance.playWin(); GameScoreService.save(gameName: 'Whot', score: 1, won: true); }
-    else { aScore++; status = 'AI wins!'; SoundService.instance.playLose(); GameScoreService.save(gameName: 'Whot', score: 0, won: false); }
+    else { aScore++; status = 'Ryan wins!'; SoundService.instance.playLose(); GameScoreService.save(gameName: 'Whot', score: 0, won: false); }
   }
 
   Widget _cardWidget(WhotCard c, {bool small = false, VoidCallback? onTap, bool playable = true, bool faceDown = false}) {
@@ -236,7 +236,7 @@ class _WhotGameState extends State<WhotGame> {
       appBar: AppBar(title: const Text('WHOT'), actions: [
         Container(margin: const EdgeInsets.only(right: 12), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.12), borderRadius: BorderRadius.circular(50)),
-          child: Text('YOU $pScore — AI $aScore', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.deepOrange))),
+          child: Text('YOU $pScore — Ryan $aScore', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: GacomColors.deepOrange))),
       ]),
       body: Container(
         decoration: const BoxDecoration(gradient: RadialGradient(center: Alignment.center, radius: 1.2, colors: [Color(0xFF0F2818), Color(0xFF0A0A0F)])),
@@ -245,7 +245,7 @@ class _WhotGameState extends State<WhotGame> {
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(Icons.smart_toy_rounded, color: GacomColors.textMuted, size: 16),
             const SizedBox(width: 6),
-            Text('AI — ${aiHand.length} cards', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textMuted)),
+            Text('Ryan — ${aiHand.length} cards', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 12, color: GacomColors.textMuted)),
           ]),
           _aiHandFan(),
           const SizedBox(height: 8),

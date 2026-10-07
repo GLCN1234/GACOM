@@ -262,7 +262,7 @@ class _AyoScreenState extends State<AyoScreen> {
     setState(() {
       _s = next;
       _disp = List<int>.from(next.pits);
-      _msg = captured > 0 ? '${mover == 0 ? 'You' : 'AI'} captured $captured' : '';
+      _msg = captured > 0 ? '${mover == 0 ? 'You' : 'Ryan'} captured $captured' : '';
     });
     if (captured > 0) {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -280,7 +280,7 @@ class _AyoScreenState extends State<AyoScreen> {
     final epoch = _epoch;
     setState(() {
       _busy = true;
-      _msg = 'AI is thinking...';
+      _msg = 'Ryan is thinking...';
     });
     await Future.delayed(const Duration(milliseconds: 700));
     if (_dead(epoch)) return;
@@ -406,7 +406,7 @@ class _AyoScreenState extends State<AyoScreen> {
         ]),
       );
       return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        _store('AI', _s.cap[1], active: _s.player == 1 && !_over),
+        _store('Ryan', _s.cap[1], active: _s.player == 1 && !_over),
         const SizedBox(height: 14),
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -445,9 +445,9 @@ class _AyoScreenState extends State<AyoScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(won ? Icons.emoji_events_rounded : (draw ? Icons.sentiment_neutral_rounded : Icons.sentiment_dissatisfied_rounded), color: won ? const Color(0xFFFFD700) : GacomColors.textMuted, size: 52),
             const SizedBox(height: 12),
-            Text(won ? 'YOU WIN!' : (draw ? 'DRAW' : 'AI WINS'), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
+            Text(won ? 'YOU WIN!' : (draw ? 'DRAW' : 'RYAN WINS'), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
             const SizedBox(height: 6),
-            Text('You captured $mine, AI captured $theirs', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+            Text('You captured $mine, Ryan captured $theirs', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
             const SizedBox(height: 20),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('EXIT', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),

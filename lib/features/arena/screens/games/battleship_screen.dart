@@ -356,7 +356,7 @@ class _BattleshipScreenState extends State<BattleshipScreen> {
       title: 'HOW TO PLAY BATTLESHIP',
       steps: const [
         HowToPlayStep(icon: Icons.directions_boat_rounded, title: 'Place your fleet', description: 'Tap a ship, then tap the grid to place it. Use ROTATE to turn it, or RANDOM to place all five for you.'),
-        HowToPlayStep(icon: Icons.gps_fixed_rounded, title: 'Fire at the enemy', description: 'Take turns with the AI. Tap a square on the enemy waters to fire.'),
+        HowToPlayStep(icon: Icons.gps_fixed_rounded, title: 'Fire at the enemy', description: 'Take turns with Ryan. Tap a square on the enemy waters to fire.'),
         HowToPlayStep(icon: Icons.whatshot_rounded, title: 'Hits and misses', description: 'Red means you hit a ship. A white dot is a miss. Hit every square of a ship to sink it.'),
         HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Win', description: 'Sink all five enemy ships before they sink yours.'),
       ],

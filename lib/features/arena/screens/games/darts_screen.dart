@@ -233,13 +233,13 @@ class _DartsScreenState extends State<DartsScreen> {
 
   Future<void> _aiTurn(int epoch) async {
     final e = _e!;
-    setState(() => _msg = 'AI is throwing...');
+    setState(() => _msg = 'Ryan is throwing...');
     for (int i = 0; i < 3; i++) {
       await Future.delayed(const Duration(milliseconds: 800));
       if (_dead(epoch)) return;
       e.throwAi();
       SoundService.instance.playShoot();
-      setState(() => _msg = 'AI hit ${e.lastLabel}  (${e.lastScore})');
+      setState(() => _msg = 'Ryan hit ${e.lastLabel}  (${e.lastScore})');
     }
     await Future.delayed(const Duration(milliseconds: 900));
     if (_dead(epoch)) return;
@@ -274,7 +274,7 @@ class _DartsScreenState extends State<DartsScreen> {
         HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Press, aim, release', description: 'Press on the board and slide your finger to move the aim point (it sits above your finger). Let go to throw.'),
         HowToPlayStep(icon: Icons.timelapse_rounded, title: 'Be quick', description: 'The circle around your aim shows how wobbly your throw will be. It grows the longer you hold, so aim fast.'),
         HowToPlayStep(icon: Icons.stars_rounded, title: 'Scoring', description: 'The bullseye is 50 and the outer bull 25. The thin outer ring doubles the number and the inner ring triples it. The treble 20 is worth 60.'),
-        HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Beat the AI', description: 'Each round you throw 3 darts, then the AI throws 3. After 5 rounds the highest total wins.'),
+        HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Beat Ryan', description: 'Each round you throw 3 darts, then Ryan throws 3. After 5 rounds the highest total wins.'),
       ],
       child: Scaffold(
         backgroundColor: GacomColors.obsidian,
@@ -283,10 +283,10 @@ class _DartsScreenState extends State<DartsScreen> {
             ? ArcadeStartView(
                 icon: Icons.adjust_rounded,
                 title: 'DARTS',
-                subtitle: '5 rounds of 3 darts. Beat the AI.',
+                subtitle: '5 rounds of 3 darts. Beat Ryan.',
                 buttonLabel: 'START MATCH',
                 onStart: _start,
-                extra: [ArcadeChoiceRow(label: 'AI SKILL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
+                extra: [ArcadeChoiceRow(label: 'RYAN LEVEL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
               )
             : Stack(children: [_game(e), if (e.over && !_busy) _result(e)]),
       ),
@@ -313,7 +313,7 @@ class _DartsScreenState extends State<DartsScreen> {
           const SizedBox(width: 12),
           Text('ROUND ${min(e.round, DartsEngine.rounds)}/${DartsEngine.rounds}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textMuted)),
           const SizedBox(width: 12),
-          _scoreCol('AI', e.aiTotal, e.aiRounds, !e.playerTurn && !e.over),
+          _scoreCol('Ryan', e.aiTotal, e.aiRounds, !e.playerTurn && !e.over),
         ]),
         const SizedBox(height: 8),
         SizedBox(
@@ -343,8 +343,8 @@ class _DartsScreenState extends State<DartsScreen> {
     final bool draw = e.playerTotal == e.aiTotal;
     return ArcadeResultOverlay(
       good: won,
-      title: won ? 'YOU WIN!' : (draw ? 'DRAW' : 'AI WINS'),
-      detail: 'You ${e.playerTotal}  -  AI ${e.aiTotal}',
+      title: won ? 'YOU WIN!' : (draw ? 'DRAW' : 'RYAN WINS'),
+      detail: 'You ${e.playerTotal}  -  Ryan ${e.aiTotal}',
       onAgain: _toSetup,
       onExit: () => Navigator.pop(context),
       againLabel: 'REMATCH',

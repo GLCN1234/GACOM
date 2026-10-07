@@ -29,7 +29,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
     SoundService.instance.playDrop();
     if(_checkWin(1)){setState((){status='You win!'; over=true; wScore++;}); SoundService.instance.playWin(); GameScoreService.save(gameName: 'Connect Four', score: 1, won: true); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); GameScoreService.save(gameName: 'Connect Four', score: 0, won: null); return;}
-    setState((){turn=2; status='AI thinking...';});
+    setState((){turn=2; status='Ryan thinking...';});
     Future.delayed(const Duration(milliseconds:350),(){if(mounted)_aiMove();});
   }
 
@@ -44,7 +44,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
     }
     if(best<0){for(int c=0;c<cols;c++){if(_canDrop(c)){best=c;break;}}}
     _doMove(board,best,2);
-    if(_checkWin(2)){setState((){status='AI wins!'; over=true; aScore++;}); SoundService.instance.playLose(); GameScoreService.save(gameName: 'Connect Four', score: 0, won: false); return;}
+    if(_checkWin(2)){setState((){status='Ryan wins!'; over=true; aScore++;}); SoundService.instance.playLose(); GameScoreService.save(gameName: 'Connect Four', score: 0, won: false); return;}
     if(_full()){setState((){status='Draw!'; over=true;}); GameScoreService.save(gameName: 'Connect Four', score: 0, won: null); return;}
     setState((){turn=1; status='Your turn';});
   }
@@ -78,7 +78,7 @@ class _ConnectFourState extends State<ConnectFourGame> {
   Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'connect_four', title: 'HOW TO PLAY CONNECT FOUR', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Drop a piece', description: 'Tap a column to drop your piece into it'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Connect 4', description: 'First to line up 4 in a row — any direction — wins')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('CONNECT FOUR'), actions:[
-      Text('You $wScore — AI $aScore',style:const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)),
+      Text('You $wScore — Ryan $aScore',style:const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)),
       const SizedBox(width:12),
     ]),
     body: Column(children:[
@@ -198,9 +198,9 @@ class _ReversiState extends State<ReversiGame>{
     final w=board.where((x)=>x==2).length;
     if(over||_valid(board,1).isEmpty&&_valid(board,2).isEmpty){
       over=true;
-      status=b>w?'You win! $b — $w':b<w?'AI wins! $b — $w':'Draw! $b — $w';
+      status=b>w?'You win! $b — $w':b<w?'Ryan wins! $b — $w':'Draw! $b — $w';
     } else {
-      status=playerBlack?'Your turn | You $b — AI $w':'AI thinking... $b — $w';
+      status=playerBlack?'Your turn | You $b — Ryan $w':'Ryan thinking... $b — $w';
     }
   }
 
@@ -861,7 +861,7 @@ class _BlackjackState extends State<BlackjackGame>{
   Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'blackjack', title: 'HOW TO PLAY BLACKJACK', steps: const [HowToPlayStep(icon: Icons.add_rounded, title: 'Hit or Stand', description: 'Draw more cards (Hit) or keep your hand as is (Stand)'), HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Get closer to 21', description: 'Beat the dealer without going over 21')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('BLACKJACK'), actions:[
-      Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $dScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
+      Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — Ryan $dScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
     ]),
     body: Padding(padding: const EdgeInsets.all(16),child: Column(children:[
       const Text('DEALER',style: TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:12,color:GacomColors.textMuted,letterSpacing:1)),
@@ -979,10 +979,10 @@ class _DotsBoxesState extends State<DotsAndBoxesGame>{
     final w=(MediaQuery.of(ctx).size.width-32)/(n);
     return HowToPlayOverlay(gameKey: 'dots_boxes', title: 'HOW TO PLAY DOTS AND BOXES', steps: const [HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Draw a line', description: 'Tap a space between two dots to draw a line there'), HowToPlayStep(icon: Icons.check_box_rounded, title: 'Complete boxes', description: 'Closing the 4th side of a box claims it and gives you another turn')], child: Scaffold(backgroundColor: GacomColors.obsidian,
       appBar: AppBar(title: const Text('DOTS & BOXES'), actions:[
-        Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
+        Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — Ryan $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
       ]),
       body: Column(children:[
-        Padding(padding: const EdgeInsets.all(12),child: Text(over?(pScore>aScore?'You win!':pScore==aScore?'Draw!':'AI wins'):(turn==1?'Your turn':'AI thinking...'),
+        Padding(padding: const EdgeInsets.all(12),child: Text(over?(pScore>aScore?'You win!':pScore==aScore?'Draw!':'Ryan wins'):(turn==1?'Your turn':'Ryan thinking...'),
           style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:16,color:GacomColors.textPrimary),textAlign:TextAlign.center)),
         Expanded(child: Center(child: SizedBox(width:w*(n+0.5),height:w*(n+0.5),
           child: CustomPaint(painter:_DotsPainter(hLines,vLines,boxes,w),
@@ -1065,7 +1065,7 @@ class _NumberQuizState extends State<NumberQuizGame>{
     _ctrl.clear();answered=false;msg='';
     // AI answers in 2-4 seconds
     final delay=Duration(milliseconds:2000+duelRandom().nextInt(2000));
-    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='AI answered first!';answered=true;});SoundService.instance.playLose();Future.delayed(const Duration(milliseconds:1200),(){if(mounted)_next();});}});
+    _aiTimer=Timer(delay,(){if(!answered){aScore++;setState((){msg='Ryan answered first!';answered=true;});SoundService.instance.playLose();Future.delayed(const Duration(milliseconds:1200),(){if(mounted)_next();});}});
     setState((){});
   }
 
@@ -1077,13 +1077,13 @@ class _NumberQuizState extends State<NumberQuizGame>{
   }
 
   @override
-  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'number_duel', title: 'HOW TO PLAY NUMBER DUEL', steps: const [HowToPlayStep(icon: Icons.calculate_rounded, title: 'Solve first', description: 'Type the correct answer before the AI does'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Speed matters', description: 'It is a race — whoever answers correctly first scores the point')], child: Scaffold(
+  Widget build(BuildContext ctx)=>HowToPlayOverlay(gameKey: 'number_duel', title: 'HOW TO PLAY NUMBER DUEL', steps: const [HowToPlayStep(icon: Icons.calculate_rounded, title: 'Solve first', description: 'Type the correct answer before Ryan does'), HowToPlayStep(icon: Icons.bolt_rounded, title: 'Speed matters', description: 'It is a race — whoever answers correctly first scores the point')], child: Scaffold(
     backgroundColor: GacomColors.obsidian,
     appBar: AppBar(title: const Text('NUMBER DUEL'), actions:[
-      Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — AI $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
+      Padding(padding: const EdgeInsets.only(right:12),child: Center(child: Text('You $pScore — Ryan $aScore',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w700,fontSize:13,color:GacomColors.textSecondary)))),
     ]),
     body: Padding(padding: const EdgeInsets.all(24),child: Column(mainAxisAlignment:MainAxisAlignment.center,children:[
-      const Text('Race the AI — solve first!',style: TextStyle(color:GacomColors.textMuted,fontSize:13)),
+      const Text('Race Ryan — solve first!',style: TextStyle(color:GacomColors.textMuted,fontSize:13)),
       const SizedBox(height:32),
       Text('$a $op $b = ?',style: const TextStyle(fontFamily:'Rajdhani',fontWeight:FontWeight.w800,fontSize:52,color:GacomColors.textPrimary)),
       const SizedBox(height:32),

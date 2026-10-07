@@ -516,7 +516,7 @@ class _RummyScreenState extends State<RummyScreen> {
     final epoch = _epoch;
     setState(() {
       _phase = 2;
-      _msg = 'AI is thinking...';
+      _msg = 'Ryan is thinking...';
     });
     await Future.delayed(const Duration(milliseconds: 900));
     if (_dead(epoch)) return;
@@ -525,7 +525,7 @@ class _RummyScreenState extends State<RummyScreen> {
       _finish(3);
       return;
     }
-    final parts = <String>[s.tookDiscard ? 'AI took your discard' : 'AI drew from the stock'];
+    final parts = <String>[s.tookDiscard ? 'Ryan took your discard' : 'Ryan drew from the stock'];
     if (s.melded > 0) { parts.add('melded ${s.melded}'); }
     if (s.laidOff > 0) { parts.add('laid off ${s.laidOff}'); }
     if (s.discarded != null) { parts.add('discarded ${s.discarded}'); }
@@ -577,8 +577,8 @@ class _RummyScreenState extends State<RummyScreen> {
       steps: const [
         HowToPlayStep(icon: Icons.layers_rounded, title: 'Draw', description: 'Each turn, draw the top card of the stock, or take the top card of the discard pile.'),
         HowToPlayStep(icon: Icons.view_agenda_rounded, title: 'Meld', description: 'Select 3 or more cards and tap MELD. A set is the same number in different suits. A run is 3 or more in a row in one suit (Ace can be low or high).'),
-        HowToPlayStep(icon: Icons.add_circle_outline_rounded, title: 'Lay off', description: 'Select cards and tap a meld on the table (yours or the AI) to add cards that extend it.'),
-        HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Go out', description: 'End each turn by discarding one card. Get rid of all your cards first to win and score the points left in the AI hand.'),
+        HowToPlayStep(icon: Icons.add_circle_outline_rounded, title: 'Lay off', description: 'Select cards and tap a meld on the table (yours or Ryan\'s) to add cards that extend it.'),
+        HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'Go out', description: 'End each turn by discarding one card. Get rid of all your cards first to win and score the points left in Ryan\'s hand.'),
       ],
       child: Scaffold(
         backgroundColor: GacomColors.obsidian,
@@ -648,10 +648,10 @@ class _RummyScreenState extends State<RummyScreen> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _label('AI HAND (${g.aiHand.length} cards)'),
+        _label('RYAN HAND (${g.aiHand.length} cards)'),
         Wrap(spacing: 2, runSpacing: 2, children: [for (int i = 0; i < g.aiHand.length; i++) PlayingCardView(faceUp: false, width: 22)]),
         const SizedBox(height: 10),
-        _label('AI MELDS'),
+        _label('RYAN MELDS'),
         if (g.aiMelds.isEmpty) const Text('none yet', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
         for (final m in g.aiMelds) _meldRow(m),
         const SizedBox(height: 10),
@@ -710,9 +710,9 @@ class _RummyScreenState extends State<RummyScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(won ? Icons.emoji_events_rounded : (draw ? Icons.sentiment_neutral_rounded : Icons.sentiment_dissatisfied_rounded), color: won ? const Color(0xFFFFD700) : GacomColors.textMuted, size: 52),
             const SizedBox(height: 12),
-            Text(won ? (_stalemate ? 'YOU WIN ON POINTS' : 'YOU WENT OUT!') : (draw ? 'DRAW' : (_stalemate ? 'AI WINS ON POINTS' : 'AI WENT OUT')), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
+            Text(won ? (_stalemate ? 'YOU WIN ON POINTS' : 'YOU WENT OUT!') : (draw ? 'DRAW' : (_stalemate ? 'RYAN WINS ON POINTS' : 'RYAN WENT OUT')), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
             const SizedBox(height: 6),
-            Text(won ? 'You score ${Rummy.handValue(g.aiHand)} points from the AI hand' : 'You were left with ${Rummy.handValue(g.hand)} points', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+            Text(won ? 'You score ${Rummy.handValue(g.aiHand)} points from Ryan\'s hand' : 'You were left with ${Rummy.handValue(g.hand)} points', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
             const SizedBox(height: 20),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('EXIT', style: TextStyle(color: GacomColors.textMuted, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700))),

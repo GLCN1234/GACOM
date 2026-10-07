@@ -469,7 +469,7 @@ class _LudoScreenState extends State<LudoScreen> {
         const SizedBox(height: 14),
         const Text('LUDO', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
         const SizedBox(height: 6),
-        const Text('Race your four tokens home against the AI', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
+        const Text('Race your four tokens home against Ryan', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
         const SizedBox(height: 24),
         const Text('OPPONENTS', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
         const SizedBox(height: 10),

@@ -112,7 +112,7 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
     'math': [
       {'name': 'Algebra Trainer',   'desc': 'Step-by-step: linear, quadratic, simultaneous equations', 'icon': Icons.functions_rounded,    'tag': 'NEW',  'route': '/edu/game/algebra_eq'},
       {'name': 'Speed Math',        'desc': 'Solve equations before the clock runs out',           'icon': Icons.bolt_rounded,         'tag': 'HOT',  'route': '/arena/practice/speedmath'},
-      {'name': 'Number Duel',       'desc': 'Race the AI to solve problems first',                 'icon': Icons.timer_rounded,         'tag': '',     'route': '/arena/practice/numberduel'},
+      {'name': 'Number Duel',       'desc': 'Race Ryan to solve problems first',                 'icon': Icons.timer_rounded,         'tag': '',     'route': '/arena/practice/numberduel'},
       {'name': '2048',              'desc': 'Combine tiles to reach 2048',                         'icon': Icons.dashboard_rounded,     'tag': '',     'route': '/arena/practice/2048'},
       {'name': 'Math Trivia',       'desc': 'Answer 10 rapid-fire math questions',                 'icon': Icons.quiz_outlined,         'tag': '',     'route': '/arena/practice/trivia'},
     ],
@@ -154,8 +154,8 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
       {'name': 'Sentence Builder', 'desc': 'Arrange words into correct sentences',               'icon': Icons.format_align_left_rounded,'tag':'',  'route': '/arena/practice/trivia'},
     ],
     'logic': [
-      {'name': 'Chess',            'desc': 'The ultimate strategy game — built-in AI opponent',  'icon': Icons.extension_rounded,    'tag': 'HOT',  'route': '/arena/practice/chess'},
-      {'name': 'Connect Four',     'desc': 'Strategic 4-in-a-row against the AI',               'icon': Icons.circle_outlined,      'tag': '',     'route': '/arena/practice/connect4'},
+      {'name': 'Chess',            'desc': 'The ultimate strategy game — play against Ryan',  'icon': Icons.extension_rounded,    'tag': 'HOT',  'route': '/arena/practice/chess'},
+      {'name': 'Connect Four',     'desc': 'Strategic 4-in-a-row against Ryan',               'icon': Icons.circle_outlined,      'tag': '',     'route': '/arena/practice/connect4'},
       {'name': 'Memory Match',     'desc': 'Train working memory — flip and match pairs',        'icon': Icons.grid_view_rounded,    'tag': '',     'route': '/arena/practice/memory'},
       {'name': 'Reversi',          'desc': 'Flip your opponent\'s tiles to dominate the board', 'icon': Icons.radio_button_checked_rounded,'tag':'','route': '/arena/practice/reversi'},
       {'name': 'Dots & Boxes',     'desc': 'Strategic line-drawing puzzle game',                 'icon': Icons.border_all_rounded,   'tag': '',     'route': '/arena/practice/dotsboxes'},

@@ -73,7 +73,7 @@ class _OdysseyHubScreenState extends State<OdysseyHubScreen> {
                     style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white, letterSpacing: 1)),
                 SizedBox(height: 6),
                 Text(
-                  'Roam a living map. Every region is a subject. Walk into glowing orbs to face a question, dash past hunters, grab crystals and keep your hearts. The world never stops and it gets wilder the longer you last.',
+                  'Roam a living map where every region is a subject. Take challenge orbs when you feel like it, or tap REST for 1, 3 or 5 minutes of free roam, coins and quests. When the rest ends, one checkpoint question must be answered to carry on.',
                   style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                 ),
               ]),

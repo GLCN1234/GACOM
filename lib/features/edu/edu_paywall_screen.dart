@@ -18,7 +18,7 @@ class _EduPaywallState extends State<EduPaywallScreen> {
   static const _features = [
     'All 24 subjects unlocked',
     'All 5 difficulty levels per topic',
-    'AI-powered curriculum games from your school',
+    'Ryan-powered curriculum games from your school',
     'Live student competitions with voice chat',
     'Progress tracking & parent reports',
     'WAEC, NECO & JAMB preparation packs',
@@ -94,7 +94,7 @@ class _EduPaywallState extends State<EduPaywallScreen> {
               '✓ Foundation level only',
               '✓ Basic leaderboard',
               '✗ All other subjects',
-              '✗ AI curriculum games',
+              '✗ Ryan curriculum games',
               '✗ Competitions',
             ].map((f) => Padding(padding: const EdgeInsets.only(bottom: 4),
               child: Text(f, style: TextStyle(color: f.startsWith('✓') ? GacomColors.textSecondary : GacomColors.textMuted, fontSize: 11)))),
@@ -117,7 +117,7 @@ class _EduPaywallState extends State<EduPaywallScreen> {
             ...[
               '✓ All 24 subjects',
               '✓ All 5 levels',
-              '✓ AI curriculum games',
+              '✓ Ryan curriculum games',
               '✓ Live competitions',
               '✓ Parent reports',
               '✓ Exam prep packs',

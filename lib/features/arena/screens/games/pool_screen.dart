@@ -386,9 +386,9 @@ class PoolEngine {
         final bool clean = !foul && ownBefore == 0;
         winner = clean ? cur : opp;
         if (clean) {
-          message = cur == 0 ? 'You sank the 8 ball. You win!' : 'AI sank the 8 ball. AI wins.';
+          message = cur == 0 ? 'You sank the 8 ball. You win!' : 'Ryan sank the 8 ball. Ryan wins.';
         } else {
-          message = cur == 0 ? 'You sank the 8 ball too early or fouled. AI wins.' : 'AI lost the 8 ball. You win!';
+          message = cur == 0 ? 'You sank the 8 ball too early or fouled. Ryan wins.' : 'Ryan lost the 8 ball. You win!';
         }
         breakShot = false;
         return;
@@ -422,14 +422,14 @@ class PoolEngine {
       if (cur == 0) { fouls0++; } else { fouls1++; }
       current = opp;
       inHand = true;
-      message = '${cur == 0 ? 'Foul: ' : 'AI foul: '}$reason. ${current == 0 ? 'Ball in hand for you.' : 'Ball in hand for the AI.'}';
+      message = '${cur == 0 ? 'Foul: ' : 'Ryan foul: '}$reason. ${current == 0 ? 'Ball in hand for you.' : 'Ball in hand for Ryan.'}';
     } else if (ownPocketed) {
       inHand = false;
-      message = cur == 0 ? 'Nice shot. Shoot again.' : 'AI pocketed one and shoots again.';
+      message = cur == 0 ? 'Nice shot. Shoot again.' : 'Ryan pocketed one and shoots again.';
     } else {
       current = opp;
       inHand = false;
-      message = current == 0 ? 'Your turn.' : 'AI is thinking...';
+      message = current == 0 ? 'Your turn.' : 'Ryan is thinking...';
     }
   }
 
@@ -798,7 +798,7 @@ class _PoolScreenState extends State<PoolScreen> with SingleTickerProviderStateM
                 subtitle: 'Pot your group, then sink the 8 ball.',
                 buttonLabel: 'BREAK',
                 onStart: _start,
-                extra: [ArcadeChoiceRow(label: 'AI SKILL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
+                extra: [ArcadeChoiceRow(label: 'RYAN LEVEL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
               )
             : Stack(children: [_game(e), if (e.over) _result(e)]),
       ),
@@ -840,7 +840,7 @@ class _PoolScreenState extends State<PoolScreen> with SingleTickerProviderStateM
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Text('YOU: ${_groupName(e, 0)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: e.current == 0 ? GacomColors.deepOrange : GacomColors.textMuted)),
-            Text('AI: ${_groupName(e, 1)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: e.current == 1 ? GacomColors.accentCyan : GacomColors.textMuted)),
+            Text('Ryan: ${_groupName(e, 1)}', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: e.current == 1 ? GacomColors.accentCyan : GacomColors.textMuted)),
           ]),
         ),
         SizedBox(
@@ -881,7 +881,7 @@ class _PoolScreenState extends State<PoolScreen> with SingleTickerProviderStateM
     final bool won = e.winner == 0;
     return ArcadeResultOverlay(
       good: won,
-      title: won ? 'YOU WIN!' : 'AI WINS',
+      title: won ? 'YOU WIN!' : 'RYAN WINS',
       detail: e.message,
       onAgain: _toSetup,
       onExit: () => Navigator.pop(context),

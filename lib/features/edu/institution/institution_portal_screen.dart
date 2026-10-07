@@ -450,7 +450,7 @@ class _CurriculumUploaderState extends State<_CurriculumUploader> {
         'uploaded_by': SupabaseService.currentUserId,
       }).select().single();
 
-      setState(() => _status = 'Generating games with AI...');
+      setState(() => _status = 'Ryan is generating your games...');
 
       // 2. Call Claude API to generate gamified questions from curriculum
       final response = await SupabaseService.client.functions.invoke('generate-curriculum-games', body: {
@@ -477,7 +477,7 @@ class _CurriculumUploaderState extends State<_CurriculumUploader> {
       child: const Row(children: [
         Icon(Icons.auto_awesome_rounded, color: GacomColors.accentCyan, size: 18),
         SizedBox(width: 10),
-        Expanded(child: Text('Upload your curriculum content and our AI will automatically generate gamified questions, exercises, and step-by-step learning games for your students.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
+        Expanded(child: Text('Upload your curriculum content and Ryan will automatically generate gamified questions, exercises, and step-by-step learning games for your students.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
       ])),
     const SizedBox(height: 20),
     _field(_subjectCtrl, 'Subject *', 'e.g. Mathematics, Physics, English', Icons.book_outlined),

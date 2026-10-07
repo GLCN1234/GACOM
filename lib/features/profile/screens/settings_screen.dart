@@ -956,7 +956,7 @@ class _HelpCenterScreen extends StatelessWidget {
       ),
       (
         'How do I contact support?',
-        'Go to Settings → Contact Support. Our AI assistant can handle most issues instantly. For complex cases, it connects you to a live agent who can see your chat history.'
+        'Go to Settings → Contact Support. Ryan, our assistant, can handle most issues instantly. For complex cases, it connects you to a live agent who can see your chat history.'
       ),
     ];
 

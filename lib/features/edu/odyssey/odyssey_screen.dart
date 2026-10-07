@@ -44,6 +44,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   bool _loading = true;
   bool _schoolUsed = false;
   bool _paused = false;
+  bool _intro = false;
+  bool _inDuel = false;
   bool _ended = false;
   bool _saved = false;
   late final Ticker _ticker;
@@ -102,6 +104,10 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           if (_coinCue % 2 == 0) s.playTap();
           break;
         }
+        case 'gate': {
+          s.playTap();
+          break;
+        }
         case 'star':
         case 'shield':
         case 'nova': {
@@ -155,6 +161,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     _subjectIds = ids;
     _subjects = subs;
     _maxSeconds = inDuel ? 240 : null;
+    _inDuel = inDuel;
+    _intro = !inDuel;
     _startRun();
     setState(() => _loading = false);
   }
@@ -167,6 +175,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       mixed: widget.config.subjectId == 'mix' && _subjectIds.length > 1,
       seed: rng.nextInt(1 << 30),
       rng: rng,
+      allowRest: !_inDuel,
+      labels: <String, String>{for (final MapEntry<String, OdySubject> en in _subjects.entries) en.key: en.value.label},
     );
     _engine = e;
     _ended = false;
@@ -183,7 +193,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     if (e == null) return;
     final Duration? prev = _last;
     _last = elapsed;
-    if (prev == null || _paused || _ended) {
+    if (prev == null || _paused || _ended || _intro) {
       return;
     }
     final double dt = (elapsed - prev).inMicroseconds / 1e6;
@@ -352,6 +362,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
               ),
             ),
             SafeArea(child: _hud(e)),
+            if (e.gate != null && !_ended) _gateOverlay(e),
+            if (_intro) _introOverlay(),
             if (_paused && !_ended) _pauseOverlay(),
             if (_ended) _resultOverlay(e),
           ]),
@@ -400,6 +412,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           _pill(rs.label, Icons.place_rounded, _lighten(rs.color, 0.25)),
           if (e.streak >= 2) _pill('x${e.streak}', Icons.local_fire_department_rounded, const Color(0xFFFF9800)),
           if (e.shield > 0) _pill('Shield ${e.shield.ceil()}s', Icons.shield_rounded, const Color(0xFF40C4FF)),
+          if (e.quest != null) _pill('${e.quest!.title}  ${e.quest!.progress > e.quest!.target ? e.quest!.target : e.quest!.progress}/${e.quest!.target}', Icons.flag_rounded, const Color(0xFF69F0AE)),
+          if (e.resting) _pill('Free roam ${_clock(e.freeLeft)}', Icons.self_improvement_rounded, const Color(0xFF80D8FF)),
           if (_maxSeconds != null) _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
@@ -433,6 +447,15 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
               ),
             )).toList()),
       ),
+      // rest and ask buttons
+      if (!_inDuel && e.gate == null)
+        Positioned(
+          left: 16,
+          bottom: 30,
+          child: e.resting
+              ? _roundAction(Icons.help_outline_rounded, 'ASK ME', const Color(0xFF69F0AE), () => e.askNow())
+              : (a == null ? _roundAction(Icons.self_improvement_rounded, 'REST', const Color(0xFF80D8FF), _openRest) : const SizedBox.shrink()),
+        ),
       // dash button
       Positioned(
         right: 20,
@@ -461,6 +484,172 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         ),
       ),
     ]);
+  }
+
+  String _clock(double sec) {
+    final int t = sec.ceil();
+    return '${t ~/ 60}:${(t % 60).toString().padLeft(2, '0')}';
+  }
+
+  Widget _roundAction(IconData icon, String label, Color color, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(30), border: Border.all(color: color, width: 1.5)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 6),
+            Text(label, style: TextStyle(color: color, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.8)),
+          ]),
+        ),
+      );
+
+  Future<void> _openRest() async {
+    final OdysseyEngine? e = _engine;
+    if (e == null) return;
+    setState(() => _paused = true);
+    final int? mins = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: GacomColors.cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (BuildContext c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            const Text('FREE ROAM', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary, letterSpacing: 1)),
+            const SizedBox(height: 6),
+            const Text('No questions while you explore, collect coins and finish quests. When the time is up, one question must be answered before you move on.',
+                style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
+            const SizedBox(height: 16),
+            Row(children: <Widget>[
+              for (final int m in <int>[1, 3, 5])
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                      onPressed: () => Navigator.pop(c, m),
+                      child: Text('$m min', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
+                    ),
+                  ),
+                ),
+            ]),
+          ]),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (mins != null) e.rest(mins * 60.0);
+    setState(() => _paused = false);
+  }
+
+  Widget _introOverlay() => Positioned.fill(
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.88),
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                  const Icon(Icons.explore_rounded, color: Color(0xFF69F0AE), size: 54),
+                  const SizedBox(height: 10),
+                  const Text('THE GLITCH STORM', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: Colors.white, letterSpacing: 2)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'A storm of Glitches has scrambled the realms of knowledge. You are the last Explorer. Cross each realm, restore it with the right answers, and gather coins and stars to keep your hearts full.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(14)),
+                    child: Text(
+                      _inDuel
+                          ? 'Duel rules: the same world for both players. Highest score in the time wins.'
+                          : 'Your pace is yours. Answer challenge orbs when you like, or tap REST for 1, 3 or 5 minutes of free roam and quests. When a rest ends, one question must be answered to carry on.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white60, fontSize: 12.5, height: 1.45),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  _bigButton('BEGIN', () => setState(() {
+                        _intro = false;
+                        _last = null;
+                      })),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Widget _gateOverlay(OdysseyEngine e) {
+    final OdyGate g = e.gate!;
+    final OdySubject s = _subjects[g.q.subject] ?? odySubjectById(g.q.subject);
+    final Color c = _lighten(s.color, 0.25);
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.86),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+                Text('CHECKPOINT  /  ${s.label.toUpperCase()}', style: TextStyle(color: c, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1.2)),
+                const SizedBox(height: 4),
+                const Text('Answer to continue your journey', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(16), border: Border.all(color: c, width: 1.2)),
+                  child: Text(g.q.text, style: const TextStyle(color: Colors.white, fontSize: 16, height: 1.4, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(height: 14),
+                for (int i = 0; i < g.q.options.length; i++) _gateOption(e, g, i),
+                if (g.answered) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(g.correct ? 'Correct. +150' : 'Not this time. The answer is ${g.q.answer}.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: g.correct ? const Color(0xFF69F0AE) : const Color(0xFFFF8A80), fontWeight: FontWeight.w700, fontSize: 14)),
+                  const SizedBox(height: 14),
+                  Center(child: _bigButton('CONTINUE', () => setState(e.closeGate))),
+                ],
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gateOption(OdysseyEngine e, OdyGate g, int i) {
+    Color bg = Colors.white10;
+    Color border = Colors.white24;
+    if (g.answered) {
+      if (i == g.q.answerIndex) {
+        bg = const Color(0xFF1B5E20).withValues(alpha: 0.7);
+        border = const Color(0xFF69F0AE);
+      } else if (i == g.chosen) {
+        bg = const Color(0xFFB71C1C).withValues(alpha: 0.6);
+        border = const Color(0xFFFF8A80);
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: g.answered ? null : () => setState(() => e.answerGate(i)),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: border)),
+          child: Row(children: <Widget>[
+            Text(String.fromCharCode(65 + i), style: const TextStyle(color: Colors.white54, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(g.q.options[i], style: const TextStyle(color: Colors.white, fontSize: 15))),
+          ]),
+        ),
+      ),
+    );
   }
 
   Widget _pill(String text, IconData icon, Color color) => Container(
@@ -555,6 +744,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                   _stat('Accuracy', '${(acc * 100).round()}%'),
                   _stat('Best streak', '${e.bestStreak}'),
                   _stat('XP', '+${e.xp}'),
+                  if (e.questsDone > 0) _stat('Quests', '${e.questsDone}'),
                 ]),
                 if (e.askedBy.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 16),

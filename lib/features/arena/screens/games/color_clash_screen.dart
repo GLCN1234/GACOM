@@ -233,7 +233,7 @@ class _ColorClashScreenState extends State<ColorClashScreen> {
 
   bool _dead(int epoch) => !mounted || epoch != _epoch;
 
-  String _name(int p) => p == 0 ? 'You' : 'AI $p';
+  String _name(int p) => p == 0 ? 'You' : 'Ryan $p';
 
   void _sortHand(ColorClashEngine g) {
     g.hands[0].sort((a, b) {

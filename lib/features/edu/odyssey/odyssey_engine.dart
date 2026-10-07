@@ -53,6 +53,25 @@ class OdyMistake {
   const OdyMistake(this.question, this.chosen, this.correct, this.subject);
 }
 
+/// A compulsory question: the world freezes until the player answers it.
+class OdyGate {
+  final OdyQuestion q;
+  int? chosen;
+  OdyGate(this.q);
+  bool get answered => chosen != null;
+  bool get correct => chosen == q.answerIndex;
+}
+
+/// A small side goal that keeps free roaming interesting.
+class OdyQuest {
+  final String kind; // coins, stars, distance, dash
+  final String title;
+  final int target;
+  final int reward;
+  int progress = 0;
+  OdyQuest(this.kind, this.title, this.target, this.reward);
+}
+
 class OdyActive {
   final OdyQuestion q;
   double timeLeft;
@@ -87,6 +106,9 @@ class OdysseyEngine {
   final bool mixed;
   final int seed;
   final Random rng;
+  /// Duels turn resting, gates and quests off so both players face the same rules.
+  final bool allowRest;
+  final Map<String, String> labels;
 
   double px = 0;
   double py = 0;
@@ -126,13 +148,22 @@ class OdysseyEngine {
   final Map<String, int> askedBy = <String, int>{};
   final Map<String, int> correctBy = <String, int>{};
   OdyActive? active;
+  OdyGate? gate;
+  OdyQuest? quest;
+  int questsDone = 0;
+  int gatesCleared = 0;
+  double freeLeft = 0;
+  double _questTimer = 20;
+  String regionNow = '';
+  String _pendingRegion = '';
+  double _pendingT = 0;
 
   double _askTimer = 4.0;
   double _enemyTimer = 14;
   double _starTimer = 18;
   double _crystalTimer = 1.2;
 
-  OdysseyEngine({required this.pool, required this.subjects, required this.mixed, required this.seed, required this.rng});
+  OdysseyEngine({required this.pool, required this.subjects, required this.mixed, required this.seed, required this.rng, this.allowRest = true, this.labels = const <String, String>{}});
 
   int get level => 1 + correct ~/ 3;
   int get finalScore => score + distance ~/ 40;
@@ -179,11 +210,105 @@ class OdysseyEngine {
     dashDirY = m == 0 ? 0 : dy / m;
     dashLeft = dashTime;
     dashCool = dashCooldown;
+    _questStep('dash', 1);
     return true;
   }
 
   bool get dashing => dashLeft > 0;
   double get dashReady => dashCool <= 0 ? 1 : 1 - dashCool / dashCooldown;
+
+  bool get resting => freeLeft > 0;
+
+  void say(String text, {bool good = true}) => _toast(text, good);
+
+  /// Take a break from questions for [seconds]. Ends with a compulsory question.
+  bool rest(double seconds) {
+    if (!allowRest || over || active != null || gate != null || freeLeft > 0) return false;
+    freeLeft = seconds;
+    _toast('Free roam. Questions return in ${(seconds / 60).round()} min', true);
+    return true;
+  }
+
+  /// Ask for a challenge right now instead of waiting.
+  bool askNow() {
+    if (over || active != null || gate != null) return false;
+    freeLeft = 0;
+    _ask();
+    return true;
+  }
+
+  void _openGate() {
+    final OdyQuestion q = pool.pick(subjectAt(px, py));
+    gate = OdyGate(q);
+    vx = 0;
+    vy = 0;
+    inputX = 0;
+    inputY = 0;
+    cues.add('gate');
+  }
+
+  void answerGate(int index) {
+    final OdyGate? g = gate;
+    if (g == null || g.answered) return;
+    g.chosen = index;
+    final bool ok = g.correct;
+    _record(g.q, ok);
+    gatesCleared++;
+    if (ok) {
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+      score += 150;
+      cues.add('correct');
+    } else {
+      streak = 0;
+      cues.add('wrong');
+      mistakes.add(OdyMistake(g.q.text, g.q.options[index], g.q.answer, g.q.subject));
+      // A wrong gate answer costs a heart but can never end the run.
+      if (hearts > 1) hearts--;
+    }
+  }
+
+  void closeGate() {
+    final OdyGate? g = gate;
+    if (g == null || !g.answered) return;
+    gate = null;
+    invuln = 2.5;
+    _askTimer = 10;
+    _toast(g.correct ? 'Back to exploring. +150' : 'Answer: ${g.q.answer}', g.correct);
+  }
+
+  void _questStep(String kind, int amount) {
+    final OdyQuest? qu = quest;
+    if (qu == null || qu.kind != kind) return;
+    qu.progress += amount;
+    if (qu.progress >= qu.target) {
+      score += qu.reward;
+      questsDone++;
+      _toast('Quest done: +${qu.reward}', true);
+      cues.add('star');
+      if (questsDone % 2 == 0 && hearts < maxHearts) {
+        hearts++;
+        _toast('Quest reward: +1 heart', true);
+      }
+      quest = null;
+      _questTimer = 6;
+    }
+  }
+
+  void _newQuest() {
+    final int pick = rng.nextInt(4);
+    if (pick == 0) {
+      final int n = 12 + rng.nextInt(3) * 4;
+      quest = OdyQuest('coins', 'Collect $n coins', n, 150);
+    } else if (pick == 1) {
+      quest = OdyQuest('stars', 'Find a star', 1, 120);
+    } else if (pick == 2) {
+      final int n = 2200 + rng.nextInt(3) * 800;
+      quest = OdyQuest('distance', 'Travel $n steps', n, 180);
+    } else {
+      quest = OdyQuest('dash', 'Dash 5 times', 5, 100);
+    }
+  }
 
   void _toast(String text, bool good) {
     toasts.add(OdyToast(text, good, 2.2));
@@ -195,6 +320,13 @@ class OdysseyEngine {
     final double dt = dtIn > 0.05 ? 0.05 : dtIn;
     time += dt;
     novaFlash = false;
+    if (gate != null) {
+      for (final OdyToast t in toasts) {
+        t.life -= dt;
+      }
+      toasts.removeWhere((OdyToast t) => t.life <= 0);
+      return;
+    }
 
     // --- player ---
     if (invuln > 0) invuln -= dt;
@@ -223,6 +355,24 @@ class OdysseyEngine {
     px += vx * dt;
     py += vy * dt;
     distance += sp * dt;
+    _questStep('distance', (sp * dt).round());
+    // region change toast, once the player has stayed in the new region a moment
+    final String here = subjectAt(px, py);
+    if (regionNow.isEmpty) {
+      regionNow = here;
+    } else if (here != regionNow) {
+      if (here == _pendingRegion) {
+        _pendingT += dt;
+        if (_pendingT > 1.2) {
+          regionNow = here;
+          _pendingT = 0;
+          if (mixed) _toast('Entering ${labels[here] ?? here}', true);
+        }
+      } else {
+        _pendingRegion = here;
+        _pendingT = 0;
+      }
+    }
 
     // --- toasts ---
     for (final OdyToast t in toasts) {
@@ -233,8 +383,17 @@ class OdysseyEngine {
     // --- questions ---
     final OdyActive? a = active;
     if (a == null) {
-      _askTimer -= dt;
-      if (_askTimer <= 0) _ask();
+      if (freeLeft > 0) {
+        freeLeft -= dt;
+        if (freeLeft <= 0) {
+          freeLeft = 0;
+          _openGate();
+          return;
+        }
+      } else {
+        _askTimer -= dt;
+        if (_askTimer <= 0) _ask();
+      }
     } else {
       a.timeLeft -= dt;
       for (final OdyOrb o in a.orbs) {
@@ -330,6 +489,7 @@ class OdysseyEngine {
         crystals++;
         score += 10;
         cues.add('coin');
+        _questStep('coins', 1);
         if (crystals % coinsPerHeart == 0) {
           if (hearts < maxHearts) {
             hearts++;
@@ -344,6 +504,14 @@ class OdysseyEngine {
       }
       return dx * dx + dy * dy > 1000 * 1000 || c.age > 45;
     });
+
+    // --- quests ---
+    if (allowRest) {
+      if (quest == null) {
+        _questTimer -= dt;
+        if (_questTimer <= 0) _newQuest();
+      }
+    }
 
     // --- stars: life and shield ---
     _starTimer -= dt;
@@ -372,8 +540,10 @@ class OdysseyEngine {
             _toast('Life star: +150', true);
           }
           cues.add('star');
+          _questStep('stars', 1);
         } else {
           shield = 7;
+          _questStep('stars', 1);
           _toast('Shield for 7 seconds', true);
           cues.add('shield');
         }
@@ -492,6 +662,7 @@ class OdysseyEngine {
   int get xp {
     final int walk = min(20, distance ~/ 1500);
     final int streakBonus = bestStreak >= 5 ? 15 : 0;
-    return correct * 8 + streakBonus + walk;
+    final int questBonus = (questsDone > 5 ? 5 : questsDone) * 4;
+    return correct * 8 + streakBonus + walk + questBonus;
   }
 }

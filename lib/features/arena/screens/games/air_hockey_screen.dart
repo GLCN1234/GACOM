@@ -368,7 +368,7 @@ class _AirHockeyScreenState extends State<AirHockeyScreen> with SingleTickerProv
       title: 'HOW TO PLAY AIR HOCKEY',
       steps: const [
         HowToPlayStep(icon: Icons.touch_app_rounded, title: 'Drag your mallet', description: 'Slide your finger on your half of the table (the bottom). Your mallet follows, a little above your finger.'),
-        HowToPlayStep(icon: Icons.sports_hockey_rounded, title: 'Hit the puck', description: 'Hit the puck into the AI goal at the top. A faster swing sends it faster. Walls bounce it back.'),
+        HowToPlayStep(icon: Icons.sports_hockey_rounded, title: 'Hit the puck', description: 'Hit the puck into Ryan\'s goal at the top. A faster swing sends it faster. Walls bounce it back.'),
         HowToPlayStep(icon: Icons.shield_rounded, title: 'Defend your goal', description: 'The gap at the bottom is your goal. Keep your mallet between the puck and the gap.'),
         HowToPlayStep(icon: Icons.emoji_events_rounded, title: 'First to 7 wins', description: 'Every goal is one point. The first side to reach 7 wins, or whoever leads when the 3 minute clock runs out.'),
       ],
@@ -379,10 +379,10 @@ class _AirHockeyScreenState extends State<AirHockeyScreen> with SingleTickerProv
             ? ArcadeStartView(
                 icon: Icons.sports_hockey_rounded,
                 title: 'AIR HOCKEY',
-                subtitle: 'First to 7 goals, or the lead at 3:00, beats the AI.',
+                subtitle: 'First to 7 goals, or the lead at 3:00, beats Ryan.',
                 buttonLabel: 'START MATCH',
                 onStart: _start,
-                extra: [ArcadeChoiceRow(label: 'AI SKILL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
+                extra: [ArcadeChoiceRow(label: 'RYAN LEVEL', options: _levels, selected: _level, onSelect: (i) => setState(() => _level = i))],
               )
             : Stack(children: [_game(e), if (e.over) _result(e)]),
       ),
@@ -400,7 +400,7 @@ class _AirHockeyScreenState extends State<AirHockeyScreen> with SingleTickerProv
       }
       _tablePx = Size(tw, th);
       return Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text('AI ${e.aiScore}   -   YOU ${e.playerScore}     ${max(0, (AirHockeyEngine.timeLimit - e.clock).ceil())}s', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
+        Text('RYAN ${e.aiScore}   -   YOU ${e.playerScore}     ${max(0, (AirHockeyEngine.timeLimit - e.clock).ceil())}s', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
         const SizedBox(height: 6),
         SizedBox(
           width: tw,
@@ -420,7 +420,7 @@ class _AirHockeyScreenState extends State<AirHockeyScreen> with SingleTickerProv
     final bool draw = e.playerScore == e.aiScore;
     return ArcadeResultOverlay(
       good: won,
-      title: won ? 'YOU WIN!' : (draw ? 'DRAW' : 'AI WINS'),
+      title: won ? 'YOU WIN!' : (draw ? 'DRAW' : 'RYAN WINS'),
       detail: 'Final score  ${e.playerScore} - ${e.aiScore}',
       onAgain: _toSetup,
       onExit: () => Navigator.pop(context),

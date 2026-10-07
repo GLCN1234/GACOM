@@ -350,7 +350,7 @@ class _CheckersScreenState extends State<CheckersScreen> {
     final epoch = _epoch;
     setState(() {
       _busy = true;
-      _msg = 'AI is thinking...';
+      _msg = 'Ryan is thinking...';
     });
     await Future.delayed(const Duration(milliseconds: 600));
     if (_dead(epoch)) return;
@@ -403,7 +403,7 @@ class _CheckersScreenState extends State<CheckersScreen> {
         const SizedBox(height: 14),
         const Text('CHECKERS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.textPrimary)),
         const SizedBox(height: 6),
-        const Text('Classic draughts against the AI', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
+        const Text('Classic draughts against Ryan', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
         const SizedBox(height: 24),
         const Text('DIFFICULTY', style: TextStyle(color: GacomColors.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1)),
         const SizedBox(height: 10),
@@ -520,7 +520,7 @@ class _CheckersScreenState extends State<CheckersScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(won ? Icons.emoji_events_rounded : (draw ? Icons.sentiment_neutral_rounded : Icons.sentiment_dissatisfied_rounded), color: won ? const Color(0xFFFFD700) : GacomColors.textMuted, size: 52),
             const SizedBox(height: 12),
-            Text(won ? 'YOU WIN!' : (draw ? 'DRAW' : 'AI WINS'), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
+            Text(won ? 'YOU WIN!' : (draw ? 'DRAW' : 'RYAN WINS'), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 22, color: Colors.white)),
             const SizedBox(height: 6),
             Text('You captured $_humanCaps pieces', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
             const SizedBox(height: 20),

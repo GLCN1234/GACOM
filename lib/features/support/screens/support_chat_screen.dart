@@ -25,7 +25,7 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
   String? _ticketId;
 
   static const _systemPrompt = '''
-You are GACOM's AI support assistant. GACOM is a social gaming platform for competitive gamers in Nigeria and Africa.
+You are Ryan, GACOM's support assistant. GACOM is a social gaming platform for competitive gamers in Nigeria and Africa.
 
 Features you can help with:
 - Registration / Login issues
@@ -52,7 +52,7 @@ Do not make up solutions. If unsure, suggest escalation.
     _messages.add(_ChatMessage(
       sender: 'bot',
       text:
-          "Yo! I'm GACOM's support AI. What's the issue? I can help with account, wallet, competitions, communities and more. Or type **agent** to speak with a human.",
+          "Yo! I'm GACOM's support assistant, Ryan. What's the issue? I can help with account, wallet, competitions, communities and more. Or type **agent** to speak with a human.",
       timestamp: DateTime.now(),
     ));
   }
@@ -249,7 +249,7 @@ Do not make up solutions. If unsure, suggest escalation.
                   fontFamily: 'Rajdhani',
                   fontWeight: FontWeight.w700)),
           Text(
-              _connectedToAgent ? 'Live Agent' : 'AI Assistant',
+              _connectedToAgent ? 'Live Agent' : 'Ryan',
               style: TextStyle(
                   fontSize: 12,
                   color: _connectedToAgent
