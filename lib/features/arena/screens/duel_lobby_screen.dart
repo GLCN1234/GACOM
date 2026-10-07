@@ -24,12 +24,14 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
   String _query = '';
   String? _busyKey;
   bool _loading = true;
+  int _stake = 0;
   Timer? _refresh;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 4, vsync: this);
+    DuelService.settleMine();
     _reload();
     _refresh = Timer.periodic(const Duration(seconds: 8), (_) => _reload(quiet: true));
   }
@@ -70,7 +72,7 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
     if (_busyKey != null) return;
     setState(() => _busyKey = g.key);
     try {
-      final DuelMatch m = await DuelService.quick(g);
+      final DuelMatch m = await DuelService.quick(g, stake: _stake);
       if (!mounted) return;
       setState(() => _busyKey = null);
       await context.push('/arena/duel/${m.id}');
@@ -78,7 +80,7 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
     } catch (e) {
       if (!mounted) return;
       setState(() => _busyKey = null);
-      _toast('Could not start a duel. Check your connection and try again.');
+      _toast(DuelService.friendlyError(e));
     }
   }
 
@@ -90,7 +92,7 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
       if (mounted) _reload(quiet: true);
     } catch (e) {
       if (!mounted) return;
-      _toast('That duel was just taken.');
+      _toast(DuelService.friendlyError(e));
       _reload(quiet: true);
     }
   }
@@ -153,10 +155,48 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
         ),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text('Tap a game to be matched with an opponent. You both play the same game from the same seed; the better result wins.', style: TextStyle(color: GacomColors.txtMuted(context), fontSize: 12, height: 1.4)),
+          child: Text('STAKE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1, color: GacomColors.txtMuted(context))),
+        ),
+      ),
+      SizedBox(
+        height: 38,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: DuelService.stakes.map((int s) {
+            final bool sel = _stake == s;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => setState(() => _stake = s),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: sel ? GacomColors.deepOrange : GacomColors.surface(context),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: sel ? GacomColors.deepOrange : GacomColors.borderColor(context)),
+                  ),
+                  child: Text(s == 0 ? 'Free' : '₦$s', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: sel ? Colors.white : GacomColors.txtPrimary(context))),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            _stake == 0
+                ? 'Free duel. Tap a game to be matched. You both play the same game from the same seed; the better result wins.'
+                : 'Each player stakes ₦$_stake. The winner takes the pot minus the platform fee. A draw refunds both. Tap a game to be matched with someone at the same stake.',
+            style: TextStyle(color: GacomColors.txtMuted(context), fontSize: 12, height: 1.4),
+          ),
         ),
       ),
       Expanded(
@@ -225,7 +265,7 @@ class _DuelLobbyScreenState extends State<DuelLobbyScreen> with SingleTickerProv
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
                   Text(d.gameName, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.txtPrimary(context))),
-                  Text('${_name(d.creatorId)} is waiting', style: TextStyle(fontSize: 11, color: GacomColors.txtMuted(context))),
+                  Text('${_name(d.creatorId)} is waiting${d.stake > 0 ? '  /  ₦${d.stake} stake' : ''}', style: TextStyle(fontSize: 11, color: GacomColors.txtMuted(context))),
                 ]),
               ),
               ElevatedButton(

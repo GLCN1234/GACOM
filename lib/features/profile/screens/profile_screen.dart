@@ -432,6 +432,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   ]),
                 ).animate().fadeIn(delay: 100.ms),
 
+                const SizedBox(height: 10),
+                _TotalPointsCard(userId: p['id'] as String?),
+
                 if (_isOwn && ['admin', 'super_admin', 'moderator', 'exco'].contains(p['role'])) ...[
                   const SizedBox(height: 10),
                   GestureDetector(
@@ -547,6 +550,87 @@ class _Grid extends StatelessWidget {
                 ? CachedNetworkImage(imageUrl: posts[i]['thumbnail_url'] ?? urls.first, fit: BoxFit.cover)
                 : const Icon(Icons.text_snippet_outlined, color: GacomColors.textMuted)));
       },
+    );
+  }
+}
+
+/// Points gathered across every game the player has played.
+class _TotalPointsCard extends StatefulWidget {
+  final String? userId;
+  const _TotalPointsCard({required this.userId});
+  @override State<_TotalPointsCard> createState() => _TotalPointsCardState();
+}
+
+class _TotalPointsCardState extends State<_TotalPointsCard> {
+  int _points = 0;
+  int _games = 0;
+  int _wins = 0;
+  bool _loading = true;
+
+  @override void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    final String? id = widget.userId;
+    if (id == null) { setState(() => _loading = false); return; }
+    try {
+      final dynamic res = await SupabaseService.client.rpc('user_game_totals', params: {'p_user': id});
+      dynamic row = res;
+      if (row is List) row = row.isEmpty ? null : row.first;
+      if (row is Map) {
+        _points = (row['total_points'] as num?)?.toInt() ?? 0;
+        _games = (row['games_played'] as num?)?.toInt() ?? 0;
+        _wins = (row['wins'] as num?)?.toInt() ?? 0;
+      }
+    } catch (_) {
+      // Falls back to adding up the scores directly if the function is not installed yet.
+      try {
+        final dynamic rows = await SupabaseService.client.from('game_scores').select('score, won').eq('user_id', id).limit(5000);
+        int pts = 0;
+        int w = 0;
+        int n = 0;
+        for (final dynamic r in (rows as List)) {
+          final int sc = ((r as Map)['score'] as num?)?.toInt() ?? 0;
+          pts += sc > 0 ? sc : 0;
+          if (r['won'] == true) w++;
+          n++;
+        }
+        _points = pts;
+        _games = n;
+        _wins = w;
+      } catch (_) {}
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  String _fmtN(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 10000) return '${(n / 1000).toStringAsFixed(1)}K';
+    final String s = n.toString();
+    final StringBuffer b = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: GacomDecorations.glassCard(context, radius: 16),
+      child: Row(children: [
+        const Icon(Icons.emoji_events_rounded, color: GacomColors.gold, size: 30),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('TOTAL GAME POINTS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1, color: GacomColors.textMuted)),
+          Text(_loading ? '...' : _fmtN(_points), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: GacomColors.gold)),
+        ])),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('$_games games', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textSecondary)),
+          Text('$_wins wins', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.success)),
+        ]),
+      ]),
     );
   }
 }

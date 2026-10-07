@@ -29,6 +29,15 @@ class OdyCrystal {
   OdyCrystal(this.x, this.y);
 }
 
+/// A collectable star. Kind 0 restores a heart, kind 1 gives a short shield.
+class OdyStar {
+  double x;
+  double y;
+  final int kind;
+  double age = 0;
+  OdyStar(this.x, this.y, this.kind);
+}
+
 class OdyToast {
   final String text;
   final bool good;
@@ -69,7 +78,9 @@ class OdysseyEngine {
   static const double dashSpeed = 520;
   static const double dashTime = 0.18;
   static const double dashCooldown = 2.2;
-  static const int maxHearts = 5;
+  static const int maxHearts = 6;
+  static const int coinsPerHeart = 20;
+  static const double starRadius = 16;
 
   final QuestionPool pool;
   final List<String> subjects;
@@ -86,7 +97,7 @@ class OdysseyEngine {
   double inputX = 0;
   double inputY = 0;
 
-  int hearts = 3;
+  int hearts = 5;
   double invuln = 0;
   double dashLeft = 0;
   double dashCool = 0;
@@ -106,14 +117,19 @@ class OdysseyEngine {
 
   final List<OdyEnemy> enemies = <OdyEnemy>[];
   final List<OdyCrystal> crystalList = <OdyCrystal>[];
+  final List<OdyStar> starList = <OdyStar>[];
   final List<OdyToast> toasts = <OdyToast>[];
+  /// Sound cues for the screen to play: coin, star, shield, correct, wrong, hurt, nova.
+  final List<String> cues = <String>[];
+  double shield = 0;
   final List<OdyMistake> mistakes = <OdyMistake>[];
   final Map<String, int> askedBy = <String, int>{};
   final Map<String, int> correctBy = <String, int>{};
   OdyActive? active;
 
-  double _askTimer = 3.5;
-  double _enemyTimer = 6;
+  double _askTimer = 4.0;
+  double _enemyTimer = 14;
+  double _starTimer = 18;
   double _crystalTimer = 1.2;
 
   OdysseyEngine({required this.pool, required this.subjects, required this.mixed, required this.seed, required this.rng});
@@ -182,6 +198,7 @@ class OdysseyEngine {
 
     // --- player ---
     if (invuln > 0) invuln -= dt;
+    if (shield > 0) shield -= dt;
     if (dashCool > 0) dashCool -= dt;
     double tvx;
     double tvy;
@@ -243,10 +260,10 @@ class OdysseyEngine {
 
     // --- enemies ---
     _enemyTimer -= dt;
-    final int cap = min(10, 2 + level);
+    final int cap = min(7, 1 + (level + 1) ~/ 2);
     if (_enemyTimer <= 0 && enemies.length < cap) {
-      _spawnEnemy(520 + rng.nextDouble() * 140);
-      _enemyTimer = max(1.2, 4.2 - level * 0.3);
+      _spawnEnemy(560 + rng.nextDouble() * 140);
+      _enemyTimer = max(3.0, 7.0 - level * 0.4);
     } else if (_enemyTimer <= 0) {
       _enemyTimer = 1.0;
     }
@@ -271,7 +288,7 @@ class OdysseyEngine {
         e.y = py + sin(ang) * 600;
       }
     }
-    if (invuln <= 0 && dashLeft <= 0) {
+    if (invuln <= 0 && shield <= 0 && dashLeft <= 0) {
       for (final OdyEnemy e in enemies) {
         final double dx = e.x - px;
         final double dy = e.y - py;
@@ -290,13 +307,20 @@ class OdysseyEngine {
 
     // --- crystals ---
     _crystalTimer -= dt;
-    if (_crystalTimer <= 0 && crystalList.length < 6) {
-      final double ang = rng.nextDouble() * 2 * pi;
-      final double r = 140 + rng.nextDouble() * 280;
-      crystalList.add(OdyCrystal(px + cos(ang) * r, py + sin(ang) * r));
-      _crystalTimer = 2.4;
+    if (_crystalTimer <= 0 && crystalList.length < 12) {
+      // a short arc of coins in front of the player's direction of travel
+      final double base = atan2(facingY, facingX) + (rng.nextDouble() - 0.5) * 1.6;
+      final double r = 170 + rng.nextDouble() * 200;
+      final double cx = px + cos(base) * r;
+      final double cy = py + sin(base) * r;
+      final double along = base + pi / 2;
+      for (int i = 0; i < 5; i++) {
+        final double o = (i - 2) * 30.0;
+        crystalList.add(OdyCrystal(cx + cos(along) * o, cy + sin(along) * o));
+      }
+      _crystalTimer = 4.0;
     } else if (_crystalTimer <= 0) {
-      _crystalTimer = 1.0;
+      _crystalTimer = 1.5;
     }
     crystalList.removeWhere((OdyCrystal c) {
       c.age += dt;
@@ -305,13 +329,57 @@ class OdysseyEngine {
       if (dx * dx + dy * dy <= (crystalRadius + playerRadius + 4) * (crystalRadius + playerRadius + 4)) {
         crystals++;
         score += 10;
-        if (crystals % 10 == 0 && hearts < maxHearts) {
-          hearts++;
-          _toast('+1 heart', true);
+        cues.add('coin');
+        if (crystals % coinsPerHeart == 0) {
+          if (hearts < maxHearts) {
+            hearts++;
+            _toast('$coinsPerHeart coins: +1 heart', true);
+          } else {
+            score += 100;
+            _toast('$coinsPerHeart coins: +100', true);
+          }
+          cues.add('star');
         }
         return true;
       }
-      return dx * dx + dy * dy > 900 * 900 || c.age > 40;
+      return dx * dx + dy * dy > 1000 * 1000 || c.age > 45;
+    });
+
+    // --- stars: life and shield ---
+    _starTimer -= dt;
+    if (_starTimer <= 0) {
+      if (starList.length < 2) {
+        final double ang = rng.nextDouble() * 2 * pi;
+        final double r = 220 + rng.nextDouble() * 160;
+        // life stars are more common when the player is low
+        final int kind = (hearts <= 2 || rng.nextDouble() < 0.6) ? 0 : 1;
+        starList.add(OdyStar(px + cos(ang) * r, py + sin(ang) * r, kind));
+      }
+      _starTimer = hearts <= 2 ? 9.0 : 22.0;
+    }
+    starList.removeWhere((OdyStar st) {
+      st.age += dt;
+      final double dx = st.x - px;
+      final double dy = st.y - py;
+      final double rr = starRadius + playerRadius + 6;
+      if (dx * dx + dy * dy <= rr * rr) {
+        if (st.kind == 0) {
+          if (hearts < maxHearts) {
+            hearts++;
+            _toast('Life star: +1 heart', true);
+          } else {
+            score += 150;
+            _toast('Life star: +150', true);
+          }
+          cues.add('star');
+        } else {
+          shield = 7;
+          _toast('Shield for 7 seconds', true);
+          cues.add('shield');
+        }
+        return true;
+      }
+      return st.age > 60 || dx * dx + dy * dy > 1200 * 1200;
     });
   }
 
@@ -322,6 +390,7 @@ class OdysseyEngine {
   }
 
   void _hurt() {
+    cues.add('hurt');
     hearts--;
     invuln = 1.6;
     streak = 0;
@@ -336,13 +405,13 @@ class OdysseyEngine {
   void _ask() {
     final String subject = subjectAt(px, py);
     final OdyQuestion q = pool.pick(subject);
-    final double total = max(11.0, 22.0 - level * 0.9);
+    final double total = max(30.0, 48.0 - level * 1.2);
     final int n = q.options.length;
     final double base = rng.nextDouble() * 2 * pi;
     final List<OdyOrb> orbs = <OdyOrb>[];
     for (int i = 0; i < n; i++) {
       final double ang = base + i * 2 * pi / n;
-      final double r = 250 + rng.nextDouble() * 70;
+      final double r = 190 + rng.nextDouble() * 50;
       orbs.add(OdyOrb(px + cos(ang) * r, py + sin(ang) * r, rng.nextDouble() * 6.28, i, q.options[i]));
     }
     active = OdyActive(q, total, orbs);
@@ -350,7 +419,7 @@ class OdysseyEngine {
 
   void _after() {
     active = null;
-    _askTimer = max(2.0, 4.5 - level * 0.25);
+    _askTimer = max(3.0, 6.0 - level * 0.25);
   }
 
   void _record(OdyQuestion q, bool ok) {
@@ -375,7 +444,11 @@ class OdysseyEngine {
       final int gain = 100 + 25 * streakCap + timeBonus;
       score += gain;
       _toast('+$gain', true);
+      cues.add('correct');
       final OdyOrb orb = a.orbs[index];
+      if (streak % 3 == 0 && starList.length < 3) {
+        starList.add(OdyStar(orb.x, orb.y, 0));
+      }
       for (int i = 0; i < 5; i++) {
         final double ang = rng.nextDouble() * 2 * pi;
         crystalList.add(OdyCrystal(orb.x + cos(ang) * 40, orb.y + sin(ang) * 40));
@@ -383,17 +456,18 @@ class OdysseyEngine {
       if (streak % 5 == 0) {
         enemies.clear();
         novaFlash = true;
+        cues.add('nova');
         if (hearts < maxHearts) hearts++;
         _toast('NOVA streak $streak', true);
       }
     } else {
       streak = 0;
+      cues.add('wrong');
       mistakes.add(OdyMistake(q.text, q.options[index], q.answer, q.subject));
       _toast('Answer: ${q.answer}', false);
       hearts--;
       invuln = 1.0;
-      _spawnEnemy(380);
-      _spawnEnemy(380);
+      _spawnEnemy(420);
       if (hearts <= 0) {
         hearts = 0;
         over = true;
@@ -409,8 +483,8 @@ class OdysseyEngine {
     streak = 0;
     mistakes.add(OdyMistake(q.text, 'No answer', q.answer, q.subject));
     _toast('Time up. Answer: ${q.answer}', false);
-    _spawnEnemy(380);
-    _spawnEnemy(380);
+    cues.add('wrong');
+    _spawnEnemy(420);
     _after();
   }
 

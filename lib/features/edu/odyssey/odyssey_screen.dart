@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
+import '../../../core/services/sound_service.dart';
 import '../edu_progress_recorder.dart';
 import 'odyssey_engine.dart';
 import 'odyssey_questions.dart';
@@ -56,19 +57,71 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   final Set<LogicalKeyboardKey> _keys = <LogicalKeyboardKey>{};
 
   double? _maxSeconds;
+  bool _music = true;
+  int _coinCue = 0;
 
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick);
     _setup();
+    _startMusic();
   }
 
   @override
   void dispose() {
+    SoundService.instance.stopBackgroundMusic();
     _ticker.dispose();
     _frame.dispose();
     super.dispose();
+  }
+
+  Future<void> _startMusic() async {
+    try {
+      await SoundService.instance.init();
+      _music = SoundService.instance.musicEnabled;
+      await SoundService.instance.startBackgroundMusic();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  void _toggleMusic() {
+    _music = !_music;
+    SoundService.instance.setMusicEnabled(_music);
+    if (_music) SoundService.instance.startBackgroundMusic();
+    setState(() {});
+  }
+
+  void _playCues(OdysseyEngine e) {
+    if (e.cues.isEmpty) return;
+    final SoundService s = SoundService.instance;
+    for (final String c in e.cues) {
+      switch (c) {
+        case 'coin': {
+          _coinCue++;
+          if (_coinCue % 2 == 0) s.playTap();
+          break;
+        }
+        case 'star':
+        case 'shield':
+        case 'nova': {
+          s.playWin();
+          break;
+        }
+        case 'correct': {
+          s.playCorrect();
+          break;
+        }
+        case 'wrong':
+        case 'hurt': {
+          s.playWrong();
+          break;
+        }
+        default:
+          break;
+      }
+    }
+    e.cues.clear();
   }
 
   Future<void> _setup() async {
@@ -101,7 +154,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     _pool = QuestionPool(rng: rng, school: school.bySubject);
     _subjectIds = ids;
     _subjects = subs;
-    _maxSeconds = inDuel ? 150 : null;
+    _maxSeconds = inDuel ? 240 : null;
     _startRun();
     setState(() => _loading = false);
   }
@@ -136,6 +189,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     final double dt = (elapsed - prev).inMicroseconds / 1e6;
     _applyKeys(e);
     e.step(dt);
+    _playCues(e);
     if (_maxSeconds != null && e.time >= _maxSeconds!) e.over = true;
     _frame.value++;
     if (e.novaFlash) HapticFeedback.mediumImpact();
@@ -311,60 +365,64 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     final OdySubject rs = _subjects[region] ?? odySubjectById(region);
     final OdyActive? a = e.active;
     return Stack(children: <Widget>[
-      // top-left: hearts and score
+      // top bar: hearts, music, pause
       Positioned(
         left: 12,
-        top: 8,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        right: 4,
+        top: 4,
+        child: Row(children: <Widget>[
           Row(children: List<Widget>.generate(OdysseyEngine.maxHearts, (int i) {
             if (i >= max(3, e.hearts)) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(right: 3),
-              child: Icon(i < e.hearts ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: i < e.hearts ? const Color(0xFFFF5252) : Colors.white38, size: 22),
+              child: Icon(i < e.hearts ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: i < e.hearts ? const Color(0xFFFF5252) : Colors.white38, size: 24),
             );
           })),
-          const SizedBox(height: 4),
-          _pill('${e.score + e.distance ~/ 40}', Icons.star_rounded, GacomColors.gold),
-          const SizedBox(height: 4),
-          _pill(rs.label, Icons.place_rounded, _lighten(rs.color, 0.25)),
-        ]),
-      ),
-      // top-right: pause and streak
-      Positioned(
-        right: 8,
-        top: 4,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: <Widget>[
+          const Spacer(),
+          IconButton(
+            icon: Icon(_music ? Icons.music_note_rounded : Icons.music_off_rounded, color: Colors.white, size: 24),
+            onPressed: _toggleMusic,
+          ),
           IconButton(
             icon: const Icon(Icons.pause_circle_filled_rounded, color: Colors.white, size: 30),
             onPressed: () => setState(() => _paused = true),
           ),
-          if (e.streak >= 2) _pill('x${e.streak} streak', Icons.local_fire_department_rounded, const Color(0xFFFF9800)),
-          if (_maxSeconds != null) ...<Widget>[
-            const SizedBox(height: 4),
-            _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
-          ],
+        ]),
+      ),
+      // stats row
+      Positioned(
+        left: 12,
+        right: 12,
+        top: 50,
+        child: Wrap(spacing: 6, runSpacing: 4, children: <Widget>[
+          _pill('${e.score + e.distance ~/ 40}', Icons.star_rounded, GacomColors.gold),
+          _pill('${e.crystals} coins', Icons.monetization_on_rounded, const Color(0xFFFFD54F)),
+          _pill(rs.label, Icons.place_rounded, _lighten(rs.color, 0.25)),
+          if (e.streak >= 2) _pill('x${e.streak}', Icons.local_fire_department_rounded, const Color(0xFFFF9800)),
+          if (e.shield > 0) _pill('Shield ${e.shield.ceil()}s', Icons.shield_rounded, const Color(0xFF40C4FF)),
+          if (_maxSeconds != null) _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
       // question card
       if (a != null)
         Positioned(
-          left: 70,
-          right: 70,
-          top: 6,
+          left: 10,
+          right: 10,
+          top: 88,
           child: _questionCard(a, _subjects[a.q.subject] ?? odySubjectById(a.q.subject)),
         )
       else
         Positioned(
           left: 0,
           right: 0,
-          top: 12,
-          child: Center(child: _pill('Explore. A challenge is coming', Icons.explore_rounded, Colors.white70)),
+          top: 92,
+          child: Center(child: _pill('Explore, collect coins and stars', Icons.explore_rounded, Colors.white70)),
         ),
       // toasts
       Positioned(
         left: 0,
         right: 0,
-        top: a != null ? 120 : 52,
+        top: a != null ? 232 : 128,
         child: Column(children: e.toasts.map((OdyToast t) => Opacity(
               opacity: t.life.clamp(0.0, 1.0),
               child: Container(
@@ -439,7 +497,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           child: LinearProgressIndicator(value: frac, minHeight: 5, backgroundColor: Colors.white12, color: frac > 0.3 ? c : const Color(0xFFFF5252)),
         ),
         const SizedBox(height: 4),
-        const Text('Run into the glowing orb with the right answer', style: TextStyle(color: Colors.white54, fontSize: 10.5)),
+        const Text('Walk into the glowing orb with the right answer. No rush.', style: TextStyle(color: Colors.white54, fontSize: 10.5)),
       ]),
     );
   }
@@ -572,7 +630,7 @@ class _WorldPainter extends CustomPainter {
     return _ground.putIfAbsent(id, () {
       final Color base = _subj(id).color;
       final Color a = _darken(base, 0.28);
-      return <Color>[a, _lighten(a, 0.035), _lighten(a, 0.07), _darken(a, 0.04)];
+      return <Color>[a, _lighten(a, 0.018), _lighten(a, 0.03), _darken(a, 0.015)];
     });
   }
 
@@ -607,26 +665,53 @@ class _WorldPainter extends CustomPainter {
         final int hh = _h(ix, iy);
         _p.color = g[hh & 3];
         canvas.drawRect(Rect.fromLTWH(ix * tile - 0.5, iy * tile - 0.5, tile + 1, tile + 1), _p);
-        if (hh % 100 < 34) {
+        if (hh % 100 < 14) {
           final double ox = ix * tile + 20 + (hh >> 5) % (tile.toInt() - 40);
           final double oy = iy * tile + 20 + (hh >> 11) % (tile.toInt() - 40);
-          _decor(canvas, sid, (hh >> 3) % 4, ox, oy, hh);
+          _decor(canvas, sid, (hh >> 3) % 3, ox, oy, hh);
         }
       }
     }
 
-    // crystals
+    // coins
     for (final OdyCrystal c in engine.crystalList) {
-      final Path d = Path()
-        ..moveTo(c.x, c.y - 11)
-        ..lineTo(c.x + 8, c.y)
-        ..lineTo(c.x, c.y + 11)
-        ..lineTo(c.x - 8, c.y)
-        ..close();
-      _p.color = const Color(0xFF80DEEA).withValues(alpha: 0.25);
-      canvas.drawCircle(Offset(c.x, c.y), 16 + sin(engine.time * 5 + c.x) * 2, _p);
-      _p.color = const Color(0xFFB2EBF2);
-      canvas.drawPath(d, _p);
+      final double pulse = 1 + sin(engine.time * 6 + c.x * 0.05) * 0.06;
+      final double squash = (cos(engine.time * 4 + c.y * 0.04)).abs() * 0.5 + 0.5;
+      _p.color = const Color(0xFFFFD54F).withValues(alpha: 0.22);
+      canvas.drawCircle(Offset(c.x, c.y), 16 * pulse, _p);
+      _p.color = const Color(0xFFFFB300);
+      canvas.drawOval(Rect.fromCenter(center: Offset(c.x, c.y), width: 20 * squash + 4, height: 20), _p);
+      _p.color = const Color(0xFFFFE082);
+      canvas.drawOval(Rect.fromCenter(center: Offset(c.x, c.y), width: 11 * squash + 2, height: 12), _p);
+    }
+
+    // stars: life (red heart star) and shield (blue)
+    for (final OdyStar st in engine.starList) {
+      final bool life = st.kind == 0;
+      final Color col = life ? const Color(0xFFFF5252) : const Color(0xFF40C4FF);
+      final double bob = sin(engine.time * 3 + st.x) * 4;
+      final double r = OdysseyEngine.starRadius + 4 + sin(engine.time * 5) * 2;
+      _p.color = col.withValues(alpha: 0.22);
+      canvas.drawCircle(Offset(st.x, st.y + bob), r + 12, _p);
+      _p.color = col.withValues(alpha: 0.4);
+      canvas.drawCircle(Offset(st.x, st.y + bob), r + 4, _p);
+      final Path star = Path();
+      for (int i = 0; i < 10; i++) {
+        final double rr = i.isEven ? r : r * 0.45;
+        final double ang = -pi / 2 + i * pi / 5 + engine.time * 0.8;
+        final double sx = st.x + cos(ang) * rr;
+        final double sy = st.y + bob + sin(ang) * rr;
+        if (i == 0) {
+          star.moveTo(sx, sy);
+        } else {
+          star.lineTo(sx, sy);
+        }
+      }
+      star.close();
+      _p.color = life ? const Color(0xFFFFEB3B) : const Color(0xFFE1F5FE);
+      canvas.drawPath(star, _p);
+      _p.color = col;
+      canvas.drawCircle(Offset(st.x, st.y + bob), 5, _p);
     }
 
     // orbs
@@ -668,18 +753,20 @@ class _WorldPainter extends CustomPainter {
     if (engine.dashing) {
       for (int i = 1; i <= 4; i++) {
         _p.color = Colors.white.withValues(alpha: 0.18 / i);
-        canvas.drawCircle(Offset(px - engine.dashDirX * 16 * i, py - engine.dashDirY * 16 * i), OdysseyEngine.playerRadius, _p);
+        canvas.drawOval(Rect.fromCenter(center: Offset(px - engine.dashDirX * 18 * i, py - engine.dashDirY * 18 * i), width: 16, height: 30), _p);
       }
     }
     if (!blink) {
-      _p.color = Colors.black.withValues(alpha: 0.3);
-      canvas.drawOval(Rect.fromCenter(center: Offset(px, py + 12), width: 26, height: 10), _p);
-      _p.color = const Color(0xFFFF8A33).withValues(alpha: 0.28);
-      canvas.drawCircle(Offset(px, py), 24, _p);
-      _p.color = const Color(0xFFFFF3E0);
-      canvas.drawCircle(Offset(px, py), OdysseyEngine.playerRadius, _p);
-      _p.color = const Color(0xFFFF6A00);
-      canvas.drawCircle(Offset(px + engine.facingX * 6, py + engine.facingY * 6), 6, _p);
+      _drawHero(canvas, px, py);
+    }
+    if (engine.shield > 0) {
+      _p.style = PaintingStyle.stroke;
+      _p.strokeWidth = 3;
+      _p.color = const Color(0xFF40C4FF).withValues(alpha: engine.shield < 2 ? 0.35 + 0.3 * sin(engine.time * 18) : 0.85);
+      canvas.drawCircle(Offset(px, py - 6), 34, _p);
+      _p.style = PaintingStyle.fill;
+      _p.color = const Color(0xFF40C4FF).withValues(alpha: 0.12);
+      canvas.drawCircle(Offset(px, py - 6), 34, _p);
     }
     canvas.restore();
 
@@ -688,13 +775,28 @@ class _WorldPainter extends CustomPainter {
       for (final OdyOrb o in act.orbs) {
         final double sx = o.x - px + w / 2;
         final double sy = o.y - py + h / 2;
-        if (sx < 24 || sx > w - 24 || sy < 120 || sy > h - 24) {
+        if (sx < 24 || sx > w - 24 || sy < 210 || sy > h - 24) {
           final double cx = sx.clamp(26.0, w - 26.0);
-          final double cy = sy.clamp(130.0, h - 26.0);
+          final double cy = sy.clamp(220.0, h - 26.0);
           _p.color = _lighten(_subj(act.q.subject).color, 0.3);
           canvas.drawCircle(Offset(cx, cy), 15, _p);
           _text(canvas, String.fromCharCode(65 + o.index), Offset(cx, cy), 15, Colors.black, true, 40);
         }
+      }
+    }
+
+    // arrows to life stars that are off screen
+    for (final OdyStar st in engine.starList) {
+      if (st.kind != 0) continue;
+      final double sx = st.x - px + w / 2;
+      final double sy = st.y - py + h / 2;
+      if (sx < 20 || sx > w - 20 || sy < 210 || sy > h - 20) {
+        final double cx = sx.clamp(24.0, w - 24.0);
+        final double cy = sy.clamp(220.0, h - 24.0);
+        _p.color = const Color(0xFFFFEB3B);
+        canvas.drawCircle(Offset(cx, cy), 13, _p);
+        _p.color = const Color(0xFFFF5252);
+        canvas.drawCircle(Offset(cx, cy), 6, _p);
       }
     }
 
@@ -713,6 +815,79 @@ class _WorldPainter extends CustomPainter {
     }
   }
 
+  /// A small humanoid: head, hair, body, swinging arms and legs. Feet stand
+  /// on (x, y + 18), so the collision circle sits around the torso.
+  void _drawHero(Canvas canvas, double x, double y) {
+    final double sp = sqrt(engine.vx * engine.vx + engine.vy * engine.vy);
+    final bool moving = sp > 20;
+    final double cyc = engine.distance / 14.0;
+    final double swing = moving ? sin(cyc) : 0.0;
+    final double bob = moving ? (sin(cyc * 2).abs() * 2.2) : sin(engine.time * 2.4) * 0.8;
+    final double fx = engine.facingX >= 0 ? 1.0 : -1.0;
+    final double lean = moving ? (engine.vx / OdysseyEngine.dashSpeed) * 0.35 : 0.0;
+    final double footY = y + 18;
+
+    canvas.save();
+    canvas.translate(x, footY);
+    canvas.rotate(lean);
+    canvas.translate(-x, -footY);
+
+    // shadow
+    _p.color = Colors.black.withValues(alpha: 0.32);
+    canvas.drawOval(Rect.fromCenter(center: Offset(x, footY + 1), width: 30, height: 9), _p);
+
+    final Paint stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // back arm and back leg
+    stroke.strokeWidth = 5;
+    stroke.color = const Color(0xFFE0A070);
+    canvas.drawLine(Offset(x - 8 * fx, y - 3 - bob), Offset(x - 11 * fx - swing * 6 * fx, y + 8 - bob), stroke);
+    stroke.strokeWidth = 6;
+    stroke.color = const Color(0xFF1F2A44);
+    canvas.drawLine(Offset(x - 3, y + 7 - bob), Offset(x - 3 - swing * 7 * fx, footY - 1), stroke);
+
+    // body
+    _p.color = const Color(0xFFFF6A00);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 9, y - 8 - bob, 18, 20), const Radius.circular(7)), _p);
+    _p.color = const Color(0xFFFFB066);
+    canvas.drawRect(Rect.fromLTWH(x - 9, y + 1 - bob, 18, 3), _p);
+
+    // front leg and front arm
+    stroke.strokeWidth = 6;
+    stroke.color = const Color(0xFF2A3A63);
+    canvas.drawLine(Offset(x + 3, y + 7 - bob), Offset(x + 3 + swing * 7 * fx, footY - 1), stroke);
+    stroke.strokeWidth = 5;
+    stroke.color = const Color(0xFFF2B785);
+    canvas.drawLine(Offset(x + 8 * fx, y - 3 - bob), Offset(x + 11 * fx + swing * 6 * fx, y + 8 - bob), stroke);
+
+    // shoes
+    _p.color = Colors.white;
+    canvas.drawCircle(Offset(x - 3 - swing * 7 * fx, footY), 3.4, _p);
+    canvas.drawCircle(Offset(x + 3 + swing * 7 * fx, footY), 3.4, _p);
+
+    // head
+    final double hy = y - 17 - bob;
+    _p.color = const Color(0xFFF2B785);
+    canvas.drawCircle(Offset(x, hy), 9.5, _p);
+    // hair
+    _p.color = const Color(0xFF2B1B12);
+    canvas.drawArc(Rect.fromCircle(center: Offset(x, hy), radius: 10), pi, pi, true, _p);
+    canvas.drawCircle(Offset(x - 6 * fx, hy - 2), 4.2, _p);
+    // eyes look where the hero walks
+    final double ex = engine.facingX * 2.4;
+    final double ey = engine.facingY * 1.6;
+    _p.color = Colors.white;
+    canvas.drawCircle(Offset(x - 3.4 + ex * 0.4, hy + 1 + ey * 0.3), 2.6, _p);
+    canvas.drawCircle(Offset(x + 3.4 + ex * 0.4, hy + 1 + ey * 0.3), 2.6, _p);
+    _p.color = const Color(0xFF14101A);
+    canvas.drawCircle(Offset(x - 3.4 + ex, hy + 1 + ey), 1.3, _p);
+    canvas.drawCircle(Offset(x + 3.4 + ex, hy + 1 + ey), 1.3, _p);
+
+    canvas.restore();
+  }
+
   void _decor(Canvas canvas, String sid, int type, double x, double y, int hh) {
     final Color base = _subj(sid).color;
     final Color light = _lighten(base, 0.18);
@@ -723,9 +898,9 @@ class _WorldPainter extends CustomPainter {
         canvas.drawOval(Rect.fromCenter(center: Offset(x, y + 14), width: 34, height: 11), _p);
         _p.color = _darken(base, 0.18);
         canvas.drawRect(Rect.fromLTWH(x - 3, y - 2, 6, 16), _p);
-        _p.color = light.withValues(alpha: 0.9);
+        _p.color = _darken(base, 0.02).withValues(alpha: 0.95);
         canvas.drawCircle(Offset(x, y - 8), 15, _p);
-        _p.color = _lighten(light, 0.08).withValues(alpha: 0.7);
+        _p.color = _lighten(base, 0.06).withValues(alpha: 0.6);
         canvas.drawCircle(Offset(x - 4, y - 11), 8, _p);
         break;
       }
@@ -739,29 +914,17 @@ class _WorldPainter extends CustomPainter {
         canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 10, y - 8, 12, 5), const Radius.circular(3)), _p);
         break;
       }
-      case 2: {
-        // crystal shard
-        final Path s = Path()
-          ..moveTo(x, y - 18)
-          ..lineTo(x + 7, y + 4)
-          ..lineTo(x, y + 10)
-          ..lineTo(x - 7, y + 4)
-          ..close();
-        _p.color = light.withValues(alpha: 0.35);
-        canvas.drawCircle(Offset(x, y - 2), 16, _p);
-        _p.color = _lighten(base, 0.3).withValues(alpha: 0.9);
-        canvas.drawPath(s, _p);
-        break;
-      }
       default: {
-        // glowing rune ring
-        _p.style = PaintingStyle.stroke;
-        _p.strokeWidth = 3;
-        _p.color = light.withValues(alpha: 0.45);
-        canvas.drawCircle(Offset(x, y), 16, _p);
-        _p.strokeWidth = 1.5;
-        canvas.drawCircle(Offset(x, y), 8, _p);
-        _p.style = PaintingStyle.fill;
+        // grass tuft
+        _p.color = _darken(base, 0.12).withValues(alpha: 0.9);
+        for (int i = -1; i <= 1; i++) {
+          final Path blade = Path()
+            ..moveTo(x + i * 5.0, y + 6)
+            ..lineTo(x + i * 5.0 - 2, y - 6 - (i == 0 ? 4 : 0))
+            ..lineTo(x + i * 5.0 + 3, y + 6)
+            ..close();
+          canvas.drawPath(blade, _p);
+        }
         break;
       }
     }

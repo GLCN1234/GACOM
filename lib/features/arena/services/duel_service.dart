@@ -19,6 +19,8 @@ class DuelMatch {
   final String? endReason;
   final DateTime? deadline;
   final DateTime? createdAt;
+  final int stake;
+  final int? payout;
 
   const DuelMatch({
     required this.id,
@@ -37,6 +39,8 @@ class DuelMatch {
     required this.endReason,
     required this.deadline,
     required this.createdAt,
+    this.stake = 0,
+    this.payout,
   });
 
   static int? _int(dynamic v) => v == null ? null : (v as num).toInt();
@@ -59,6 +63,8 @@ class DuelMatch {
         endReason: r['end_reason'] as String?,
         deadline: _time(r['deadline']),
         createdAt: _time(r['created_at']),
+        stake: _int(r['stake_amount']) ?? 0,
+        payout: _int(r['payout']),
       );
 
   bool isPlayer(String? uid) => uid != null && (uid == creatorId || uid == opponentId);
@@ -76,9 +82,31 @@ class DuelService {
     return DuelMatch.fromRow(Map<String, dynamic>.from(row as Map));
   }
 
-  static Future<DuelMatch> quick(DuelGame game) async {
-    final dynamic res = await _db.rpc('duel_quick', params: <String, dynamic>{'p_key': game.key, 'p_name': game.name});
+  /// Stakes a duel can be played for, in naira. 0 is a free duel.
+  static const List<int> stakes = <int>[0, 200, 500, 1000, 2000, 5000];
+
+  static Future<DuelMatch> quick(DuelGame game, {int stake = 0}) async {
+    final dynamic res = await _db.rpc('duel_quick', params: <String, dynamic>{'p_key': game.key, 'p_name': game.name, 'p_stake': stake});
     return _one(res);
+  }
+
+  /// Pays out or refunds any of my finished duels that were not settled yet.
+  static Future<void> settleMine() async {
+    try {
+      await _db.rpc('duel_settle_mine');
+    } catch (e) {
+      debugPrint('duel settle retry failed: $e');
+    }
+  }
+
+  /// Turns a server error into something a player can read.
+  static String friendlyError(Object e) {
+    final String t = e.toString().toLowerCase();
+    if (t.contains('balance') || t.contains('insufficient')) {
+      return 'Not enough balance for this stake. Top up your arena wallet or pick a smaller stake.';
+    }
+    if (t.contains('taken')) return 'That duel was just taken.';
+    return 'Could not start a duel. Check your connection and try again.';
   }
 
   static Future<DuelMatch> join(String id) async {

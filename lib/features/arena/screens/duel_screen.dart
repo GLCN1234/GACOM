@@ -194,7 +194,7 @@ class _DuelScreenState extends State<DuelScreen> {
     final DuelGame? g = _game ?? (_m == null ? null : DuelRegistry.byKey(_m!.gameKey));
     if (g == null) return;
     try {
-      final DuelMatch next = await DuelService.quick(g);
+      final DuelMatch next = await DuelService.quick(g, stake: _m?.stake ?? 0);
       if (mounted) context.pushReplacement('/arena/duel/${next.id}');
     } catch (_) {
       if (mounted) setState(() => _error = 'Could not start a rematch.');
@@ -339,7 +339,7 @@ class _DuelScreenState extends State<DuelScreen> {
       const SizedBox(height: 18),
       Text(mine ? 'Looking for an opponent...' : 'Joining...', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary)),
       const SizedBox(height: 6),
-      const Text('The match starts the moment someone joins.\nYou both get the same seed.', textAlign: TextAlign.center, style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+      Text(m.stake > 0 ? 'Stake: ₦${m.stake}. Your stake is held until the duel ends.\nThe match starts the moment someone joins.' : 'The match starts the moment someone joins.\nYou both get the same seed.', textAlign: TextAlign.center, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
       const SizedBox(height: 22),
       if (mine)
         _button('CANCEL', () async {
@@ -404,6 +404,16 @@ class _DuelScreenState extends State<DuelScreen> {
       if (reason.isNotEmpty) ...<Widget>[
         const SizedBox(height: 12),
         Text(reason, style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+      ],
+      if (isPlayer && m.stake > 0) ...<Widget>[
+        const SizedBox(height: 12),
+        Text(
+          draw
+              ? 'Draw. Your ₦${m.stake} stake was returned.'
+              : (won ? 'You won ₦${m.payout ?? (m.stake * 2)} (stakes pooled, platform fee taken).' : 'You lost your ₦${m.stake} stake.'),
+          textAlign: TextAlign.center,
+          style: TextStyle(color: draw ? GacomColors.warning : (won ? GacomColors.success : GacomColors.error), fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15),
+        ),
       ],
       const SizedBox(height: 26),
       if (isPlayer) _button('REMATCH', _rematch),

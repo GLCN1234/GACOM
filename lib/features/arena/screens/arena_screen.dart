@@ -207,7 +207,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                         const SizedBox(width: 10),
                         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('DUELS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white)),
-                          Text('Race another player in any game. Free to play.', style: TextStyle(fontSize: 11.5, color: Colors.white70)),
+                          Text('Stake on any of 45+ games and race another player. Free or for money.', style: TextStyle(fontSize: 11.5, color: Colors.white70)),
                         ])),
                         const Icon(Icons.chevron_right_rounded, color: Colors.white),
                       ]),
