@@ -18,3 +18,9 @@ void saveWebDownload(Uint8List bytes, String filename) {
   anchor.remove();
   html.Url.revokeObjectUrl(url);
 }
+
+/// Opens the full download page, where the browser's own download manager
+/// does the work and the person gets step-by-step install help.
+void openDownloadPage() {
+  html.window.location.assign('/download/');
+}

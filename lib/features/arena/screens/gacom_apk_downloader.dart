@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
@@ -9,16 +8,21 @@ import 'web_download_stub.dart' if (dart.library.html) 'web_download_web.dart' a
 
 const _apkUrl = 'https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/gacom-latest.apk';
 
-/// One real progress-bar experience for both platforms — the only
-/// difference is how the finished file gets delivered at the end,
-/// since a browser can never hand a file directly to the system
-/// installer the way an already-installed app can. On web, it's saved
-/// as a correctly MIME-typed blob, which is what lets Chrome offer its
-/// own "tap to install" action once the download finishes — the same
-/// behavior people are used to seeing from other APK downloads.
-Future<void> downloadAndInstallGacomApk(BuildContext context) async {
+/// In the Android app: downloads the APK with a progress bar and hands it
+/// to Android's installer. In a browser: opens the /download page.
+Future<void> downloadAndInstallGacomApk(BuildContext context, {String? url}) async {
+  // A browser cannot hand a file to the installer, so on the web we send
+  // the person to the download page, which picks the right file and walks
+  // them through installing it. The browser's own download manager is far
+  // more reliable than holding the whole file in memory.
+  if (kIsWeb) {
+    web_download.openDownloadPage();
+    return;
+  }
+  final String apk = url ?? _apkUrl;
   final progress = ValueNotifier<double>(0);
   final status = ValueNotifier<String>('Starting download...');
+  bool dialogOpen = true;
 
   showDialog(
     context: context,
@@ -50,46 +54,43 @@ Future<void> downloadAndInstallGacomApk(BuildContext context) async {
   );
 
   try {
-    if (kIsWeb) {
-      // dio works on web too (via the browser's own fetch under the
-      // hood), so the same real progress tracking applies here —
-      // fetching raw bytes rather than saving to a real file system,
-      // since a browser doesn't have one to write to directly.
-      final response = await Dio().get<List<int>>(
-        _apkUrl,
-        options: Options(responseType: ResponseType.bytes),
-        onReceiveProgress: (received, total) {
-          if (total > 0) progress.value = received / total;
-        },
-      );
-      status.value = 'Starting install...';
-      web_download.saveWebDownload(Uint8List.fromList(response.data!), 'gacom-latest.apk');
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
-    } else {
-      // Dart's own temp directory — no plugin needed at all, sidesteps
+    {
+      // Dart's own temp directory: no plugin needed at all, sidesteps
       // the path_provider Android registration issue entirely.
       final dir = Directory.systemTemp;
-      final savePath = '${dir.path}/gacom-latest.apk';
+      final savePath = '${dir.path}/gacom-update.apk';
+      final f = File(savePath);
+      if (await f.exists()) {
+        try { await f.delete(); } catch (_) {}
+      }
 
       await Dio().download(
-        _apkUrl,
+        apk,
         savePath,
         onReceiveProgress: (received, total) {
           if (total > 0) progress.value = received / total;
         },
       );
 
-      status.value = 'Ready to install...';
-      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (await f.length() < 1024 * 1024) {
+        throw Exception('The download did not finish. Please try again.');
+      }
 
-      // Hands the file to Android's own installer — the same "verify
+      status.value = 'Ready to install...';
+      if (dialogOpen && context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      dialogOpen = false;
+
+      // Hands the file to Android's own installer: the same "verify
       // and install" flow, not a raw browser download.
-      await OpenFile.open(savePath);
+      final result = await OpenFile.open(savePath, type: 'application/vnd.android.package-archive');
+      if (result.type != ResultType.done && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message.isEmpty ? 'Could not open the installer. Allow installs from GACOM in settings, then try again.' : result.message)));
+      }
     }
   } catch (e) {
     if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+      if (dialogOpen) Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Download failed. Check your connection and try again.')));
     }
   }
 }

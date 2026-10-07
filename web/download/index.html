@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0B0B0F">
+<title>Download GACOM for Android</title>
+<style>
+  :root { --bg:#0B0B0F; --card:#121218; --line:#26262f; --text:#fff; --mute:#9A9AA6; --accent:#FF6A00; --ok:#69F0AE; --warn:#FFB300; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; display: flex; justify-content: center; padding: 18px 16px 40px; }
+  main { width: 100%; max-width: 480px; }
+  .brand { font-weight: 800; letter-spacing: 3px; font-size: 15px; color: var(--accent); margin: 8px 0 22px; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0 0 8px; }
+  p.lead { color: var(--mute); font-size: 15px; line-height: 1.5; margin: 0 0 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .btn { display: block; width: 100%; text-align: center; background: var(--accent); color: #fff; text-decoration: none; font-weight: 800; font-size: 18px; letter-spacing: 1px; padding: 16px; border-radius: 50px; border: 0; cursor: pointer; }
+  .btn:active { transform: scale(.98); }
+  .btn.alt { background: transparent; border: 1px solid var(--line); color: var(--text); font-size: 14px; padding: 12px; margin-top: 10px; font-weight: 700; letter-spacing: .3px; }
+  .meta { display: flex; justify-content: space-between; color: var(--mute); font-size: 13px; margin-top: 10px; gap: 8px; flex-wrap: wrap; }
+  .notice { border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.45; margin-bottom: 14px; display: none; }
+  .notice.warn { display: block; background: rgba(255,179,0,.1); border: 1px solid rgba(255,179,0,.4); color: #ffe0a3; }
+  .notice.info { display: block; background: rgba(255,106,0,.08); border: 1px solid rgba(255,106,0,.35); color: #ffd2b0; }
+  h2 { font-size: 13px; letter-spacing: 1.5px; color: var(--accent); margin: 0 0 12px; font-weight: 800; }
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; }
+  ol.steps li { counter-increment: s; position: relative; padding: 0 0 14px 40px; font-size: 14.5px; line-height: 1.45; }
+  ol.steps li:last-child { padding-bottom: 0; }
+  ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,106,0,.16); color: var(--accent); font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  ol.steps b { color: #fff; }
+  ol.steps span.sub { display: block; color: var(--mute); font-size: 13px; margin-top: 2px; }
+  details { border-top: 1px solid var(--line); padding: 12px 0; }
+  details:first-of-type { border-top: 0; padding-top: 0; }
+  summary { cursor: pointer; font-weight: 700; font-size: 14.5px; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  details p { color: var(--mute); font-size: 14px; line-height: 1.5; margin: 8px 0 0; }
+  code { background: #1c1c25; padding: 2px 6px; border-radius: 6px; font-size: 12px; word-break: break-all; }
+  .hide { display: none !important; }
+  .small { color: var(--mute); font-size: 12.5px; line-height: 1.5; }
+  a.link { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">GACOM</div>
+
+  <div id="notAndroid" class="hide">
+    <h1>Open this page on your Android phone</h1>
+    <p class="lead">This download is for Android phones. On an iPhone, GACOM is coming to the App Store. You can also play right now in your browser.</p>
+    <a class="btn" href="/">PLAY IN BROWSER</a>
+    <p class="small" style="margin-top:14px">On an Android phone, open <code id="selfUrl"></code> to get the app.</p>
+  </div>
+
+  <div id="android" class="hide">
+    <h1>Get GACOM for Android</h1>
+    <p class="lead">The full GACOM app: Arena games, Edu worlds, chat and community. Free to download.</p>
+
+    <div id="inAppWarn" class="notice warn"></div>
+
+    <div class="card">
+      <a id="dl" class="btn" href="#" rel="noopener">DOWNLOAD GACOM</a>
+      <div class="meta"><span id="verText">Latest version</span><span id="sizeText"></span></div>
+      <a id="other" class="btn alt hide" href="#"></a>
+      <div id="dlStarted" class="notice info" style="margin:12px 0 0">Download started. Pull down your notifications, or open the downloads bar in your browser, and tap the file when it finishes. Follow the steps below.</div>
+    </div>
+
+    <div class="card">
+      <h2>HOW TO INSTALL</h2>
+      <ol class="steps" id="steps"></ol>
+    </div>
+
+    <div class="card">
+      <h2>IF SOMETHING GOES WRONG</h2>
+      <details><summary>It says "App not installed"</summary>
+        <p>You may already have an older GACOM on your phone that came from a different download. Uninstall the old GACOM (your account and progress are saved online), then install again. Also make sure you have at least 300 MB of free space.</p></details>
+      <details><summary>It says "Parse error" or "App not compatible"</summary>
+        <p>The file does not match your phone. Use the "Download the other version" button above, or the standard version if you tried the small one.</p></details>
+      <details><summary>Play Protect shows a warning</summary>
+        <p>GACOM is not on Google Play, so Android shows a general caution for apps from outside the store. Tap <b>More details</b>, then <b>Install anyway</b>. If you see "Scan app", you can scan it first and then install.</p></details>
+      <details><summary>The download is stuck or keeps failing</summary>
+        <p>Use Chrome on Wi-Fi if you can, turn off any data saver, and try again. The download continues where it stopped if the connection drops.</p></details>
+      <details><summary>The phone will not let me open the file</summary>
+        <p>Open your <b>Files</b> or <b>My Files</b> app, go to <b>Downloads</b>, and tap the GACOM file there.</p></details>
+    </div>
+
+    <div class="card">
+      <h2>ABOUT THIS FILE</h2>
+      <p class="small" style="margin:0">Package <code>com.mobtechsynergies.gacom</code> by Mobtech Synergies Ltd. After this first install, GACOM updates itself from inside the app. <span id="shaWrap" class="hide"><br><br>SHA-256 of the file you are downloading:<br><code id="sha"></code></span></p>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var BASE = 'https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/';
+  var FALLBACK = { version: '', build: 0, full_url: BASE + 'gacom-latest.apk', arm64_url: BASE + 'gacom-latest-arm64.apk', full_mb: 0, arm64_mb: 0 };
+
+  var ua = navigator.userAgent || '';
+  var isAndroid = /Android/i.test(ua);
+
+  document.getElementById('selfUrl').textContent = location.host + '/download';
+  if (!isAndroid) {
+    document.getElementById('notAndroid').classList.remove('hide');
+    return;
+  }
+  document.getElementById('android').classList.remove('hide');
+
+  // ---- which browser ----
+  var browser = 'other';
+  if (/FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|TikTok|BytedanceWebview|MicroMessenger|Snapchat|GSA\//i.test(ua) || /; wv\)/.test(ua)) browser = 'inapp';
+  else if (/SamsungBrowser/i.test(ua)) browser = 'samsung';
+  else if (/OPR\/|Opera|OPT\//i.test(ua)) browser = 'opera';
+  else if (/UCBrowser/i.test(ua)) browser = 'uc';
+  else if (/Firefox|FxiOS/i.test(ua)) browser = 'firefox';
+  else if (/EdgA/i.test(ua)) browser = 'edge';
+  else if (/Chrome\//i.test(ua)) browser = 'chrome';
+
+  var warn = document.getElementById('inAppWarn');
+  if (browser === 'inapp') {
+    warn.innerHTML = 'You are inside another app\'s built-in browser, which often blocks downloads. Tap the <b>three dots</b> at the top and choose <b>Open in Chrome</b> (or <b>Open in browser</b>), then download from there. Or copy this link into Chrome: <code>' + location.host + '/download</code>';
+  } else if (browser === 'opera' || browser === 'uc') {
+    warn.innerHTML = 'Downloads can be unreliable in this browser. If it fails, open this page in <b>Chrome</b> and try again.';
+  } else {
+    warn.style.display = 'none';
+  }
+
+  // ---- steps, worded for the browser ----
+  var openLine = {
+    chrome:  'When the download finishes, tap <b>Open</b> in the box at the bottom of the screen. If you miss it, pull down the notification and tap the file.',
+    samsung: 'When the download finishes, tap <b>Open file</b> in the popup. If you miss it, pull down the notification and tap the file.',
+    edge:    'When the download finishes, tap <b>Open</b>. If you miss it, pull down the notification and tap the file.',
+    firefox: 'When the download finishes, pull down the notification and tap the GACOM file.',
+    opera:   'When the download finishes, tap the file in the downloads list or in the notification.',
+    uc:      'When the download finishes, open the download list and tap the GACOM file.',
+    inapp:   'After you switch to Chrome and download, tap <b>Open</b> when it finishes.',
+    other:   'When the download finishes, tap the file in the notification or in your Downloads folder.'
+  }[browser];
+  var browserName = { chrome: 'Chrome', samsung: 'Samsung Internet', edge: 'Edge', firefox: 'Firefox', opera: 'Opera', uc: 'UC Browser', inapp: 'this browser', other: 'this browser' }[browser];
+
+  var steps = [
+    '<b>Tap DOWNLOAD GACOM</b>.<span class="sub">If your browser asks whether to keep the file because it can harm your device, tap <b>Download anyway</b> or <b>Keep</b>.</span>',
+    openLine,
+    '<b>If Android asks about unknown apps</b>, tap <b>Settings</b>, switch on <b>Allow from this source</b> for ' + browserName + ', then press the <b>back</b> button.<span class="sub">This is a one-time permission. Android asks because GACOM is installed from a website.</span>',
+    '<b>Tap Install</b>, then <b>Open</b>.<span class="sub">If a Play Protect box appears, tap <b>More details</b> and then <b>Install anyway</b>.</span>',
+    '<b>Log in and play.</b><span class="sub">From now on GACOM updates itself inside the app.</span>'
+  ];
+  var ol = document.getElementById('steps');
+  steps.forEach(function (s) { var li = document.createElement('li'); li.innerHTML = s; ol.appendChild(li); });
+
+  // ---- which file ----
+  function wants64() {
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+      return navigator.userAgentData.getHighEntropyValues(['architecture', 'bitness']).then(function (v) {
+        return v && v.bitness === '64' && /arm/i.test(v.architecture || '');
+      }).catch(function () { return false; });
+    }
+    return Promise.resolve(false);
+  }
+
+  function withName(u) { return u + (u.indexOf('?') < 0 ? '?' : '&') + 'download=Gacom.apk'; }
+
+  var dl = document.getElementById('dl');
+  var other = document.getElementById('other');
+  var started = document.getElementById('dlStarted');
+  started.classList.add('hide');
+
+  function show(info, use64) {
+    var has64 = !!info.arm64_url;
+    var good = (use64 && has64) ? 'arm64' : 'full';
+    function setup(kind) {
+      var url = kind === 'arm64' ? info.arm64_url : info.full_url;
+      var mb = kind === 'arm64' ? info.arm64_mb : info.full_mb;
+      var sha = kind === 'arm64' ? info.arm64_sha256 : info.full_sha256;
+      dl.href = withName(url);
+      document.getElementById('verText').textContent = info.version ? ('Version ' + info.version + (kind === 'arm64' ? ' - small' : '')) : 'Latest version';
+      document.getElementById('sizeText').textContent = mb ? (mb + ' MB') : '';
+      var wrap = document.getElementById('shaWrap');
+      if (sha) { document.getElementById('sha').textContent = sha; wrap.classList.remove('hide'); } else { wrap.classList.add('hide'); }
+      if (has64) {
+        var otherKind = kind === 'arm64' ? 'full' : 'arm64';
+        other.classList.remove('hide');
+        other.textContent = otherKind === 'full' ? 'Not working? Download the standard version' : 'Download the smaller version for newer phones';
+        other.onclick = function (e) { e.preventDefault(); setup(otherKind); started.classList.add('hide'); };
+      } else {
+        other.classList.add('hide');
+      }
+    }
+    setup(good);
+  }
+
+  dl.addEventListener('click', function () { started.classList.remove('hide'); });
+
+  var info = FALLBACK;
+  Promise.all([
+    fetch(BASE + 'latest.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    wants64()
+  ]).then(function (res) {
+    var m = res[0];
+    if (m) {
+      info = {
+        version: m.version || '', build: m.build || 0,
+        full_url: m.full_url || FALLBACK.full_url, arm64_url: m.arm64_url || '',
+        full_mb: m.full_mb || 0, arm64_mb: m.arm64_mb || 0,
+        full_sha256: m.full_sha256 || '', arm64_sha256: m.arm64_sha256 || ''
+      };
+    } else {
+      info = { version: '', build: 0, full_url: FALLBACK.full_url, arm64_url: '', full_mb: 0, arm64_mb: 0 };
+    }
+    show(info, res[1]);
+  });
+})();
+</script>
+</body>
+</html>

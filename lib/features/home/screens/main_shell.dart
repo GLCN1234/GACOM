@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/edu_mode_provider.dart';
+import '../../../core/services/app_update_service.dart';
 
 final userRoleProvider = FutureProvider<String>((ref) async {
   final uid = SupabaseService.currentUserId;
@@ -54,6 +55,9 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     super.initState();
     _glowCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
     _glowAnim = CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppUpdateService.maybePrompt(context);
+    });
   }
 
   @override void dispose() { _glowCtrl.dispose(); super.dispose(); }

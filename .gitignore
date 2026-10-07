@@ -50,3 +50,4 @@ macos/Flutter/GeneratedPluginRegistrant.swift
 supabase/.temp/
 *.zip
 android/key.properties
+release_out/
