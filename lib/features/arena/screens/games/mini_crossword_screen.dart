@@ -7,7 +7,6 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import 'crossword_bank.dart';
-import '../../../../core/services/duel_session.dart';
 
 class CwEntry {
   final int number;
@@ -201,7 +200,7 @@ class MiniCrosswordScreen extends StatefulWidget {
 }
 
 class _MiniCrosswordScreenState extends State<MiniCrosswordScreen> {
-  final Random _rng = duelRandom();
+  final Random _rng = Random();
   late final Map<String, String> _clues;
   late final List<String> _words;
   CrosswordEngine? _e;

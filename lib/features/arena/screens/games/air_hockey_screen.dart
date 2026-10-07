@@ -6,7 +6,6 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
-import '../../../../core/services/duel_session.dart';
 
 /// Air hockey physics. Table is 100 wide by 160 tall, y points down.
 /// The player defends the bottom goal, the AI defends the top goal.
@@ -295,7 +294,7 @@ class AirHockeyScreen extends StatefulWidget {
 
 class _AirHockeyScreenState extends State<AirHockeyScreen> with SingleTickerProviderStateMixin {
   static const List<String> _levels = ['EASY', 'MEDIUM', 'HARD'];
-  final Random _rng = duelRandom();
+  final Random _rng = Random();
   AirHockeyEngine? _e;
   int _level = 1;
   late final Ticker _ticker;

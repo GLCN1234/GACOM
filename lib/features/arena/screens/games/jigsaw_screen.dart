@@ -6,7 +6,6 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
-import '../../../../core/services/duel_session.dart';
 
 class JigPiece {
   final int id;
@@ -312,7 +311,7 @@ class JigsawScreen extends StatefulWidget {
 class _JigsawScreenState extends State<JigsawScreen> {
   static const List<String> _sizes = ['3 x 3', '4 x 4', '5 x 5'];
   static const List<int> _dims = [3, 4, 5];
-  final Random _rng = duelRandom();
+  final Random _rng = Random();
   JigsawEngine? _e;
   ui.Image? _image;
   int _level = 0;

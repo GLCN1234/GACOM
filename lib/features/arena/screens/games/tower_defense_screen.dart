@@ -6,7 +6,6 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
-import '../../../../core/services/duel_session.dart';
 
 class TdTowerSpec {
   final String name;
@@ -328,7 +327,7 @@ class TowerDefenseScreen extends StatefulWidget {
 }
 
 class _TowerDefenseScreenState extends State<TowerDefenseScreen> with SingleTickerProviderStateMixin {
-  final Random _rng = duelRandom();
+  final Random _rng = Random();
   TdEngine? _e;
   int _diff = 1;
   late final Ticker _ticker;
