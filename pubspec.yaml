@@ -45,6 +45,7 @@ dependencies:
   connectivity_plus: ^7.3.1
   flame: ^1.18.0
   model_viewer_plus: ^1.7.0
+  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:

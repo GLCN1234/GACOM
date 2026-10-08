@@ -1,3 +1,5 @@
+import 'ios_topup_sheet.dart';
+import '../../../core/platform_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -188,7 +190,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
                   // Quick action buttons — always visible, no overflow
                   Row(children: [
-                    Expanded(child: _QuickAction(icon: Icons.add_rounded, label: 'Fund Wallet', color: GacomColors.deepOrange, onTap: () => _showFundSheet(context))),
+                    Expanded(child: _QuickAction(icon: Icons.add_rounded, label: 'Fund Wallet', color: GacomColors.deepOrange, onTap: () async {
+                      if (PlatformPolicy.usesAppleIap) {
+                        final bool added = await showIosTopUp(context);
+                        if (added && mounted) _loadData();
+                      } else {
+                        _showFundSheet(context);
+                      }
+                    })),
                     const SizedBox(width: 12),
                     Expanded(child: _QuickAction(icon: Icons.arrow_upward_rounded, label: 'Withdraw', color: GacomColors.info, onTap: () => _showWithdrawSheet(context))),
                     const SizedBox(width: 12),

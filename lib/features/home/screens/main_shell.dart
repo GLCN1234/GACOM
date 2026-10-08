@@ -1,3 +1,4 @@
+import '../../../core/services/ios_purchase_service.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -57,6 +58,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     _glowAnim = CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppUpdateService.maybePrompt(context);
+      IosPurchaseService.instance.start();
     });
   }
 

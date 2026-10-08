@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'gacom_apk_downloader.dart';
+import '../../../core/platform_policy.dart';
 import '../widgets/game_logo.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -70,7 +71,7 @@ class _GameStoreScreenState extends State<GameStoreScreen> {
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
             _searchBar(),
-            _downloadGacomBanner(),
+            if (!PlatformPolicy.isIosApp) _downloadGacomBanner(),
             if (_featured.isNotEmpty) _featuredCarousel(),
             _categoryChips(),
             const SizedBox(height: 8),

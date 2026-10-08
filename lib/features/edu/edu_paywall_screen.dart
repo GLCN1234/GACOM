@@ -1,3 +1,5 @@
+import 'ios_subscribe_block.dart';
+import '../../core/platform_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
@@ -142,7 +144,10 @@ class _EduPaywallState extends State<EduPaywallScreen> {
         ])),
       const SizedBox(height: 24),
 
-      // CTA
+      // CTA — Apple In-App Purchase on iOS, Paystack elsewhere
+      if (PlatformPolicy.usesAppleIap)
+        const IosSubscribeBlock()
+      else ...[
       SizedBox(width: double.infinity, child: ElevatedButton(
         onPressed: _paying ? null : _subscribe,
         style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
@@ -158,6 +163,7 @@ class _EduPaywallState extends State<EduPaywallScreen> {
           const Expanded(child: Text('Paying by card renews automatically each month — no need to remember. Bank transfer works too, but renews manually.',
             style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.4))),
         ])),
+      ],
       const SizedBox(height: 40),
     ])),
   );
