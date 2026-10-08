@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../arena/widgets/game_logo.dart';
+import '../../../shared/widgets/rarity.dart' show Tac;
+import '../../journey/journey_service.dart';
 import '../odyssey/odyssey_questions.dart';
 import 'realm_kit.dart';
 import 'realm_registry.dart';
@@ -23,6 +25,7 @@ class _RealmHubScreenState extends State<RealmHubScreen> {
   bool _loading = true;
   Map<String, int> _plays = <String, int>{};
   String? _last;
+  Map<String, JourneyWorldSummary> _journey = <String, JourneyWorldSummary>{};
 
   @override
   void initState() {
@@ -41,6 +44,13 @@ class _RealmHubScreenState extends State<RealmHubScreen> {
       _last = last;
       _loading = false;
     });
+    _loadJourney();
+  }
+
+  Future<void> _loadJourney() async {
+    final List<JourneyWorldSummary> ws = await JourneyService.worlds();
+    if (!mounted) return;
+    setState(() => _journey = <String, JourneyWorldSummary>{for (final JourneyWorldSummary w in ws) w.realmId: w});
   }
 
   String get _subjectLabel => _subject == 'mix' ? 'every subject' : odySubjectById(_subject).label;
@@ -64,8 +74,10 @@ class _RealmHubScreenState extends State<RealmHubScreen> {
         child: ListView(
           padding: const EdgeInsets.all(18),
           children: <Widget>[
-            const Text('Six open worlds, one for every way of learning. Pick a subject, then pick how you want to play it.',
+            const Text('Open worlds, one for every way of learning. Pick a subject, then pick how you want to play it.',
                 style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
+            const SizedBox(height: 12),
+            _journeyTile(),
             const SizedBox(height: 14),
             const _Label('SUBJECT'),
             const SizedBox(height: 8),
@@ -134,6 +146,58 @@ class _RealmHubScreenState extends State<RealmHubScreen> {
     );
   }
 
+  Widget _journeyTile() {
+    int stars = 0;
+    int maxStars = 0;
+    for (final JourneyWorldSummary w in _journey.values) {
+      stars += w.stars;
+      maxStars += w.maxStars;
+    }
+    return GestureDetector(
+      onTap: () async {
+        await context.push('/journey');
+        if (mounted) _loadJourney();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: Tac.gold.withValues(alpha: 0.5))),
+        child: Row(children: <Widget>[
+          const Icon(Icons.star_rounded, color: Tac.gold, size: 24),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text('Journey', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textPrimary)),
+              Text('Zones, quests and stars in every world', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
+            ]),
+          ),
+          if (maxStars > 0) Text('$stars / $maxStars', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: Tac.gold)),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right_rounded, color: GacomColors.textMuted),
+        ]),
+      ),
+    );
+  }
+
+  Widget _journeyChip(RealmGameInfo g) {
+    final JourneyWorldSummary? w = _journey[g.id];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await context.push('/journey/${g.id}');
+        if (mounted) _loadJourney();
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          const Icon(Icons.star_rounded, size: 14, color: Tac.gold),
+          const SizedBox(width: 4),
+          Text(w == null ? 'JOURNEY' : 'JOURNEY  ${w.stars} / ${w.maxStars}',
+              style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, color: Tac.gold, letterSpacing: 0.6)),
+        ]),
+      ),
+    );
+  }
+
   Widget _card(RealmPick p, {required bool big}) {
     final RealmGameInfo g = p.game;
     return GestureDetector(
@@ -167,6 +231,7 @@ class _RealmHubScreenState extends State<RealmHubScreen> {
                 const SizedBox(height: 6),
                 Text(p.reason, style: const TextStyle(color: GacomColors.accentCyan, fontSize: 11, fontWeight: FontWeight.w700)),
               ],
+              _journeyChip(g),
             ]),
           ),
           const Icon(Icons.chevron_right_rounded, color: GacomColors.textMuted),

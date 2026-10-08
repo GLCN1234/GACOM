@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../journey/journey_service.dart';
 import 'odyssey_questions.dart';
 import 'odyssey_screen.dart';
 
@@ -17,11 +18,23 @@ class _OdysseyHubScreenState extends State<OdysseyHubScreen> {
   bool _useSchool = true;
   bool _loading = true;
   SchoolContent? _school;
+  JourneyWorldSummary? _journey;
 
   @override
   void initState() {
     super.initState();
     _loadSchool();
+    _loadJourney();
+  }
+
+  Future<void> _loadJourney() async {
+    final List<JourneyWorldSummary> ws = await JourneyService.worlds();
+    if (!mounted) return;
+    JourneyWorldSummary? mine;
+    for (final JourneyWorldSummary w in ws) {
+      if (w.realmId == 'odyssey') mine = w;
+    }
+    setState(() => _journey = mine);
   }
 
   Future<void> _loadSchool() async {
@@ -121,6 +134,14 @@ class _OdysseyHubScreenState extends State<OdysseyHubScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () async {
+                await context.push('/journey/odyssey');
+                if (mounted) _loadJourney();
+              },
+              icon: const Icon(Icons.star_rounded, size: 18, color: Color(0xFFF6B93B)),
+              label: Text(_journey == null ? 'Journey' : 'Journey: ${_journey!.stars} / ${_journey!.maxStars} stars'),
+            ),
             TextButton.icon(
               onPressed: () => context.push('/edu/quests'),
               icon: const Icon(Icons.auto_stories_rounded, size: 18),

@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/duel_session.dart';
+import '../../../core/services/cosmetics_service.dart';
+import '../../../shared/fx/feedback_fx.dart';
+import '../../../shared/widgets/weapon_art.dart';
 import '../duels/duel_registry.dart';
 import '../services/duel_service.dart';
 import '../../../shared/widgets/pc_controls_gate.dart';
@@ -31,6 +34,7 @@ class _DuelScreenState extends State<DuelScreen> {
   bool _started = false;
   bool _submitted = false;
   bool _submitting = false;
+  bool _victoryPlayed = false;
   String? _error;
   DateTime? _startedAt;
 
@@ -47,6 +51,9 @@ class _DuelScreenState extends State<DuelScreen> {
   void initState() {
     super.initState();
     _load();
+    try {
+      CosmeticsService.ensureLoaded();
+    } catch (_) {}
     try {
       _sub = SupabaseService.client
           .from('duel_matches')
@@ -104,6 +111,12 @@ class _DuelScreenState extends State<DuelScreen> {
       _beginPlay(m);
     }
     setState(() => _m = m);
+    if (m.status == 'completed' && m.isPlayer(_uid) && !m.isDraw && m.winnerId == _uid && !_victoryPlayed) {
+      _victoryPlayed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) FeedbackFx.play(context, FxKind.victory);
+      });
+    }
     if (m.status == 'completed' || m.status == 'cancelled') {
       _limit?.cancel();
       _session?.stop();
@@ -395,7 +408,7 @@ class _DuelScreenState extends State<DuelScreen> {
     return _centered(<Widget>[
       Icon(draw ? Icons.handshake_rounded : (won ? Icons.emoji_events_rounded : Icons.sentiment_dissatisfied_rounded), color: draw ? GacomColors.warning : (won ? GacomColors.gold : GacomColors.textMuted), size: 62),
       const SizedBox(height: 12),
-      Text(headline, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: color)),
+      _headline(headline, color, won),
       const SizedBox(height: 18),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
         _scoreBox(isPlayer ? 'You' : _name(m.creatorId), mine, won),
@@ -421,6 +434,24 @@ class _DuelScreenState extends State<DuelScreen> {
       const SizedBox(height: 10),
       _button('BACK TO DUELS', () => context.go('/arena/duels'), secondary: true),
     ]);
+  }
+
+  /// The result headline. A winner also sees their equipped weapon beside it.
+  Widget _headline(String headline, Color color, bool won) {
+    final Text text = Text(headline, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: color));
+    if (!won) return text;
+    return ValueListenableBuilder<Map<String, dynamic>?>(
+      valueListenable: CosmeticsService.myLoadout,
+      builder: (BuildContext _, Map<String, dynamic>? loadout, Widget? __) {
+        final dynamic w = loadout?['weapon'];
+        if (w is! Map) return text;
+        return Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          text,
+          const SizedBox(width: 10),
+          WeaponArt.fromItem(Map<String, dynamic>.from(w), size: 64),
+        ]);
+      },
+    );
   }
 
   Widget _scoreBox(String name, int? score, bool highlight) => Container(

@@ -12,6 +12,7 @@ const Map<String, String> _lockerTabs = {
   'avatar_frame': 'Frames',
   'profile_banner': 'Banners',
   'trail': 'Trails',
+  'weapon_skin': 'Weapons',
   'title': 'Titles',
   'badge': 'Badges',
   'name_color': 'Name colours',
@@ -113,13 +114,14 @@ class _LockerScreenState extends State<LockerScreen> {
 
   String _source(Map<String, dynamic> it) => (it['source'] ?? 'shop').toString();
   bool _isOwned(Map<String, dynamic> it) => CosmeticsService.isOwned(it, _owned, _isPro);
-  bool _isEquipped(Map<String, dynamic> it) => _equipped?['equipped_${it['category']}'] == it['id'];
+  bool _isEquipped(Map<String, dynamic> it) => _equipped?['equipped_${CosmeticsService.slotOf(it['category'].toString())}'] == it['id'];
 
   Map<String, dynamic> get _previewMap {
     final m = <String, dynamic>{};
     for (final c in CosmeticsService.categories) {
-      final v = _sel[c] ?? _equipped?[c];
-      if (v != null) m[c] = v;
+      final slot = CosmeticsService.slotOf(c);
+      final v = _sel[c] ?? _equipped?[slot];
+      if (v != null) m[slot] = v;
     }
     return m;
   }

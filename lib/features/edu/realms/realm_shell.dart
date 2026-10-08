@@ -9,10 +9,13 @@ import '../../../core/services/sound_service.dart';
 import '../edu_progress_recorder.dart';
 import '../odyssey/odyssey_engine.dart' show OdyMistake;
 import '../odyssey/odyssey_questions.dart';
+import '../../../shared/fx/feedback_fx.dart';
 import '../../../shared/tutorial/how_to_gate.dart';
 import '../../../shared/tutorial/how_to_model.dart';
 import '../../../shared/tutorial/how_to_registry.dart';
 import 'realm_kit.dart';
+import '../../journey/journey_result_card.dart';
+import '../../journey/journey_service.dart';
 
 /// A button drawn at the bottom right that calls [RealmLogic.onAction].
 class RealmAction {
@@ -75,12 +78,15 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   bool _paused = false;
   bool _ended = false;
   bool _saved = false;
+  JourneyRunResult? _journey;
   bool _music = true;
   bool _inDuel = false;
   late final Ticker _ticker;
   Duration? _last;
   int _n = 0;
   int _coinCue = 0;
+  int _fxAsked = 0;
+  int _fxCorrect = 0;
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
   Offset? _stickOrigin;
   Offset _stickKnob = Offset.zero;
@@ -117,8 +123,11 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   void _newRun() {
     final RealmContent c = _content!;
     _logic = widget.create(c);
+    _fxAsked = 0;
+    _fxCorrect = 0;
     _ended = false;
     _saved = false;
+    _journey = null;
     _paused = false;
     _last = null;
     _stickOrigin = null;
@@ -162,6 +171,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
         }
         case 'win': {
           s.playWin();
+          if (mounted) FeedbackFx.play(context, FxKind.reward, color: widget.accent);
           break;
         }
         case 'lose': {
@@ -175,6 +185,20 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     l.cues.clear();
   }
 
+  /// Visual feedback when a question was just judged: a ring or cracks, and
+  /// a combo counter at streak milestones.
+  void _answerFx(RealmLogic l) {
+    final int asked = l.stats.asked;
+    if (asked == _fxAsked) return;
+    final bool ok = l.stats.correct > _fxCorrect;
+    _fxAsked = asked;
+    _fxCorrect = l.stats.correct;
+    if (!mounted) return;
+    FeedbackFx.play(context, ok ? FxKind.correct : FxKind.wrong);
+    final int st = l.stats.streak;
+    if (ok && (st == 3 || st == 5 || st == 10)) FeedbackFx.combo(context, st);
+  }
+
   void _onTick(Duration elapsed) {
     final RealmLogic? l = _logic;
     if (l == null) return;
@@ -185,6 +209,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     _applyKeys(l);
     l.tick(dt);
     _playCues(l);
+    _answerFx(l);
     if (_inDuel && l.time >= widget.duelSeconds) l.over = true;
     _frame.value++;
     if (l.over) {
@@ -205,12 +230,27 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     l.setInput(x, y);
   }
 
+  /// Sends the run's numbers to Journey once. Never during a duel. The realm
+  /// id is the game name in lower case without spaces, as in the registry.
+  Future<void> _reportJourney(RealmLogic l) async {
+    if (_inDuel) return;
+    final JourneyRunResult? r = await JourneyService.reportRun(
+      widget.gameName.toLowerCase().replaceAll(' ', ''),
+      asked: l.stats.asked,
+      correct: l.stats.correct,
+      bestStreak: l.stats.bestStreak,
+    );
+    if (!mounted || !identical(_logic, l)) return;
+    setState(() => _journey = r);
+  }
+
   void _finish(RealmLogic l) {
     if (_ended) return;
     _ended = true;
     HapticFeedback.heavyImpact();
     if (!_saved) {
       _saved = true;
+      _reportJourney(l);
       GameScoreService.save(gameName: widget.gameName, score: l.finalScore, won: l.stats.correct > 0 ? true : null);
       final int bonus = l.xp - l.stats.correct * 8;
       bool first = true;
@@ -607,6 +647,10 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                           if (m.chosen != 'No answer') Text('You chose: ${m.chosen}', style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 11.5)),
                         ]),
                       )),
+                ],
+                if (!_inDuel && _journey != null) ...<Widget>[
+                  const SizedBox(height: 16),
+                  JourneyResultCard(result: _journey),
                 ],
                 const SizedBox(height: 18),
                 if (!_inDuel) _bigButton('PLAY AGAIN', () => setState(_newRun)),

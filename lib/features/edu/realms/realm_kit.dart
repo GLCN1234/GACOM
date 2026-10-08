@@ -229,10 +229,13 @@ class HeroLook {
   final Color pants;
   final Color skin;
   final Color hair;
+  /// low | afro | braids | locs | wrap | hijab
+  final String hairStyle;
   final String trail;
   final Color trailColor;
 
   const HeroLook({
+    this.hairStyle = 'low',
     this.shirt = const Color(0xFFFF6A00),
     this.pants = const Color(0xFF2A3A63),
     this.skin = const Color(0xFFF2B785),
@@ -270,6 +273,7 @@ class HeroLook {
         pants: CosmeticsService.parseColor(o['pants']?.toString()) ?? classic.pants,
         skin: CosmeticsService.parseColor(o['skin']?.toString()) ?? classic.skin,
         hair: CosmeticsService.parseColor(o['hair']?.toString()) ?? classic.hair,
+        hairStyle: (o['hair_style']?.toString() ?? 'low'),
         trail: (t['kind']?.toString() ?? 'none'),
         trailColor: CosmeticsService.parseColor(t['color']?.toString()) ?? classic.trailColor,
       );
@@ -382,12 +386,98 @@ class RealmDraw {
     }
   }
 
+  /// Hair or head covering for [person], drawn over the plain head circle
+  /// centred at (0, [hy]). [style] is low | afro | braids | locs | wrap |
+  /// hijab; anything else draws the default low cut. Uses [hair] as the
+  /// colour of the hair or the fabric.
+  static void _drawHair(Canvas canvas, String style, double hy, double fx, Color hair, Color skin) {
+    _p.color = hair;
+    final Rect headR = Rect.fromCircle(center: Offset(0, hy), radius: 10);
+    switch (style) {
+      case 'afro': {
+        final Rect faceOval = Rect.fromCenter(center: Offset(fx, hy + 2.5), width: 15, height: 14);
+        final Path puff = Path.combine(
+          PathOperation.intersect,
+          Path()..addOval(Rect.fromCircle(center: Offset(0, hy - 4), radius: 14)),
+          Path()..addRect(Rect.fromLTRB(-20, hy - 30, 20, hy + 2)),
+        );
+        canvas.drawPath(Path.combine(PathOperation.difference, puff, Path()..addOval(faceOval)), _p);
+        break;
+      }
+      case 'braids': {
+        canvas.drawArc(headR, pi, pi, true, _p);
+        final Paint br = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 2.6
+          ..color = hair;
+        for (final double bx in <double>[-10.5, -8.0, 8.0, 10.5]) {
+          canvas.drawLine(Offset(bx, hy - 3), Offset(bx * 1.1, hy + 13), br);
+        }
+        _p.color = realmLighten(hair, 0.3);
+        for (final double bx in <double>[-10.5, -8.0, 8.0, 10.5]) {
+          canvas.drawCircle(Offset(bx * 1.1, hy + 13), 1.6, _p);
+        }
+        break;
+      }
+      case 'locs': {
+        canvas.drawArc(Rect.fromCircle(center: Offset(0, hy), radius: 10.8), pi, pi, true, _p);
+        final Paint lc = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 3.4
+          ..color = hair;
+        const List<double> xs = <double>[-10.5, -8.0, 8.0, 10.5];
+        const List<double> lens = <double>[12.0, 16.0, 16.0, 12.0];
+        for (int i = 0; i < xs.length; i++) {
+          canvas.drawLine(Offset(xs[i], hy - 3), Offset(xs[i] * 1.1, hy - 3 + lens[i]), lc);
+        }
+        break;
+      }
+      case 'wrap': {
+        final Path cap = Path()
+          ..addArc(Rect.fromCircle(center: Offset(0, hy), radius: 10.4), pi, pi)
+          ..close();
+        canvas.drawPath(cap, _p);
+        canvas.save();
+        canvas.clipPath(cap);
+        _p.color = realmLighten(hair, 0.22);
+        canvas.drawRect(Rect.fromLTRB(-12, hy - 6.5, 12, hy - 3.5), _p);
+        canvas.restore();
+        _p.color = hair;
+        canvas.drawCircle(Offset(-fx * 4, hy - 11), 3.6, _p);
+        canvas.drawPath(
+          Path()
+            ..moveTo(-fx * 4, hy - 11)
+            ..lineTo(-fx * 11, hy - 14)
+            ..lineTo(-fx * 9, hy - 8)
+            ..close(),
+          _p,
+        );
+        break;
+      }
+      case 'hijab': {
+        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-10.5, hy + 6, 21, 11), const Radius.circular(5)), _p);
+        canvas.drawCircle(Offset(0, hy + 0.5), 12, _p);
+        _p.color = skin;
+        canvas.drawOval(Rect.fromCenter(center: Offset(fx * 1.2, hy + 1.5), width: 14, height: 15), _p);
+        break;
+      }
+      default: {
+        canvas.drawArc(headR, pi, pi, true, _p);
+        canvas.drawCircle(Offset(-6 * fx, hy - 2), 4.2, _p);
+        break;
+      }
+    }
+  }
+
   /// A small person. (x, y) is the middle of the torso; the feet touch y + 18.
   /// [phase] drives the walking swing, [moving] turns it on, [facing] is
   /// -1 or 1 for left or right.
-  static void person(Canvas canvas, double x, double y, {double phase = 0, bool moving = false, double facing = 1, Color shirt = const Color(0xFFFF6A00), Color pants = const Color(0xFF2A3A63), Color skin = const Color(0xFFF2B785), Color hair = const Color(0xFF2B1B12), double scale = 1.0, bool hero = false}) {
+  static void person(Canvas canvas, double x, double y, {double phase = 0, bool moving = false, double facing = 1, Color shirt = const Color(0xFFFF6A00), Color pants = const Color(0xFF2A3A63), Color skin = const Color(0xFFF2B785), Color hair = const Color(0xFF2B1B12), double scale = 1.0, bool hero = false, String hairStyle = 'low'}) {
     if (hero) {
       final HeroLook look = HeroLook.current;
+      hairStyle = look.hairStyle;
       shirt = look.shirt;
       pants = look.pants;
       skin = look.skin;
@@ -430,9 +520,7 @@ class RealmDraw {
     final double hy = -17 - bob;
     _p.color = skin;
     canvas.drawCircle(Offset(0, hy), 9.5, _p);
-    _p.color = hair;
-    canvas.drawArc(Rect.fromCircle(center: Offset(0, hy), radius: 10), pi, pi, true, _p);
-    canvas.drawCircle(Offset(-6 * fx, hy - 2), 4.2, _p);
+    _drawHair(canvas, hairStyle, hy, fx, hair, skin);
     _p.color = Colors.white;
     canvas.drawCircle(Offset(-3.4 + fx, hy + 1), 2.6, _p);
     canvas.drawCircle(Offset(3.4 + fx, hy + 1), 2.6, _p);

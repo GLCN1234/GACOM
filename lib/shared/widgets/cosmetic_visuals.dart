@@ -3,6 +3,7 @@ import '../../core/services/cosmetics_service.dart';
 import '../../features/edu/realms/realm_kit.dart' show RealmDraw;
 import 'cosmetic_avatar.dart';
 import 'rarity.dart';
+import 'weapon_art.dart';
 
 /// Thumbnail of one catalogue item, picked by its category. Shared by the
 /// shop and the locker.
@@ -43,6 +44,8 @@ class CosmeticItemVisual extends StatelessWidget {
           height: 56 * k,
           fallback: const Center(child: Icon(Icons.block_rounded, size: 24, color: Tac.textDim)),
         );
+      case 'weapon_skin':
+        return WeaponArt(asset: asset, size: 84 * k, rarity: rarity);
       case 'title':
         final String t = (item['value']?.toString() ?? item['name']?.toString() ?? '').toUpperCase();
         return Padding(
@@ -92,6 +95,7 @@ class CosmeticFigurePainter extends CustomPainter {
       pants: _c(outfit, 'pants', const Color(0xFF2A3A63)),
       skin: _c(outfit, 'skin', const Color(0xFFF2B785)),
       hair: _c(outfit, 'hair', const Color(0xFF2B1B12)),
+      hairStyle: outfit['hair_style']?.toString() ?? 'low',
       scale: scale,
     );
   }
@@ -180,12 +184,18 @@ class _LoadoutStageState extends State<LoadoutStage> with SingleTickerProviderSt
               SizedBox(
                 width: 110,
                 height: 120,
-                child: AnimatedBuilder(
-                  animation: _ctl,
-                  builder: (_, __) => CustomPaint(
-                    painter: CosmeticFigurePainter(outfit: _asset('hero_outfit'), trail: _asset('trail'), scale: 1.6, phase: _ctl.value * 6.283185307 * 14, moving: true, dx: 0.62),
+                child: Stack(clipBehavior: Clip.none, children: [
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _ctl,
+                      builder: (_, __) => CustomPaint(
+                        painter: CosmeticFigurePainter(outfit: _asset('hero_outfit'), trail: _asset('trail'), scale: 1.6, phase: _ctl.value * 6.283185307 * 14, moving: true, dx: 0.62),
+                      ),
+                    ),
                   ),
-                ),
+                  if (widget.items['weapon'] is Map)
+                    Positioned(right: -16, bottom: 4, child: WeaponArt.fromItem(Map<String, dynamic>.from(widget.items['weapon'] as Map), size: 54)),
+                ]),
               ),
             ]),
           ),

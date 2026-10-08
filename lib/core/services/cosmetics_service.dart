@@ -13,7 +13,7 @@ class CosmeticResult {
 }
 
 class CosmeticsService {
-  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title'];
+  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title', 'weapon_skin'];
 
   static const String _equippedSelect = '*, '
       'name_color:cosmetic_items!equipped_name_color(id,name,value,asset,rarity), '
@@ -22,7 +22,12 @@ class CosmeticsService {
       'hero_outfit:cosmetic_items!equipped_hero_outfit(id,name,value,asset,rarity), '
       'trail:cosmetic_items!equipped_trail(id,name,value,asset,rarity), '
       'profile_banner:cosmetic_items!equipped_profile_banner(id,name,value,asset,rarity), '
-      'title:cosmetic_items!equipped_title(id,name,value,asset,rarity)';
+      'title:cosmetic_items!equipped_title(id,name,value,asset,rarity), '
+      'weapon:cosmetic_items!equipped_weapon(id,name,value,asset,rarity)';
+
+  /// Key of a category inside an equipped row (and the suffix of its
+  /// `equipped_` column). Weapon skins live in the 'weapon' slot.
+  static String slotOf(String category) => category == 'weapon_skin' ? 'weapon' : category;
 
   /// The signed-in player's equipped items, cached. Null until loaded.
   static final ValueNotifier<Map<String, dynamic>?> myLoadout = ValueNotifier<Map<String, dynamic>?>(null);

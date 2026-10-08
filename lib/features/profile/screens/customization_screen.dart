@@ -16,6 +16,7 @@ const Map<String, String> _chipLabels = {
   'avatar_frame': 'Frames',
   'profile_banner': 'Banners',
   'trail': 'Trails',
+  'weapon_skin': 'Weapons',
   'title': 'Titles',
   'badge': 'Badges',
   'name_color': 'Name colours',
@@ -139,7 +140,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   String _source(Map<String, dynamic> it) => (it['source'] ?? 'shop').toString();
   bool _premium(Map<String, dynamic> it) => it['requires_premium'] == true || _source(it) == 'premium';
   bool _isOwned(Map<String, dynamic> it) => CosmeticsService.isOwned(it, _owned, _isPro);
-  bool _isEquipped(Map<String, dynamic> it) => _equipped?['equipped_${it['category']}'] == it['id'];
+  bool _isEquipped(Map<String, dynamic> it) => _equipped?['equipped_${CosmeticsService.slotOf(it['category'].toString())}'] == it['id'];
 
   /// Why an unowned item can not be bought, or null when it can.
   String? _lockLabel(Map<String, dynamic> it) {
@@ -161,8 +162,9 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   Map<String, dynamic> get _previewMap {
     final m = <String, dynamic>{};
     for (final c in CosmeticsService.categories) {
-      final v = _sel[c] ?? _equipped?[c];
-      if (v != null) m[c] = v;
+      final slot = CosmeticsService.slotOf(c);
+      final v = _sel[c] ?? _equipped?[slot];
+      if (v != null) m[slot] = v;
     }
     return m;
   }
@@ -682,7 +684,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
     if (list.isEmpty) {
       return _message(Icons.inventory_2_outlined, 'Nothing here yet. New items land often.', null);
     }
-    final equippedId = _equipped?['equipped_$category'];
+    final equippedId = _equipped?['equipped_${CosmeticsService.slotOf(category)}'];
     return LayoutBuilder(builder: (context, c) {
       final int cols = (c.maxWidth / 170).floor().clamp(2, 6).toInt();
       return CustomScrollView(slivers: [

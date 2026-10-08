@@ -7,18 +7,29 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
 import '../../../core/services/sound_service.dart';
+import '../../../shared/fx/feedback_fx.dart';
 import '../../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../edu_progress_recorder.dart';
 import '../realms/realm_kit.dart' show HeroLook, RealmDraw, realmDarken, realmLighten;
 import 'odyssey_engine.dart';
 import 'odyssey_questions.dart';
+import '../../journey/journey_result_card.dart';
+import '../../journey/journey_service.dart';
 
 /// What the player chose in the hub.
 class OdysseyConfig {
   /// 'mix' for every subject, or one subject id.
   final String subjectId;
   final bool useSchool;
-  const OdysseyConfig({this.subjectId = 'mix', this.useSchool = true});
+
+  /// The Journey world this run reports to ('odyssey' or one of the new worlds).
+  final String realmId;
+
+  /// Optional skin of the intro screen for the Journey worlds.
+  final Color? accent;
+  final String? title;
+  final String? story;
+  const OdysseyConfig({this.subjectId = 'mix', this.useSchool = true, this.realmId = 'odyssey', this.accent, this.title, this.story});
 }
 
 Color _lighten(Color c, double amount) {
@@ -50,6 +61,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   bool _inDuel = false;
   bool _ended = false;
   bool _saved = false;
+  JourneyRunResult? _journey;
   late final Ticker _ticker;
   Duration? _last;
   int _n = 0;
@@ -63,6 +75,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   double? _maxSeconds;
   bool _music = true;
   int _coinCue = 0;
+  int _fxLevel = 1;
 
   @override
   void initState() {
@@ -115,20 +128,32 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         case 'shield':
         case 'nova': {
           s.playWin();
+          if (mounted && c == 'nova') FeedbackFx.play(context, FxKind.reward, color: const Color(0xFFF6B93B));
           break;
         }
         case 'correct': {
           s.playCorrect();
+          if (mounted) {
+            FeedbackFx.play(context, FxKind.correct);
+            final int st = e.streak;
+            if (st == 3 || st == 5 || st == 10) FeedbackFx.combo(context, st);
+          }
           break;
         }
         case 'wrong':
         case 'hurt': {
           s.playWrong();
+          if (mounted && c == 'wrong') FeedbackFx.play(context, FxKind.wrong);
           break;
         }
         default:
           break;
       }
+    }
+    if (e.level < _fxLevel) _fxLevel = e.level;
+    if (e.level > _fxLevel) {
+      _fxLevel = e.level;
+      if (mounted) FeedbackFx.play(context, FxKind.levelUp);
     }
     e.cues.clear();
   }
@@ -184,6 +209,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     _engine = e;
     _ended = false;
     _saved = false;
+    _journey = null;
     _paused = false;
     _last = null;
     _stickOrigin = null;
@@ -224,12 +250,21 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     if (_stickOrigin == null) e.setInput(x, y);
   }
 
+  /// Sends the run's numbers to Journey once. Never during a duel.
+  Future<void> _reportJourney(OdysseyEngine e) async {
+    if (_inDuel) return;
+    final JourneyRunResult? r = await JourneyService.reportRun(widget.config.realmId, asked: e.asked, correct: e.correct, bestStreak: e.bestStreak);
+    if (!mounted || !identical(_engine, e)) return;
+    setState(() => _journey = r);
+  }
+
   void _finish(OdysseyEngine e) {
     if (_ended) return;
     _ended = true;
     HapticFeedback.heavyImpact();
     if (!_saved) {
       _saved = true;
+      _reportJourney(e);
       GameScoreService.save(gameName: 'Odyssey', score: e.finalScore, won: e.correct > 0 ? true : null);
       final int bonus = e.xp - e.correct * 8;
       bool first = true;
@@ -554,14 +589,14 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                  const Icon(Icons.explore_rounded, color: Color(0xFF69F0AE), size: 54),
+                  Icon(Icons.explore_rounded, color: widget.config.accent ?? const Color(0xFF69F0AE), size: 54),
                   const SizedBox(height: 10),
-                  const Text('THE GLITCH STORM', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: Colors.white, letterSpacing: 2)),
+                  Text((widget.config.title ?? 'THE GLITCH STORM').toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: Colors.white, letterSpacing: 2)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'A storm of Glitches has scrambled the realms of knowledge. You are the last Explorer. Cross each realm, restore it with the right answers, and gather coins and stars to keep your hearts full.',
+                  Text(
+                    widget.config.story ?? 'A storm of Glitches has scrambled the realms of knowledge. You are the last Explorer. Cross each realm, restore it with the right answers, and gather coins and stars to keep your hearts full.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
                   ),
                   const SizedBox(height: 14),
                   Container(
@@ -785,6 +820,10 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                           if (m.chosen != 'No answer') Text('You chose: ${m.chosen}', style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 11.5)),
                         ]),
                       )),
+                ],
+                if (!inDuel && _journey != null) ...<Widget>[
+                  const SizedBox(height: 16),
+                  JourneyResultCard(result: _journey),
                 ],
                 const SizedBox(height: 18),
                 if (!inDuel) _bigButton('PLAY AGAIN', () => setState(_startRun)),

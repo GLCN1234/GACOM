@@ -32,6 +32,8 @@ import '../../features/profile/screens/settings_screen.dart';
 import '../../features/profile/screens/customization_screen.dart';
 import '../../features/profile/screens/locker_screen.dart';
 import '../../features/missions/missions_screen.dart';
+import '../../features/journey/journey_worlds_screen.dart';
+import '../../features/journey/journey_map_screen.dart';
 import '../../features/admin/screens/mission_admin_screen.dart';
 import '../../features/houses/houses_screen.dart';
 import '../../features/houses/house_chat_screen.dart';
@@ -382,6 +384,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/customization', builder: (_, __) => const CustomizationScreen()),
       GoRoute(path: '/locker', builder: (_, __) => const LockerScreen()),
       GoRoute(path: '/missions', builder: (_, __) => const MissionsScreen()),
+      GoRoute(path: '/journey', builder: (_, __) => const JourneyWorldsScreen()),
+      GoRoute(path: '/journey/:realm', builder: (_, s) => JourneyMapScreen(realmId: s.pathParameters['realm'] ?? 'odyssey')),
       GoRoute(path: '/houses', builder: (_, __) => const HousesScreen()),
       GoRoute(path: '/houses/chat', builder: (_, s) {
         final extra = s.extra as Map<String, dynamic>? ?? {};
