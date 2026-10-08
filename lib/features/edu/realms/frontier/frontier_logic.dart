@@ -151,6 +151,29 @@ class FrontierLogic extends RealmLogic {
   @override
   bool get modal => panel != 0;
 
+  // ---- objective guidance (text only, a city builder has nothing to walk to) -----
+
+  @override
+  String? get objectiveText {
+    if (over || panel != 0) return null;
+    if (countOf(0) == 0) return 'Your people need food: build a farm';
+    if (food < 15 + pop * 2) return 'Food is low: build or upgrade a farm';
+    if (pop >= cap) return 'Your town is full: build a house';
+    final int raid = nextRaidDay;
+    if (raid - day <= 2 && defence < raidStrength(raid)) {
+      return 'A raid comes on day $raid: build a watchtower or wall';
+    }
+    for (int i = 0; i < FrontierData.techNames.length; i++) {
+      if (!tech[i] && knowledge >= FrontierData.techCosts[i]) {
+        return 'You can research ${FrontierData.techNames[i]}: open research';
+      }
+    }
+    if (countOf(4) == 0) return 'Build a school to earn knowledge';
+    if (wood < 12 && countOf(1) == 0) return 'Wood is short: build a lumber camp';
+    if (stone < 6 && countOf(2) == 0) return 'Stone is short: build a quarry';
+    return 'Grow your town: build or upgrade a building';
+  }
+
   @override
   int get hearts => -1;
 

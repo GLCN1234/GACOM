@@ -194,6 +194,59 @@ class CaseFilesLogic extends RealmLogic {
   @override
   bool get modal => phase != 0 || notebookOpen;
 
+  // ---- objective guidance -----------------------------------------------------
+
+  /// The door to visit next: unvisited, preferring places where a suspect who
+  /// is still possible was seen, then the nearest.
+  CasePlace? _nextDoor() {
+    final Set<int> hot = <int>{};
+    for (int i = 0; i < suspects.length; i++) {
+      bool alive = true;
+      for (final int loc in foundOrder) {
+        if (loc >= 0 && loc < clueAt.length && !clueAt[loc].fits(suspects[i], i)) alive = false;
+      }
+      if (alive) hot.add(suspects[i].near);
+    }
+    CasePlace? best;
+    double bd = 0;
+    for (final CasePlace p in casePlaces) {
+      if (p.id < 0 || p.id >= revealed.length || revealed[p.id]) continue;
+      final double dx = p.doorX - px;
+      final double dy = p.doorY - py;
+      double d = dx * dx + dy * dy;
+      if (!hot.contains(p.id)) d += 4000000;
+      if (best == null || d < bd) {
+        best = p;
+        bd = d;
+      }
+    }
+    return best;
+  }
+
+  @override
+  String? get objectiveText {
+    if (over || modal) return null;
+    if (canAccuse) return 'You have enough clues. Open the notebook and accuse';
+    final CasePlace? p = _nextDoor();
+    if (p == null) return 'Open the notebook and accuse';
+    return 'Inspect the ${p.name} door ($cluesFound of $cluesNeeded clues)';
+  }
+
+  @override
+  Offset? get objectiveDelta {
+    if (over || modal || canAccuse) return null;
+    final CasePlace? p = _nextDoor();
+    if (p == null) return null;
+    return Offset(p.doorX - px, p.doorY - py);
+  }
+
+  @override
+  String? get objectiveDistance {
+    final Offset? d = objectiveDelta;
+    if (d == null) return null;
+    return '${(d.distance / 10).round()} m';
+  }
+
   @override
   int get hearts => -1;
 

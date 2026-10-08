@@ -10,7 +10,7 @@ import '../../../core/services/sound_service.dart';
 import '../../../shared/fx/feedback_fx.dart';
 import '../../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../edu_progress_recorder.dart';
-import '../realms/realm_kit.dart' show HeroLook, RealmDraw, realmDarken, realmLighten;
+import '../realms/realm_kit.dart' show HeroLook, ObjectiveArrowPainter, RealmDraw, realmDarken, realmLighten;
 import 'odyssey_engine.dart';
 import 'odyssey_questions.dart';
 import '../../journey/journey_result_card.dart';
@@ -410,6 +410,74 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     );
   }
 
+  Color get _accent => widget.config.accent ?? const Color(0xFF69F0AE);
+
+  /// What to do next and an arrow towards it: the nearest coin or star for
+  /// the current quest, otherwise the nearest coin.
+  List<Widget> _objectiveLayer(OdysseyEngine e) {
+    final OdyQuest? q = e.quest;
+    String text;
+    Offset? target;
+    double best = double.infinity;
+    void consider(double x, double y) {
+      final double dx = x - e.px;
+      final double dy = y - e.py;
+      final double d = dx * dx + dy * dy;
+      if (d < best) {
+        best = d;
+        target = Offset(dx, dy);
+      }
+    }
+
+    if (q != null && q.kind == 'stars') {
+      text = 'Find a star. Follow the arrow';
+      for (final OdyStar s in e.starList) {
+        consider(s.x, s.y);
+      }
+    } else if (q != null && q.kind == 'coins') {
+      text = '${q.title}  ${q.progress > q.target ? q.target : q.progress}/${q.target}';
+      for (final OdyCrystal c in e.crystalList) {
+        consider(c.x, c.y);
+      }
+    } else if (q != null) {
+      text = '${q.title}  ${q.progress > q.target ? q.target : q.progress}/${q.target}';
+    } else {
+      text = 'Collect coins and answer the glowing orbs to score';
+      for (final OdyCrystal c in e.crystalList) {
+        consider(c.x, c.y);
+      }
+    }
+    final Offset? t = target;
+    final double dist = sqrt(best);
+    return <Widget>[
+      Positioned(
+        left: 12,
+        right: 12,
+        top: 84,
+        child: IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(color: const Color(0xCC0B0B0F), borderRadius: BorderRadius.circular(14), border: Border.all(color: _accent, width: 1.2)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                Icon(Icons.flag_rounded, color: _accent, size: 18),
+                const SizedBox(width: 8),
+                Flexible(child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25, fontWeight: FontWeight.w700))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+      if (t != null && dist > 120)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(painter: ObjectiveArrowPainter(delta: t, color: _accent, label: '${(dist / 10).round()} m')),
+          ),
+        ),
+    ];
+  }
+
   Widget _hud(OdysseyEngine e) {
     final String region = e.subjectAt(e.px, e.py);
     final OdySubject rs = _subjects[region] ?? odySubjectById(region);
@@ -455,6 +523,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           if (_maxSeconds != null) _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
+      if (a == null && e.gate == null && !_paused && !_ended) ..._objectiveLayer(e),
       // question card
       if (a != null)
         Positioned(

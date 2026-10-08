@@ -34,6 +34,10 @@ typedef RealmHudBuilder = Widget Function(BuildContext context, RealmLogic logic
 class RealmShell extends StatefulWidget {
   /// Name used for the leaderboard and score saving, such as 'Biome'.
   final String gameName;
+
+  /// The id Journey and the how-to use for this game. Defaults to the game
+  /// name in lower case without spaces.
+  final String? gameId;
   final String title;
   final String story;
   final String howTo;
@@ -51,6 +55,7 @@ class RealmShell extends StatefulWidget {
   const RealmShell({
     super.key,
     required this.gameName,
+    this.gameId,
     required this.title,
     required this.story,
     required this.howTo,
@@ -235,7 +240,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   Future<void> _reportJourney(RealmLogic l) async {
     if (_inDuel) return;
     final JourneyRunResult? r = await JourneyService.reportRun(
-      widget.gameName.toLowerCase().replaceAll(' ', ''),
+      _gameKey,
       asked: l.stats.asked,
       correct: l.stats.correct,
       bestStreak: l.stats.bestStreak,
@@ -313,7 +318,8 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     return KeyEventResult.handled;
   }
 
-  String get _howKey => widget.gameName.toLowerCase().replaceAll(' ', '');
+  String get _gameKey => widget.gameId ?? widget.gameName.toLowerCase().replaceAll(' ', '');
+  String get _howKey => _gameKey;
 
   void _showHowTo() {
     final GameHowTo? h = HowToRegistry.byKey(_howKey);
@@ -465,6 +471,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
         ]),
       ),
       if (gameHud != null) gameHud,
+      if (!l.modal && !_ended && !_intro) ..._objectiveLayer(l),
       if (widget.actions.isNotEmpty && !l.modal)
         Positioned(
           right: 18,
@@ -474,6 +481,53 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
           ]),
         ),
     ]);
+  }
+
+  /// The objective bar and the pointing arrow, drawn for any game that
+  /// reports an objective.
+  List<Widget> _objectiveLayer(RealmLogic l) {
+    final String? text = l.objectiveText;
+    if (text == null || text.isEmpty) return const <Widget>[];
+    final Offset? delta = l.objectiveDelta;
+    final String? dist = l.objectiveDistance;
+    final List<Widget> out = <Widget>[
+      Positioned(
+        left: 12,
+        right: 12,
+        top: 84,
+        child: IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xCC0B0B0F),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: widget.accent.withValues(alpha: 0.9), width: 1.2),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                  Icon(Icons.flag_rounded, color: widget.accent, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.25, fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+    if (delta != null && (delta.dx.abs() + delta.dy.abs()) > 0.0001) {
+      out.add(Positioned.fill(
+        child: IgnorePointer(
+          child: CustomPaint(painter: ObjectiveArrowPainter(delta: delta, color: widget.accent, label: dist)),
+        ),
+      ));
+    }
+    return out;
   }
 
   Widget _actionButton(RealmLogic l, RealmAction a) {
@@ -694,3 +748,5 @@ class _StickPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _StickPainter oldDelegate) => true;
 }
+
+

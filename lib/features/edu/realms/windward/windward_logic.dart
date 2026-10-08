@@ -552,6 +552,82 @@ class WindwardLogic extends RealmLogic {
   @override
   bool get modal => harbour != null && !over;
 
+  // ---- objective guidance -----------------------------------------------------
+
+  Offset? _objTarget;
+  String? _objText;
+
+  WindwardPort? _nearestOfferPort() {
+    final int scx = (shipX / windwardCellSize).floor();
+    final int scy = (shipY / windwardCellSize).floor();
+    WindwardPort? best;
+    double bd = 0;
+    for (int dx = -3; dx <= 3; dx++) {
+      for (int dy = -3; dy <= 3; dy++) {
+        final WindwardPort? p = portAt(scx + dx, scy + dy);
+        if (p == null) continue;
+        final WindwardContract? o = offerAt(p);
+        if (o == null || doneOffers.contains(o.id)) continue;
+        final double d = (p.x - shipX) * (p.x - shipX) + (p.y - shipY) * (p.y - shipY);
+        if (best == null || d < bd) {
+          best = p;
+          bd = d;
+        }
+      }
+    }
+    return best;
+  }
+
+  void _pickObjective() {
+    _objTarget = null;
+    _objText = null;
+    if (over || harbour != null) return;
+    final WindwardContract? c = active;
+    if (c != null) {
+      final WindwardContract t = c;
+      final String good = windwardGoods[t.good].name.toLowerCase();
+      if (cargo[t.good] >= t.qty) {
+        _objTarget = Offset(t.toX - shipX, t.toY - shipY);
+        _objText = 'Sail to ${t.toName} and deliver ${t.qty} $good';
+      } else {
+        final WindwardPort? from = portAt(t.fromKey ~/ 8192 - 4096, t.fromKey % 8192 - 4096);
+        _objText = 'Buy ${t.qty} $good at a port, then sail to ${t.toName}';
+        if (from != null) {
+          _objTarget = Offset(from.x - shipX, from.y - shipY);
+          _objText = 'Dock at ${from.name} and buy ${t.qty} $good for ${t.toName}';
+        }
+      }
+      return;
+    }
+    final WindwardPort? p = _nearestOfferPort();
+    if (p != null) {
+      _objTarget = Offset(p.x - shipX, p.y - shipY);
+      _objText = cargoCount > 0 ? 'Sail to ${p.name}, sell your cargo or take a contract' : 'Sail to ${p.name} and take a trade contract';
+    } else {
+      _objText = 'Explore the sea to find a new port';
+    }
+  }
+
+  @override
+  String? get objectiveText {
+    _pickObjective();
+    return _objText;
+  }
+
+  @override
+  Offset? get objectiveDelta {
+    _pickObjective();
+    return _objTarget;
+  }
+
+  @override
+  String? get objectiveDistance {
+    _pickObjective();
+    final Offset? t = _objTarget;
+    if (t == null) return null;
+    return '${(t.distance / 10).round()} m';
+  }
+
   @override
   int get hearts => hull;
 

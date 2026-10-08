@@ -113,6 +113,25 @@ class RealmStats {
     }
   }
 
+  /// Record a task answer that is not a multiple choice question (a ratio
+  /// worked out, a sentence ordered, a program written). It counts the same
+  /// as a question in accuracy, streaks and the mistakes review.
+  void recordTask(String subject, bool ok, {String prompt = '', String chosen = 'No answer', String answer = ''}) {
+    asked++;
+    askedBy[subject] = (askedBy[subject] ?? 0) + 1;
+    if (ok) {
+      correct++;
+      correctBy[subject] = (correctBy[subject] ?? 0) + 1;
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+    } else {
+      streak = 0;
+      if (mistakes.length < 40) {
+        mistakes.add(OdyMistake(prompt, chosen, answer, subject));
+      }
+    }
+  }
+
   double get accuracy => asked == 0 ? 0 : correct / asked;
 
   /// XP for the run before any game specific bonus.
@@ -195,6 +214,19 @@ abstract class RealmLogic {
   /// True while a question panel or other modal blocks the world, so the
   /// shell stops reading the joystick.
   bool get modal => false;
+
+  /// What the player should do next, in one short line, such as
+  /// "Sail to Port Calder and load 3 crates". The shell shows it at the top.
+  /// Null hides the objective bar.
+  String? get objectiveText => null;
+
+  /// The direction to the current objective as a vector from the player to
+  /// the target, in any units (only the direction and relative size matter).
+  /// The shell draws a pointing arrow from it. Null hides the arrow.
+  Offset? get objectiveDelta => null;
+
+  /// Optional short distance label for the arrow, such as "120 m".
+  String? get objectiveDistance => null;
 }
 
 // ---------------------------------------------------------------------------
@@ -634,4 +666,48 @@ class RealmQuestionPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// An arrow on a ring around the middle of the screen that points to the
+/// objective. It sits on the screen edge when the objective is far away.
+class ObjectiveArrowPainter extends CustomPainter {
+  final Offset delta;
+  final Color color;
+  final String? label;
+  ObjectiveArrowPainter({required this.delta, required this.color, this.label});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Offset c = Offset(size.width / 2, size.height / 2);
+    final double len = sqrt(delta.dx * delta.dx + delta.dy * delta.dy);
+    if (len < 0.0001) return;
+    final Offset dir = Offset(delta.dx / len, delta.dy / len);
+    final double radius = min(size.width, size.height) * 0.30;
+    final Offset tip = c + dir * radius;
+    final double ang = atan2(dir.dy, dir.dx);
+    canvas.save();
+    canvas.translate(tip.dx, tip.dy);
+    canvas.rotate(ang);
+    final Path arrow = Path()
+      ..moveTo(16, 0)
+      ..lineTo(-10, -11)
+      ..lineTo(-4, 0)
+      ..lineTo(-10, 11)
+      ..close();
+    canvas.drawPath(arrow, Paint()..color = const Color(0xAA000000)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    canvas.drawPath(arrow, Paint()..color = color);
+    canvas.drawPath(arrow, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 1.6);
+    canvas.restore();
+    if (label != null && label!.isNotEmpty) {
+      final TextPainter tp = TextPainter(
+        text: TextSpan(text: label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800, shadows: <Shadow>[Shadow(color: Colors.black87, blurRadius: 4)])),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final Offset lp = c + dir * (radius + 26);
+      tp.paint(canvas, lp - Offset(tp.width / 2, tp.height / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(ObjectiveArrowPainter old) => old.delta != delta || old.color != color || old.label != label;
 }

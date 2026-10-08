@@ -139,6 +139,73 @@ class DelveLogic extends RealmLogic {
   @override
   bool get modal => _modal;
 
+  // ---- objective guidance -----------------------------------------------------
+
+  Offset? _objTarget;
+  String? _objText;
+
+  void _pickObjective() {
+    _objTarget = null;
+    _objText = null;
+    if (over || _modal) return;
+    if (fuel < 30) {
+      DelvePickup? best;
+      double bd = 0;
+      for (final DelvePickup p in pickups) {
+        if (p.taken || p.kind != 1) continue;
+        final double d = (p.x - px) * (p.x - px) + (p.y - py) * (p.y - py);
+        if (best == null || d < bd) {
+          best = p;
+          bd = d;
+        }
+      }
+      if (best != null) {
+        _objTarget = Offset(best.x - px, best.y - py);
+        _objText = 'Your torch is dying. Grab a fuel flask';
+        return;
+      }
+    }
+    DelveDoor? door;
+    double dd = 0;
+    for (final DelveDoor d in doors) {
+      if (d.open) continue;
+      final double cx = d.tx * ts + ts / 2;
+      final double cy = d.ty * ts + ts / 2;
+      final double q = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+      if (door == null || q < dd) {
+        door = d;
+        dd = q;
+      }
+    }
+    if (door != null) {
+      _objTarget = Offset(door.tx * ts + ts / 2 - px, door.ty * ts + ts / 2 - py);
+      _objText = 'Reach the rune door and solve its riddle';
+      return;
+    }
+    _objTarget = Offset((stairsIndex % n) * ts + ts / 2 - px, (stairsIndex ~/ n) * ts + ts / 2 - py);
+    _objText = 'The way is open. Take the stairs down';
+  }
+
+  @override
+  String? get objectiveText {
+    _pickObjective();
+    return _objText;
+  }
+
+  @override
+  Offset? get objectiveDelta {
+    _pickObjective();
+    return _objTarget;
+  }
+
+  @override
+  String? get objectiveDistance {
+    _pickObjective();
+    final Offset? t = _objTarget;
+    if (t == null) return null;
+    return '${(t.distance / 10).round()} m';
+  }
+
   @override
   int get hearts => hp;
 

@@ -5,6 +5,10 @@ import 'biome/biome_screen.dart';
 import 'casefiles/casefiles_screen.dart';
 import 'delve/delve_screen.dart';
 import 'frontier/frontier_screen.dart';
+import 'ember/ember_screen.dart';
+import 'sundial/sundial_screen.dart';
+import 'skyroot/skyroot_screen.dart';
+import 'signal/signal_screen.dart';
 import 'realm_kit.dart';
 import 'windward/windward_screen.dart';
 
@@ -106,16 +110,7 @@ class RealmRegistry {
       icon: Icons.local_fire_department_rounded,
       color: const Color(0xFF2ED3E6),
       bestFor: <String>{'math'},
-      build: (RealmConfig c) => OdysseyScreen(
-        config: OdysseyConfig(
-          subjectId: 'math',
-          useSchool: c.useSchool,
-          realmId: 'ember',
-          accent: const Color(0xFF2ED3E6),
-          title: 'Ember Archipelago',
-          story: 'Relight the island beacons before the long night.',
-        ),
-      ),
+      build: (RealmConfig c) => EmberScreen(config: c),
     ),
     RealmGameInfo(
       id: 'sundial',
@@ -125,16 +120,7 @@ class RealmRegistry {
       icon: Icons.history_edu_rounded,
       color: const Color(0xFFF6B93B),
       bestFor: <String>{'english'},
-      build: (RealmConfig c) => OdysseyScreen(
-        config: OdysseyConfig(
-          subjectId: 'english',
-          useSchool: c.useSchool,
-          realmId: 'sundial',
-          accent: const Color(0xFFF6B93B),
-          title: 'Sundial City',
-          story: 'A city that lost its voice gets it back one sentence at a time.',
-        ),
-      ),
+      build: (RealmConfig c) => SundialScreen(config: c),
     ),
     RealmGameInfo(
       id: 'skyroot',
@@ -144,16 +130,7 @@ class RealmRegistry {
       icon: Icons.forest_rounded,
       color: const Color(0xFF4BD37B),
       bestFor: <String>{'biology', 'bst'},
-      build: (RealmConfig c) => OdysseyScreen(
-        config: OdysseyConfig(
-          subjectId: 'biology',
-          useSchool: c.useSchool,
-          realmId: 'skyroot',
-          accent: const Color(0xFF4BD37B),
-          title: 'Skyroot Frontier',
-          story: 'Heal a failing forest canopy before the rains fail.',
-        ),
-      ),
+      build: (RealmConfig c) => SkyrootScreen(config: c),
     ),
     RealmGameInfo(
       id: 'signal',
@@ -163,16 +140,7 @@ class RealmRegistry {
       icon: Icons.cell_tower_rounded,
       color: const Color(0xFFFF8A3D),
       bestFor: <String>{'coding', 'logic'},
-      build: (RealmConfig c) => OdysseyScreen(
-        config: OdysseyConfig(
-          subjectId: 'coding',
-          useSchool: c.useSchool,
-          realmId: 'signal',
-          accent: const Color(0xFFFF8A3D),
-          title: 'Signal Ridge',
-          story: 'Reconnect the mountain villages by rebuilding the signal network.',
-        ),
-      ),
+      build: (RealmConfig c) => SignalScreen(config: c),
     ),
   ];
 

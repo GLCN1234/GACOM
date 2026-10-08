@@ -222,6 +222,72 @@ class BiomeLogic extends RealmLogic {
   @override
   bool get modal => battle != null;
 
+  // ---- objective guidance -----------------------------------------------------
+
+  Offset? _objTarget;
+  String? _objText;
+
+  void _pickObjective() {
+    _objTarget = null;
+    _objText = null;
+    if (over || battle != null) return;
+    BiomePickup? best;
+    double bd = 0;
+    final bool hurt = _teamHurt;
+    for (final BiomePickup p in pickups) {
+      final bool want = (hurt && p.type == 2) || (orbs <= 0 && p.type == 0);
+      if (!want) continue;
+      final double d = (p.x - px) * (p.x - px) + (p.y - py) * (p.y - py);
+      if (best == null || d < bd) {
+        best = p;
+        bd = d;
+      }
+    }
+    if (best != null) {
+      _objTarget = Offset(best.x - px, best.y - py);
+      _objText = best.type == 2
+          ? 'Your team is hurt. Rest at the campfire'
+          : 'You are out of taming orbs. Collect a glowing orb';
+      return;
+    }
+    BiomeCreature? wb;
+    double wd = 0;
+    for (final BiomeCreature w in wilds) {
+      if (w.inBattle) continue;
+      final double d = (w.x - px) * (w.x - px) + (w.y - py) * (w.y - py);
+      if (wb == null || d < wd) {
+        wb = w;
+        wd = d;
+      }
+    }
+    if (wb != null) {
+      _objTarget = Offset(wb.x - px, wb.y - py);
+      _objText = 'Find a wild ${wb.name} to battle and tame';
+    } else {
+      _objText = 'Explore the land to find wild creatures';
+    }
+  }
+
+  @override
+  String? get objectiveText {
+    _pickObjective();
+    return _objText;
+  }
+
+  @override
+  Offset? get objectiveDelta {
+    _pickObjective();
+    return _objTarget;
+  }
+
+  @override
+  String? get objectiveDistance {
+    _pickObjective();
+    final Offset? t = _objTarget;
+    if (t == null) return null;
+    return '${(t.distance / 10).round()} m';
+  }
+
   @override
   List<RealmChip> get chips => <RealmChip>[
         RealmChip('HP $teamHp/$teamMaxHp', Icons.favorite_rounded, const Color(0xFFFF5252)),
