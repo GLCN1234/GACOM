@@ -38,7 +38,10 @@ class IosPurchaseService {
   IosPurchaseService._();
   static final IosPurchaseService instance = IosPurchaseService._();
 
-  final InAppPurchase _iap = InAppPurchase.instance;
+  // Lazy on purpose: InAppPurchase.instance registers the Android or StoreKit
+  // plugin by defaultTargetPlatform, which crashes a phone browser (Int64
+  // accessor not supported by dart2js). Only touched inside the iOS app.
+  late final InAppPurchase _iap = InAppPurchase.instance;
   StreamSubscription<List<PurchaseDetails>>? _sub;
   bool _started = false;
 
@@ -84,6 +87,7 @@ class IosPurchaseService {
   }
 
   Future<void> buyTopUp(String productId) async {
+    if (!PlatformPolicy.usesAppleIap) return;
     final ProductDetails? p = products[productId];
     if (p == null) {
       message.value = 'This pack is not available right now.';
@@ -100,6 +104,7 @@ class IosPurchaseService {
   }
 
   Future<void> buyPremium() async {
+    if (!PlatformPolicy.usesAppleIap) return;
     final ProductDetails? p = products[IosProducts.premium];
     if (p == null) {
       message.value = 'Premium is not available right now.';
@@ -116,6 +121,7 @@ class IosPurchaseService {
   }
 
   Future<void> restore() async {
+    if (!PlatformPolicy.usesAppleIap) return;
     message.value = null;
     busy.value = true;
     try {
