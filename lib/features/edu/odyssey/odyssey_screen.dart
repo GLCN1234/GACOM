@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
 import '../../../core/services/sound_service.dart';
+import '../../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../edu_progress_recorder.dart';
 import '../realms/realm_kit.dart' show HeroLook, RealmDraw, realmDarken, realmLighten;
 import 'odyssey_engine.dart';
@@ -1036,7 +1037,7 @@ class _WorldPainter extends CustomPainter {
     if (moving) {
       canvas.save();
       canvas.translate(x, y);
-      RealmDraw.heroTrail(canvas, look.trail, look.trailColor, cyc, fx);
+      paintCosmeticTrail(canvas, look.trail, look.trailColor, cyc, fx);
       canvas.restore();
     }
 

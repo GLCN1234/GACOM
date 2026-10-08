@@ -222,6 +222,56 @@ class HouseShopItem {
   bool get isBanner => category == 'house_banner';
 }
 
+/// This week's house goal and the Titan Aura fragment count (get_house_goal).
+class HouseGoal {
+  final bool active;
+  final String title;
+  final String metric;
+  final int progress;
+  final int target;
+  final int rewardPoints;
+  final bool achieved;
+  final DateTime? endsAt;
+  final int fragments;
+  final int fragmentsNeeded;
+  final bool unlocked;
+  final String rewardName;
+  const HouseGoal({
+    required this.active, required this.title, required this.metric, required this.progress, required this.target,
+    required this.rewardPoints, required this.achieved, this.endsAt, required this.fragments,
+    required this.fragmentsNeeded, required this.unlocked, required this.rewardName,
+  });
+  factory HouseGoal.fromJson(Map<String, dynamic> j) => HouseGoal(
+        active: j['active'] == true,
+        title: j['title']?.toString() ?? '',
+        metric: j['metric']?.toString() ?? '',
+        progress: _i(j['progress']),
+        target: _i(j['target']),
+        rewardPoints: _i(j['reward_points']),
+        achieved: j['achieved'] == true,
+        endsAt: DateTime.tryParse(j['ends_at']?.toString() ?? '')?.toLocal(),
+        fragments: _i(j['fragments']),
+        fragmentsNeeded: _i(j['fragments_needed']) < 1 ? 4 : _i(j['fragments_needed']),
+        unlocked: j['unlocked'] == true,
+        rewardName: (j['reward_name']?.toString() ?? '').isEmpty ? 'Titan Aura' : j['reward_name'].toString(),
+      );
+
+  double get ratio {
+    if (target <= 0) return 0.0;
+    final r = progress / target;
+    return r < 0 ? 0.0 : (r > 1 ? 1.0 : r.toDouble());
+  }
+
+  String get metricLabel {
+    switch (metric) {
+      case 'duels_played': return 'duels played';
+      case 'duels_won': return 'duels won';
+      case 'games_played': return 'games played';
+      default: return 'progress';
+    }
+  }
+}
+
 class HouseService {
   HouseService._();
 
@@ -305,6 +355,28 @@ class HouseService {
   static Future<List<HouseSummary>> leaderboard({bool week = false}) async {
     final res = await SupabaseService.client.rpc('house_leaderboard', params: {'p_scope': week ? 'week' : 'all'});
     return _list(res).map(HouseSummary.fromJson).toList();
+  }
+
+  /// This week's goal for a house. Null when the call fails, so the card simply stays hidden.
+  static Future<HouseGoal?> goal(String houseId) async {
+    try {
+      final res = await SupabaseService.client.rpc('get_house_goal', params: {'p_house_id': houseId});
+      final m = _map(res);
+      if (m == null) return null;
+      return HouseGoal.fromJson(m);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Top ten members by points, for this week or all time. Empty when the call fails.
+  static Future<List<HouseMember>> topMembers(String houseId, {bool week = true}) async {
+    try {
+      final res = await SupabaseService.client.rpc('get_house_top_members', params: {'p_house_id': houseId, 'p_scope': week ? 'week' : 'all'});
+      return _list(res).map(HouseMember.fromJson).toList();
+    } catch (_) {
+      return <HouseMember>[];
+    }
   }
 
   static Future<HouseDetails?> details(String houseId) async {

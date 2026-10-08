@@ -1,41 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cosmetics_service.dart';
 import '../../edu/edu_subscription_service.dart';
-import '../../edu/realms/realm_kit.dart' show RealmDraw;
-import '../../../shared/widgets/cosmetic_avatar.dart';
+import '../../../shared/widgets/cosmetic_visuals.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
+import '../../../shared/widgets/rarity.dart';
 
-const Map<String, String> _tabLabels = {
-  'name_color': 'Name Colour',
-  'badge': 'Badge',
-  'avatar_frame': 'Avatar Frame',
-  'hero_outfit': 'Hero Outfit',
-  'trail': 'Trail',
-  'profile_banner': 'Banner',
+/// Chip order of the shop. 'featured' and 'bundles' are sections; the rest
+/// are cosmetic categories.
+const Map<String, String> _chipLabels = {
+  'featured': 'Featured',
+  'hero_outfit': 'Outfits',
+  'avatar_frame': 'Frames',
+  'profile_banner': 'Banners',
+  'trail': 'Trails',
+  'title': 'Titles',
+  'badge': 'Badges',
+  'name_color': 'Name colours',
+  'bundles': 'Bundles',
 };
-
-Color _rarityColor(String? rarity) {
-  switch (rarity) {
-    case 'rare': return const Color(0xFF4FC3F7);
-    case 'epic': return const Color(0xFFB388FF);
-    case 'legendary': return GacomColors.gold;
-    default: return const Color(0xFF9A9AA6);
-  }
-}
-
-String _naira(num amount) {
-  final s = amount.round().toString();
-  final buf = StringBuffer();
-  for (int i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-    buf.write(s[i]);
-  }
-  return '₦$buf';
-}
 
 class CustomizationScreen extends StatefulWidget {
   const CustomizationScreen({super.key});
@@ -43,31 +28,25 @@ class CustomizationScreen extends StatefulWidget {
   State<CustomizationScreen> createState() => _CustomizationScreenState();
 }
 
-class _CustomizationScreenState extends State<CustomizationScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+class _CustomizationScreenState extends State<CustomizationScreen> {
   bool _loading = true;
   bool _signedIn = true;
   bool _isPro = false;
   List<Map<String, dynamic>> _items = [];
   Set<String> _owned = {};
   Map<String, dynamic>? _equipped;
+  Map<String, dynamic>? _shop; // get_shop_state
   final Map<String, Map<String, dynamic>> _sel = {}; // previewed but not equipped
   String? _busyId;
   double? _balance;
   String _displayName = '';
   String? _avatarUrl;
+  String _tab = 'featured';
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: CosmeticsService.categories.length, vsync: this);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -84,6 +63,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
       CosmeticsService.ownedIds(),
       CosmeticsService.equipped(uid),
       _loadProfile(uid),
+      CosmeticsService.shopState(),
     ]);
     if (!mounted) return;
     final prof = results[3] as Map<String, dynamic>?;
@@ -92,6 +72,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
       _items = results[0] as List<Map<String, dynamic>>;
       _owned = results[1] as Set<String>;
       _equipped = results[2] as Map<String, dynamic>?;
+      _shop = results[4] as Map<String, dynamic>?;
       _balance = (prof?['wallet_balance'] as num?)?.toDouble();
       _displayName = (prof?['display_name'] as String?) ?? '';
       _avatarUrl = prof?['avatar_url'] as String?;
@@ -105,20 +86,77 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
     } catch (_) { return null; }
   }
 
-  // ---- item state ----
+  // ---- shop data helpers ----
 
-  int _price(Map<String, dynamic> it) => (it['price'] as num?)?.toInt() ?? 0;
-  bool _premium(Map<String, dynamic> it) => it['requires_premium'] == true;
-
-  bool _isOwned(Map<String, dynamic> it) {
-    final id = it['id'] as String;
-    if (_owned.contains(id)) return true;
-    if (_price(it) <= 0 && !_premium(it)) return true;
-    if (_premium(it) && _isPro) return true;
-    return false;
+  List<Map<String, dynamic>> _listOf(dynamic v) {
+    if (v is! List) return <Map<String, dynamic>>[];
+    return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
+  Map<String, dynamic>? get _featured {
+    final f = _shop?['featured'];
+    return f is Map ? Map<String, dynamic>.from(f) : null;
+  }
+
+  List<Map<String, dynamic>> get _deals => _listOf(_shop?['deals']);
+  List<Map<String, dynamic>> get _bundles => _listOf(_shop?['bundles']);
+  List<Map<String, dynamic>> get _earn => _listOf(_shop?['earn']);
+
+  /// Sale prices of items that are in today's featured or deal slots.
+  Map<String, int> get _saleById {
+    final m = <String, int>{};
+    final all = <Map<String, dynamic>>[..._deals];
+    final f = _featured;
+    if (f != null) all.add(f);
+    for (final it in all) {
+      final id = it['id']?.toString();
+      final s = it['sale_price'];
+      if (id != null && s is num) m[id] = s.toInt();
+    }
+    return m;
+  }
+
+  // ---- item state ----
+
+  int _basePrice(Map<String, dynamic> it) => (it['price'] as num?)?.toInt() ?? 0;
+
+  /// What the player pays today (sale_price, never the list price).
+  int _pay(Map<String, dynamic> it) {
+    final s = it['sale_price'];
+    if (s is num) return s.toInt();
+    final id = it['id']?.toString();
+    final sale = id == null ? null : _saleById[id];
+    return sale ?? _basePrice(it);
+  }
+
+  int _discount(Map<String, dynamic> it) {
+    final base = _basePrice(it);
+    final pay = _pay(it);
+    if (base <= 0 || pay >= base) return 0;
+    return ((base - pay) * 100 / base).round();
+  }
+
+  String _source(Map<String, dynamic> it) => (it['source'] ?? 'shop').toString();
+  bool _premium(Map<String, dynamic> it) => it['requires_premium'] == true || _source(it) == 'premium';
+  bool _isOwned(Map<String, dynamic> it) => CosmeticsService.isOwned(it, _owned, _isPro);
   bool _isEquipped(Map<String, dynamic> it) => _equipped?['equipped_${it['category']}'] == it['id'];
+
+  /// Why an unowned item can not be bought, or null when it can.
+  String? _lockLabel(Map<String, dynamic> it) {
+    final src = _source(it);
+    if (src == 'earned') return 'EARN IT';
+    if (src == 'licence') return 'GACOM';
+    if (_premium(it) && _basePrice(it) <= 0) return 'PREMIUM';
+    return null;
+  }
+
+  bool _shopVisible(Map<String, dynamic> it) {
+    final src = _source(it);
+    if (src != 'shop' && src != 'premium') return false;
+    final until = Tac.time(it['available_until']);
+    if (until != null && until.isBefore(DateTime.now()) && !_isOwned(it)) return false;
+    return true;
+  }
 
   Map<String, dynamic> get _previewMap {
     final m = <String, dynamic>{};
@@ -132,7 +170,9 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
   // ---- actions ----
 
   void _select(Map<String, dynamic> it) {
-    setState(() => _sel[it['category'] as String] = it);
+    final cat = it['category']?.toString();
+    if (cat == null) return;
+    setState(() => _sel[cat] = it);
   }
 
   Future<void> _equip(Map<String, dynamic>? it, {String? category}) async {
@@ -158,24 +198,49 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
     }
   }
 
-  Future<void> _buy(Map<String, dynamic> it) async {
-    final price = _price(it);
-    setState(() => _busyId = it['id'] as String?);
+  /// Refreshes the balance first, then shows the purchase dialog. Returns
+  /// true only when the player chose to pay. Sends them to the wallet when
+  /// they pick "Add funds".
+  Future<bool> _confirmPurchase({required String title, required Rarity rarity, String? description, required int price, required String busyKey}) async {
+    setState(() => _busyId = busyKey);
     final fresh = await CosmeticsService.walletBalance();
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() { _busyId = null; if (fresh != null) _balance = fresh; });
     final double balance = fresh ?? _balance ?? 0.0;
     final choice = await showDialog<String>(
       context: context,
-      builder: (ctx) => _PurchaseDialog(item: it, price: price, balance: balance),
+      builder: (ctx) => _PurchaseDialog(title: title, rarity: rarity, description: description, price: price, balance: balance),
     );
-    if (!mounted || choice == null) return;
+    if (!mounted || choice == null) return false;
     if (choice == 'wallet') {
       context.push(AppConstants.walletRoute);
-      return;
+      return false;
     }
-    setState(() => _busyId = it['id'] as String?);
-    final res = await CosmeticsService.purchase(it['id'] as String);
+    return true;
+  }
+
+  Future<void> _reloadOwnership() async {
+    final r = await Future.wait<dynamic>([CosmeticsService.ownedIds(), CosmeticsService.shopState()]);
+    if (!mounted) return;
+    setState(() {
+      _owned = r[0] as Set<String>;
+      final s = r[1] as Map<String, dynamic>?;
+      if (s != null) _shop = s;
+    });
+  }
+
+  Future<void> _buy(Map<String, dynamic> it) async {
+    final id = it['id'] as String;
+    final ok = await _confirmPurchase(
+      title: 'Buy ${it['name']}?',
+      rarity: Rarity.parse(it['rarity']?.toString()),
+      description: it['description'] as String?,
+      price: _pay(it),
+      busyKey: id,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busyId = id);
+    final res = await CosmeticsService.purchase(id);
     if (!mounted) return;
     if (!res.success) {
       setState(() => _busyId = null);
@@ -183,20 +248,56 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
       return;
     }
     setState(() {
-      _owned = {..._owned, it['id'] as String};
+      _owned = {..._owned, id};
       if (res.balance != null) _balance = res.balance;
       _busyId = null;
     });
     GacomSnackbar.show(context, '${it['name']} is yours', isSuccess: true);
+    await _reloadOwnership();
+    if (!mounted) return;
     await _equip(it);
+  }
+
+  Future<void> _buyBundle(Map<String, dynamic> b) async {
+    final id = b['id']?.toString();
+    if (id == null) return;
+    final ok = await _confirmPurchase(
+      title: 'Buy ${b['name']}?',
+      rarity: Rarity.legendary,
+      description: b['description'] as String?,
+      price: Tac.intOf(b['price']),
+      busyKey: 'bundle_$id',
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busyId = 'bundle_$id');
+    final res = await CosmeticsService.purchaseBundle(id);
+    if (!mounted) return;
+    if (!res.success) {
+      setState(() => _busyId = null);
+      GacomSnackbar.show(context, res.error ?? 'Purchase failed', isError: true);
+      return;
+    }
+    setState(() {
+      if (res.balance != null) _balance = res.balance;
+      _busyId = null;
+    });
+    GacomSnackbar.show(context, '${b['name']} unlocked', isSuccess: true);
+    await _reloadOwnership();
   }
 
   void _onPrimary(Map<String, dynamic> it) {
     if (_busyId != null) return;
     if (_isEquipped(it)) return;
     if (_isOwned(it)) { _equip(it); return; }
-    if (_premium(it) && _price(it) <= 0) {
-      GacomSnackbar.show(context, 'Included with a Premium membership', isError: true);
+    final lock = _lockLabel(it);
+    if (lock != null) {
+      final src = _source(it);
+      final msg = src == 'earned'
+          ? ((it['earn_hint'] as String?) ?? 'Earn this item in GACOM')
+          : src == 'licence'
+              ? 'Issued by GACOM'
+              : 'Included with a Premium membership';
+      GacomSnackbar.show(context, msg, isError: true);
       return;
     }
     _buy(it);
@@ -207,9 +308,12 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: GacomColors.obsidian,
+      backgroundColor: Tac.bg,
       appBar: AppBar(
-        title: const Text('SHOP'),
+        backgroundColor: Tac.bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text('SHOP', style: Tac.display(size: 18, weight: FontWeight.w800, letter: 2)),
         actions: [
           if (_balance != null)
             Padding(
@@ -217,18 +321,19 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
               child: Center(
                 child: GestureDetector(
                   onTap: () => context.push(AppConstants.walletRoute),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: GacomColors.deepOrange.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: GacomColors.borderOrange),
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      color: Tac.gold.withValues(alpha: 0.1),
+                      shape: ChamferedBorder(cut: 7, side: BorderSide(color: Tac.gold.withValues(alpha: 0.6))),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.account_balance_wallet_rounded, size: 14, color: GacomColors.deepOrange),
-                      const SizedBox(width: 6),
-                      Text(_naira(_balance!), style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: GacomColors.deepOrange)),
-                    ]),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.account_balance_wallet_rounded, size: 14, color: Tac.gold),
+                        const SizedBox(width: 6),
+                        Text(Tac.naira(_balance!), style: Tac.display(size: 12, weight: FontWeight.w800, color: Tac.gold, letter: 0.3)),
+                      ]),
+                    ),
                   ),
                 ),
               ),
@@ -240,34 +345,17 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
   }
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const Center(child: CircularProgressIndicator(color: Tac.gold));
     if (!_signedIn) {
       return _message(Icons.lock_outline_rounded, 'Sign in to use the shop', null);
     }
-    if (_items.isEmpty) {
+    if (_items.isEmpty && _shop == null) {
       return _message(Icons.storefront_rounded, 'The shop could not be loaded or is empty right now.', _load);
     }
     return Column(children: [
-      _Preview(items: _previewMap, name: _displayName, avatarUrl: _avatarUrl),
-      Container(
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: GacomColors.border))),
-        child: TabBar(
-          controller: _tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: GacomColors.deepOrange,
-          labelColor: GacomColors.deepOrange,
-          unselectedLabelColor: GacomColors.textMuted,
-          labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14),
-          tabs: [for (final c in CosmeticsService.categories) Tab(text: _tabLabels[c] ?? c)],
-        ),
-      ),
-      Expanded(
-        child: TabBarView(
-          controller: _tabs,
-          children: [for (final c in CosmeticsService.categories) _grid(c)],
-        ),
-      ),
+      LoadoutStage(items: _previewMap, name: _displayName, avatarUrl: _avatarUrl),
+      _chipBar(),
+      Expanded(child: _content()),
     ]);
   }
 
@@ -276,20 +364,321 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 44, color: GacomColors.textMuted),
+          Icon(icon, size: 44, color: Tac.textDim),
           const SizedBox(height: 12),
-          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 14, height: 1.4)),
+          Text(text, textAlign: TextAlign.center, style: Tac.body(size: 15, color: Tac.textDim, height: 1.4)),
           if (retry != null) ...[
             const SizedBox(height: 16),
-            OutlinedButton(onPressed: retry, child: const Text('Try again')),
+            SizedBox(width: 160, child: TacButton(label: 'TRY AGAIN', filled: false, onPressed: retry)),
           ],
         ]),
       ),
     );
   }
 
+  Widget _chipBar() {
+    final keys = _chipLabels.keys.toList();
+    return SizedBox(
+      height: 46,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+        itemCount: keys.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final k = keys[i];
+          final sel = _tab == k;
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _tab = k),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                color: sel ? Tac.gold : Tac.panel,
+                shape: ChamferedBorder(cut: 7, side: BorderSide(color: sel ? Tac.gold : Tac.keyline)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Center(child: Text(_chipLabels[k]!.toUpperCase(), style: Tac.display(size: 11, weight: FontWeight.w800, color: sel ? Tac.bg : Tac.textDim, letter: 0.9))),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _content() {
+    if (_tab == 'featured') return _featuredTab();
+    if (_tab == 'bundles') return _bundlesTab();
+    return _grid(_tab);
+  }
+
+  // ---- featured tab ----
+
+  Widget _sectionHeader(String label, {Widget? trailing}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 10),
+      child: Row(children: [
+        Container(width: 3, height: 14, color: Tac.gold),
+        const SizedBox(width: 8),
+        Text(label, style: Tac.display(size: 12, weight: FontWeight.w800, letter: 1.6)),
+        const Spacer(),
+        if (trailing != null) trailing,
+      ]),
+    );
+  }
+
+  Widget _featuredTab() {
+    final feat = _featured;
+    final deals = _deals;
+    final bundles = _bundles;
+    final earn = _earn;
+    if (feat == null && deals.isEmpty && bundles.isEmpty && earn.isEmpty) {
+      return _message(Icons.storefront_rounded, 'Today\'s picks are not available right now. Browse a category above.', _load);
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+      children: [
+        if (feat != null) ...[
+          _sectionHeader('FEATURED'),
+          _featuredCard(feat),
+        ],
+        if (deals.isNotEmpty) ...[
+          _sectionHeader('DAILY DEALS', trailing: CountdownText(until: Tac.time(_shop?['deals_reset_at']), prefix: 'Resets in ', doneText: 'Refreshing')),
+          _dealsRow(deals),
+        ],
+        if (bundles.isNotEmpty) ...[
+          _sectionHeader('BUNDLES'),
+          _bundleCard(bundles.first),
+          if (bundles.length > 1) ...[
+            const SizedBox(height: 10),
+            TacButton(label: 'SEE ALL BUNDLES', filled: false, color: Tac.cyan, onPressed: () => setState(() => _tab = 'bundles')),
+          ],
+        ],
+        if (earn.isNotEmpty) ...[
+          _sectionHeader('EARN IT FREE'),
+          _earnRow(earn),
+        ],
+      ],
+    );
+  }
+
+  Widget _tag(String text, Color c) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(color: c, shape: const ChamferedBorder(cut: 4)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(text, style: Tac.display(size: 10, weight: FontWeight.w800, color: Tac.bg, letter: 0.8)),
+      ),
+    );
+  }
+
+  Widget _featuredCard(Map<String, dynamic> it) {
+    final rarity = Rarity.parse(it['rarity']?.toString());
+    final previewing = _sel[it['category']]?['id'] == it['id'];
+    final desc = it['description'] as String?;
+    return RarityCard(
+      rarity: rarity,
+      cut: 18,
+      padding: const EdgeInsets.all(14),
+      selected: previewing,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 104,
+            height: 112,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: rarity.color.withValues(alpha: 0.08)),
+              child: ClipRect(child: Center(child: _thumb(it))),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                _tag('FEATURED', Tac.gold),
+                const SizedBox(width: 6),
+                RarityChip(rarity, compact: true),
+              ]),
+              const SizedBox(height: 6),
+              Text(it['name'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: Tac.display(size: 17, weight: FontWeight.w800, letter: 0.2)),
+              if (desc != null && desc.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: Tac.body(size: 13, color: Tac.textDim, height: 1.2)),
+              ],
+              const SizedBox(height: 6),
+              CountdownText(until: Tac.time(it['ends_at']), prefix: 'Ends in ', doneText: 'Ended'),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        _priceLine(it, size: 17),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: TacButton(label: 'PREVIEW', filled: false, color: Tac.cyan, onPressed: () => _select(it))),
+          const SizedBox(width: 8),
+          Expanded(child: _primary(it)),
+        ]),
+      ]),
+    );
+  }
+
+  Widget _dealsRow(List<Map<String, dynamic>> deals) {
+    final shown = deals.take(3).toList();
+    return SizedBox(
+      height: 214,
+      child: Row(children: [
+        for (int i = 0; i < 3; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: i < shown.length ? _card(shown[i], compact: true) : const SizedBox.shrink()),
+        ],
+      ]),
+    );
+  }
+
+  Widget _earnRow(List<Map<String, dynamic>> earn) {
+    return SizedBox(
+      height: 176,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: earn.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final it = earn[i];
+          final rarity = Rarity.parse(it['rarity']?.toString());
+          final owned = _isOwned(it);
+          final hint = (it['earn_hint'] as String?) ?? 'Earn this in GACOM';
+          return SizedBox(
+            width: 152,
+            child: RarityCard(
+              rarity: rarity,
+              padding: const EdgeInsets.all(8),
+              dimmed: !owned && rarity != Rarity.mythic,
+              selected: _sel[it['category']]?['id'] == it['id'],
+              onTap: () => _select(it),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: rarity.color.withValues(alpha: 0.07)),
+                    child: ClipRect(child: Center(child: _thumb(it))),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(it['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: Tac.display(size: 12, weight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                owned
+                    ? Text('EARNED', style: Tac.display(size: 10, weight: FontWeight.w800, color: Tac.ok, letter: 0.8))
+                    : Text(hint, maxLines: 2, overflow: TextOverflow.ellipsis, style: Tac.body(size: 12, color: Tac.textDim, height: 1.1)),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ---- bundles ----
+
+  Widget _bundlesTab() {
+    final bundles = _bundles;
+    if (bundles.isEmpty) {
+      return _message(Icons.inventory_2_outlined, 'No bundles right now. New ones land often.', null);
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+      itemCount: bundles.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _bundleCard(bundles[i]),
+    );
+  }
+
+  Widget _bundleCard(Map<String, dynamic> b) {
+    final items = _listOf(b['items']);
+    final full = Tac.intOf(b['full_price']);
+    final price = Tac.intOf(b['price']);
+    final disc = Tac.intOf(b['discount_percent']);
+    final allOwned = b['all_owned'] == true;
+    final id = b['id']?.toString() ?? '';
+    final until = Tac.time(b['available_until']);
+    final desc = b['description'] as String?;
+    return TacticalPanel(
+      keyline: Tac.gold.withValues(alpha: 0.6),
+      cut: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(b['name'] as String? ?? 'Bundle', maxLines: 2, overflow: TextOverflow.ellipsis, style: Tac.display(size: 16, weight: FontWeight.w800, letter: 0.3)),
+              if (desc != null && desc.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: Tac.body(size: 13, color: Tac.textDim, height: 1.2)),
+              ],
+            ]),
+          ),
+          if (disc > 0) ...[const SizedBox(width: 8), _tag('-$disc%', Tac.gold)],
+        ]),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) => _miniItem(items[i]),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (until != null) CountdownText(until: until, prefix: 'Offer ends in ', doneText: 'Ended'),
+        if (!allOwned) ...[
+          const SizedBox(height: 4),
+          Row(children: [
+            if (full > price) ...[
+              Text(Tac.naira(full), style: Tac.body(size: 14, weight: FontWeight.w700, color: Tac.textDim).copyWith(decoration: TextDecoration.lineThrough)),
+              const SizedBox(width: 8),
+            ],
+            Text(Tac.naira(price), style: Tac.display(size: 18, weight: FontWeight.w800, color: Tac.gold, letter: 0.2)),
+            if (full > price) ...[
+              const SizedBox(width: 8),
+              Text('save ${Tac.naira(full - price)}', style: Tac.body(size: 13, color: Tac.ok)),
+            ],
+          ]),
+        ],
+        const SizedBox(height: 10),
+        TacButton(
+          label: allOwned ? 'ALL OWNED' : 'BUY BUNDLE',
+          onPressed: (allOwned || _busyId != null || id.isEmpty) ? null : () => _buyBundle(b),
+          loading: _busyId == 'bundle_$id',
+        ),
+      ]),
+    );
+  }
+
+  Widget _miniItem(Map<String, dynamic> it) {
+    final rarity = Rarity.parse(it['rarity']?.toString());
+    final owned = _isOwned(it);
+    return SizedBox(
+      width: 78,
+      child: RarityCard(
+        rarity: rarity,
+        cut: 8,
+        padding: const EdgeInsets.all(5),
+        selected: _sel[it['category']]?['id'] == it['id'],
+        onTap: () => _select(it),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(child: ClipRect(child: Center(child: _thumb(it, scale: 0.7)))),
+          const SizedBox(height: 3),
+          Text(it['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: Tac.display(size: 9, weight: FontWeight.w700, letter: 0.2)),
+          Text(owned ? 'OWNED' : ' ', textAlign: TextAlign.center, style: Tac.display(size: 8, weight: FontWeight.w800, color: Tac.ok, letter: 0.6)),
+        ]),
+      ),
+    );
+  }
+
+  // ---- category grid ----
+
   Widget _grid(String category) {
-    final list = _items.where((e) => e['category'] == category).toList();
+    final list = _items.where((e) => e['category'] == category && _shopVisible(e)).toList();
     if (list.isEmpty) {
       return _message(Icons.inventory_2_outlined, 'Nothing here yet. New items land often.', null);
     }
@@ -299,15 +688,15 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
       return CustomScrollView(slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Row(children: [
-              const Expanded(
-                child: Text('Purely cosmetic. Nothing here changes scoring.', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
+              Expanded(
+                child: Text('Purely cosmetic. Nothing here changes scoring.', style: Tac.body(size: 13, color: Tac.textDim)),
               ),
               if (equippedId != null)
                 TextButton(
                   onPressed: _busyId != null ? null : () => _equip(null, category: category),
-                  child: const Text('Take off'),
+                  child: Text('TAKE OFF', style: Tac.display(size: 11, weight: FontWeight.w800, color: Tac.cyan, letter: 0.8)),
                 ),
             ]),
           ),
@@ -315,7 +704,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           sliver: SliverGrid(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: cols, mainAxisSpacing: 12, crossAxisSpacing: 12, mainAxisExtent: 196),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: cols, mainAxisSpacing: 12, crossAxisSpacing: 12, mainAxisExtent: 214),
             delegate: SliverChildBuilderDelegate((ctx, i) => _card(list[i]), childCount: list.length),
           ),
         ),
@@ -323,152 +712,173 @@ class _CustomizationScreenState extends State<CustomizationScreen> with SingleTi
     });
   }
 
-  Widget _card(Map<String, dynamic> it) {
-    final rarity = it['rarity'] as String?;
-    final rc = _rarityColor(rarity);
-    final equipped = _isEquipped(it);
-    final owned = _isOwned(it);
-    final price = _price(it);
-    final previewing = _sel[it['category']]?['id'] == it['id'];
-    final busy = _busyId == it['id'];
-    final locked = !owned && _premium(it) && price <= 0;
-    final paidOwned = _owned.contains(it['id']) && price > 0;
+  // ---- shared card pieces ----
 
-    String label;
-    Color fg;
-    Color bg;
-    Color border;
-    if (equipped) {
-      label = 'EQUIPPED'; fg = GacomColors.success; bg = Colors.transparent; border = GacomColors.success;
-    } else if (owned) {
-      label = 'EQUIP'; fg = GacomColors.deepOrange; bg = Colors.transparent; border = GacomColors.deepOrange;
-    } else if (locked) {
-      label = 'PREMIUM'; fg = GacomColors.textMuted; bg = Colors.transparent; border = GacomColors.border;
-    } else {
-      label = _naira(price); fg = Colors.white; bg = GacomColors.deepOrange; border = GacomColors.deepOrange;
+  /// Item thumbnail that survives being scaled down. Banners are width
+  /// hungry, so they are never put inside a FittedBox.
+  Widget _thumb(Map<String, dynamic> it, {double scale = 1.0}) {
+    final visual = CosmeticItemVisual(item: it, scale: scale);
+    if (it['category'] == 'profile_banner') {
+      return Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: visual);
     }
+    return FittedBox(fit: BoxFit.scaleDown, child: visual);
+  }
 
-    return GestureDetector(
-      onTap: () => _select(it),
-      child: Container(
-        decoration: BoxDecoration(
-          color: GacomColors.cardDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: equipped ? GacomColors.success : (previewing ? rc : rc.withValues(alpha: 0.35)), width: (equipped || previewing) ? 1.6 : 1),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(color: rc.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
-              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Center(child: _visual(it, rc))),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(it['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 14, color: GacomColors.textPrimary)),
-          Row(children: [
-            Text((rarity ?? 'common').toUpperCase(), style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.6, color: rc)),
-            if (paidOwned) const Padding(padding: EdgeInsets.only(left: 6), child: Text('OWNED', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 10, letterSpacing: 0.6, color: GacomColors.textMuted))),
-          ]),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 32,
-            child: Material(
-              color: bg,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: border)),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(10),
-                onTap: (equipped || _busyId != null) ? null : () => _onPrimary(it),
-                child: Center(
-                  child: busy
-                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
-                      : Row(mainAxisSize: MainAxisSize.min, children: [
-                          if (locked) const Padding(padding: EdgeInsets.only(right: 4), child: Icon(Icons.lock_rounded, size: 12, color: GacomColors.textMuted)),
-                          Text(label, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: fg)),
-                        ]),
-                ),
-              ),
-            ),
-          ),
-        ]),
+  Widget _discountBadge(int pct) {
+    return DecoratedBox(
+      decoration: const ShapeDecoration(color: Tac.gold, shape: ChamferedBorder(cut: 4, tl: false, tr: false, br: false, bl: true)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text('-$pct%', style: Tac.display(size: 10, weight: FontWeight.w800, color: Tac.bg, letter: 0.4)),
       ),
     );
   }
 
-  Widget _visual(Map<String, dynamic> it, Color rc) {
-    final cat = it['category'] as String?;
-    final asset = it['asset'] is Map ? Map<String, dynamic>.from(it['asset'] as Map) : <String, dynamic>{};
-    switch (cat) {
-      case 'name_color': {
-        final col = CosmeticsService.parseColor(it['value'] as String?) ?? GacomColors.textPrimary;
-        return Text('Aa', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w900, fontSize: 34, color: col));
+  /// Struck list price and today's price, or the ownership / lock state.
+  Widget _priceLine(Map<String, dynamic> it, {double size = 13}) {
+    final owned = _isOwned(it);
+    final lock = _lockLabel(it);
+    final base = _basePrice(it);
+    final pay = _pay(it);
+    final List<Widget> kids = [];
+    if (owned) {
+      kids.add(Text('OWNED', style: Tac.display(size: size * 0.85, weight: FontWeight.w800, color: Tac.textDim, letter: 0.8)));
+    } else if (lock != null) {
+      kids.add(Text(_source(it) == 'earned' ? 'EARNED IN GAME' : lock, style: Tac.display(size: size * 0.8, weight: FontWeight.w800, color: Tac.textDim, letter: 0.6)));
+    } else if (pay <= 0) {
+      kids.add(Text('FREE', style: Tac.display(size: size, weight: FontWeight.w800, color: Tac.gold, letter: 0.4)));
+    } else {
+      if (pay < base) {
+        kids.add(Text(Tac.naira(base), style: Tac.body(size: size * 0.82, weight: FontWeight.w700, color: Tac.textDim).copyWith(decoration: TextDecoration.lineThrough)));
+        kids.add(const SizedBox(width: 6));
       }
-      case 'badge':
-        return Icon(CosmeticsService.iconForBadge(it['value'] as String?) ?? Icons.star_outline_rounded, size: 38, color: rc);
-      case 'avatar_frame':
-        return CosmeticAvatar(radius: 24, name: 'G', frameItem: it);
-      case 'hero_outfit':
-        return SizedBox(width: 70, height: 80, child: CustomPaint(painter: _FigurePainter(outfit: asset, trail: const {}, scale: 1.5, phase: 0, moving: false)));
-      case 'trail':
-        return SizedBox(width: 110, height: 70, child: CustomPaint(painter: _FigurePainter(outfit: const {}, trail: asset, scale: 1.1, phase: 6.0, moving: true, dx: 0.7)));
-      case 'profile_banner':
-        return ProfileBanner(
-          bannerItem: it,
-          height: 56,
-          fallback: const Center(child: Icon(Icons.block_rounded, size: 24, color: GacomColors.textMuted)),
-        );
-      default:
-        return const SizedBox.shrink();
+      kids.add(Text(Tac.naira(pay), style: Tac.display(size: size, weight: FontWeight.w800, color: Tac.gold, letter: 0.2)));
     }
+    return SizedBox(
+      height: size + 5,
+      child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(mainAxisSize: MainAxisSize.min, children: kids)),
+    );
+  }
+
+  /// The buy / equip / locked button for an item.
+  Widget _primary(Map<String, dynamic> it, {double height = 38, bool compact = false}) {
+    final equipped = _isEquipped(it);
+    final owned = _isOwned(it);
+    final lock = _lockLabel(it);
+    final pay = _pay(it);
+    final busy = _busyId == it['id'];
+    if (equipped) {
+      return SizedBox(
+        height: height,
+        child: DecoratedBox(
+          decoration: ShapeDecoration(shape: ChamferedBorder(cut: 8, side: BorderSide(color: Tac.ok.withValues(alpha: 0.8), width: 1.2))),
+          child: Center(child: Text('EQUIPPED', style: Tac.display(size: 12, weight: FontWeight.w800, color: Tac.ok, letter: 0.8))),
+        ),
+      );
+    }
+    String label;
+    Color color;
+    bool filled;
+    IconData? icon;
+    if (owned) {
+      label = 'EQUIP'; color = Tac.cyan; filled = false;
+    } else if (lock != null) {
+      label = lock; color = Tac.textDim; filled = false; icon = compact ? null : Icons.lock_rounded;
+    } else {
+      label = pay <= 0 ? 'GET' : (compact ? Tac.naira(pay) : 'BUY ${Tac.naira(pay)}'); color = Tac.gold; filled = true;
+    }
+    return TacButton(
+      label: label,
+      color: color,
+      filled: filled,
+      icon: icon,
+      height: height,
+      loading: busy,
+      onPressed: _busyId != null ? null : () => _onPrimary(it),
+    );
+  }
+
+  Widget _card(Map<String, dynamic> it, {bool compact = false}) {
+    final rarity = Rarity.parse(it['rarity']?.toString());
+    final equipped = _isEquipped(it);
+    final owned = _isOwned(it);
+    final previewing = _sel[it['category']]?['id'] == it['id'];
+    final disc = owned ? 0 : _discount(it);
+    return RarityCard(
+      rarity: rarity,
+      selected: equipped || previewing,
+      padding: EdgeInsets.all(compact ? 8 : 10),
+      onTap: () => _select(it),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Expanded(
+          child: Stack(children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: rarity.color.withValues(alpha: 0.07)),
+                child: ClipRect(child: Center(child: _thumb(it))),
+              ),
+            ),
+            if (disc > 0) Positioned(top: 0, right: 0, child: _discountBadge(disc)),
+            if (!compact) Positioned(left: 4, top: 4, child: RarityChip(rarity, compact: true)),
+          ]),
+        ),
+        const SizedBox(height: 6),
+        Text(it['name'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: Tac.display(size: compact ? 11 : 12.5, weight: FontWeight.w700, letter: 0.2)),
+        const SizedBox(height: 2),
+        _priceLine(it, size: compact ? 12 : 13),
+        const SizedBox(height: 6),
+        _primary(it, height: compact ? 30 : 32, compact: compact),
+      ]),
+    );
   }
 }
 
 // ---------------------------------------------------------------------------
 
 class _PurchaseDialog extends StatelessWidget {
-  final Map<String, dynamic> item;
+  final String title;
+  final Rarity rarity;
+  final String? description;
   final int price;
   final double balance;
-  const _PurchaseDialog({required this.item, required this.price, required this.balance});
+  const _PurchaseDialog({required this.title, required this.rarity, this.description, required this.price, required this.balance});
 
   @override
   Widget build(BuildContext context) {
     final enough = balance >= price;
     final short = price - balance;
-    final rc = _rarityColor(item['rarity'] as String?);
     return AlertDialog(
-      backgroundColor: GacomColors.elevatedCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Buy ${item['name']}?', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+      backgroundColor: Tac.panel,
+      shape: const ChamferedBorder(cut: 16, side: BorderSide(color: Tac.keyline)),
+      title: Text(title, style: Tac.display(size: 17, weight: FontWeight.w800, letter: 0.2)),
       content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(((item['rarity'] as String?) ?? 'common').toUpperCase(), style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8, color: rc)),
-        if ((item['description'] as String?)?.isNotEmpty == true) ...[
-          const SizedBox(height: 4),
-          Text(item['description'] as String, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 13)),
+        Align(alignment: Alignment.centerLeft, child: RarityChip(rarity)),
+        if (description != null && description!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(description!, style: Tac.body(size: 14, color: Tac.textDim)),
         ],
         const SizedBox(height: 14),
-        _row('Price', _naira(price), GacomColors.textPrimary),
-        _row('Wallet balance', _naira(balance), enough ? GacomColors.textPrimary : GacomColors.error),
-        if (enough) _row('After purchase', _naira(balance - price), GacomColors.textSecondary),
+        _row('Price', Tac.naira(price), Tac.text),
+        _row('Wallet balance', Tac.naira(balance), enough ? Tac.text : Tac.danger),
+        if (enough) _row('After purchase', Tac.naira(balance - price), Tac.textDim),
         if (!enough) ...[
           const SizedBox(height: 10),
-          Text('You need ${_naira(short)} more to buy this.', style: const TextStyle(color: GacomColors.error, fontSize: 13)),
+          Text('You need ${Tac.naira(short)} more to buy this.', style: Tac.body(size: 14, color: Tac.danger)),
         ],
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('CANCEL', style: Tac.display(size: 12, color: Tac.textDim, weight: FontWeight.w800))),
         if (enough)
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: GacomColors.deepOrange),
+            style: FilledButton.styleFrom(backgroundColor: Tac.gold, foregroundColor: Tac.bg),
             onPressed: () => Navigator.of(context).pop('buy'),
-            child: Text('Buy for ${_naira(price)}'),
+            child: Text('Buy for ${Tac.naira(price)}', style: Tac.display(size: 12, color: Tac.bg, weight: FontWeight.w800)),
           )
         else
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: GacomColors.deepOrange),
+            style: FilledButton.styleFrom(backgroundColor: Tac.gold, foregroundColor: Tac.bg),
             onPressed: () => Navigator.of(context).pop('wallet'),
-            child: const Text('Add funds'),
+            child: Text('Add funds', style: Tac.display(size: 12, color: Tac.bg, weight: FontWeight.w800)),
           ),
       ],
     );
@@ -477,138 +887,8 @@ class _PurchaseDialog extends StatelessWidget {
   Widget _row(String l, String v, Color c) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [
-          Expanded(child: Text(l, style: const TextStyle(color: GacomColors.textMuted, fontSize: 13))),
-          Text(v, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: c)),
+          Expanded(child: Text(l, style: Tac.body(size: 14, color: Tac.textDim))),
+          Text(v, style: Tac.display(size: 14, weight: FontWeight.w800, color: c, letter: 0.2)),
         ]),
       );
-}
-
-// ---------------------------------------------------------------------------
-
-/// Live preview: banner, framed avatar, coloured name with badge, and an
-/// animated hero wearing the outfit and trail.
-class _Preview extends StatefulWidget {
-  final Map<String, dynamic> items;
-  final String name;
-  final String? avatarUrl;
-  const _Preview({required this.items, required this.name, this.avatarUrl});
-  @override
-  State<_Preview> createState() => _PreviewState();
-}
-
-class _PreviewState extends State<_Preview> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctl = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  Map<String, dynamic> _asset(String key) {
-    final a = widget.items[key]?['asset'];
-    return a is Map ? Map<String, dynamic>.from(a) : <String, dynamic>{};
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final nameColor = CosmeticsService.nameColorFor(widget.items) ?? GacomColors.textPrimary;
-    final badge = CosmeticsService.badgeFor(widget.items);
-    final shown = widget.name.isEmpty ? 'You' : widget.name;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      height: 150,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: GacomColors.borderBright)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Stack(fit: StackFit.expand, children: [
-          ProfileBanner(
-            equipped: widget.items,
-            fallback: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [GacomColors.deepOrange.withValues(alpha: 0.2), GacomColors.cardDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
-              ),
-            ),
-          ),
-          Container(color: Colors.black.withValues(alpha: 0.25)),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              CosmeticAvatar(radius: 32, avatarUrl: widget.avatarUrl, name: shown, equipped: widget.items),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Row(children: [
-                  if (badge != null) Padding(padding: const EdgeInsets.only(right: 6), child: Icon(badge, size: 18, color: GacomColors.deepOrange)),
-                  Flexible(
-                    child: Text(shown, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: nameColor)),
-                  ),
-                ]),
-              ),
-              SizedBox(
-                width: 130,
-                height: 120,
-                child: AnimatedBuilder(
-                  animation: _ctl,
-                  builder: (_, __) => CustomPaint(
-                    painter: _FigurePainter(outfit: _asset('hero_outfit'), trail: _asset('trail'), scale: 1.7, phase: _ctl.value * 6.283185307 * 14, moving: true, dx: 0.72),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-/// Draws the hero with a given outfit and trail (asset json), independent of
-/// what is currently equipped.
-class _FigurePainter extends CustomPainter {
-  final Map<String, dynamic> outfit;
-  final Map<String, dynamic> trail;
-  final double scale;
-  final double phase;
-  final bool moving;
-  final double dx; // horizontal position as a fraction of the width
-
-  const _FigurePainter({required this.outfit, required this.trail, required this.scale, required this.phase, required this.moving, this.dx = 0.5});
-
-  Color _c(Map<String, dynamic> m, String k, Color d) => CosmeticsService.parseColor(m[k]?.toString()) ?? d;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double x = size.width * dx;
-    final double y = size.height / 2 - 4;
-    final String kind = trail['kind']?.toString() ?? 'none';
-    if (moving && kind != 'none') {
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.scale(scale, scale);
-      RealmDraw.heroTrail(canvas, kind, _c(trail, 'color', const Color(0xFFFFF176)), phase, 1.0);
-      canvas.restore();
-    }
-    RealmDraw.person(
-      canvas, x, y,
-      phase: phase,
-      moving: moving,
-      facing: 1,
-      shirt: _c(outfit, 'shirt', const Color(0xFFFF6A00)),
-      pants: _c(outfit, 'pants', const Color(0xFF2A3A63)),
-      skin: _c(outfit, 'skin', const Color(0xFFF2B785)),
-      hair: _c(outfit, 'hair', const Color(0xFF2B1B12)),
-      scale: scale,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _FigurePainter old) =>
-      old.phase != phase || old.outfit != outfit || old.trail != trail || old.scale != scale || old.moving != moving;
 }

@@ -6,6 +6,7 @@ import '../../shared/widgets/gacom_snackbar.dart';
 import '../edu/edu_subscription_service.dart';
 import 'house_service.dart';
 import 'widgets/house_actions.dart';
+import 'widgets/house_goal_card.dart';
 import 'widgets/house_visuals.dart';
 
 class HousesScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class _HousesScreenState extends State<HousesScreen> {
   List<HouseSummary> _all = [];
   List<HouseSummary> _weekRows = [];
   UserHouse? _mine;
+  HouseGoal? _goal;
   String _query = '';
   String? _busyId;
   final _searchCtrl = TextEditingController();
@@ -49,7 +51,11 @@ class _HousesScreenState extends State<HousesScreen> {
         EduSubscriptionService.isPro(),
       ]);
       if (!mounted) return;
+      final mine = results[2] as UserHouse?;
+      final goal = mine == null ? null : await HouseService.goal(mine.houseId);
+      if (!mounted) return;
       setState(() {
+        _goal = goal;
         _all = results[0] as List<HouseSummary>;
         _weekRows = results[1] as List<HouseSummary>;
         _mine = results[2] as UserHouse?;
@@ -133,6 +139,10 @@ class _HousesScreenState extends State<HousesScreen> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
       children: [
         if (_mine != null) _myHouseCard(_mine!),
+        if (_mine != null && _goal != null) ...[
+          HouseGoalCard(goal: _goal!, color: houseColor(_mine!.colorHex)),
+          const SizedBox(height: 16),
+        ],
         TextField(
           controller: _searchCtrl,
           onChanged: (v) => setState(() => _query = v),

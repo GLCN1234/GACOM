@@ -30,6 +30,9 @@ import '../../features/blog/screens/blog_detail_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/profile/screens/customization_screen.dart';
+import '../../features/profile/screens/locker_screen.dart';
+import '../../features/missions/missions_screen.dart';
+import '../../features/admin/screens/mission_admin_screen.dart';
 import '../../features/houses/houses_screen.dart';
 import '../../features/houses/house_chat_screen.dart';
 import '../../features/houses/house_detail_screen.dart';
@@ -377,6 +380,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/errors', builder: (_, __) => const ErrorLogsScreen()),
       GoRoute(path: '/leaderboard', builder: (_, __) => const LeaderboardScreen()),
       GoRoute(path: '/customization', builder: (_, __) => const CustomizationScreen()),
+      GoRoute(path: '/locker', builder: (_, __) => const LockerScreen()),
+      GoRoute(path: '/missions', builder: (_, __) => const MissionsScreen()),
       GoRoute(path: '/houses', builder: (_, __) => const HousesScreen()),
       GoRoute(path: '/houses/chat', builder: (_, s) {
         final extra = s.extra as Map<String, dynamic>? ?? {};
@@ -385,6 +390,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/houses/:id', builder: (_, s) => HouseDetailScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/houses/:id/manage', builder: (_, s) => HouseManageScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
+      GoRoute(path: '/admin/missions', builder: (_, __) => const MissionAdminScreen()),
     ],
   );
 

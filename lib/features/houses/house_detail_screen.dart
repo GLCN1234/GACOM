@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/gacom_snackbar.dart';
 import 'house_service.dart';
 import 'widgets/house_actions.dart';
+import 'widgets/house_goal_card.dart';
 import 'widgets/house_visuals.dart';
 
 class HouseDetailScreen extends StatefulWidget {
@@ -18,6 +19,10 @@ class _HouseDetailScreenState extends State<HouseDetailScreen> {
   String? _error;
   HouseDetails? _d;
   bool _busy = false;
+  HouseGoal? _goal;
+  List<HouseSummary> _war = [];
+  List<HouseMember> _top = [];
+  bool _topWeek = true;
 
   @override
   void initState() {
@@ -31,10 +36,39 @@ class _HouseDetailScreenState extends State<HouseDetailScreen> {
       final d = await HouseService.details(widget.houseId);
       if (!mounted) return;
       setState(() { _d = d; _loading = false; _error = null; });
+      if (d != null) _loadExtras();
     } catch (e) {
       if (!mounted) return;
       setState(() { _loading = false; _error = HouseService.friendlyError(e); });
     }
+  }
+
+  /// Goal, weekly war and top members. Each one is optional: failures just hide the section.
+  Future<void> _loadExtras() async {
+    final id = widget.houseId;
+    HouseGoal? goal;
+    var war = <HouseSummary>[];
+    var top = <HouseMember>[];
+    try {
+      final r = await Future.wait<dynamic>([
+        HouseService.goal(id),
+        HouseService.leaderboard(week: true).catchError((_) => <HouseSummary>[]),
+        HouseService.topMembers(id, week: _topWeek),
+      ]);
+      goal = r[0] as HouseGoal?;
+      war = r[1] as List<HouseSummary>;
+      top = r[2] as List<HouseMember>;
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() { _goal = goal; _war = war; _top = top; });
+  }
+
+  Future<void> _setTopScope(bool week) async {
+    if (_topWeek == week) return;
+    setState(() => _topWeek = week);
+    final top = await HouseService.topMembers(widget.houseId, week: week);
+    if (!mounted || _topWeek != week) return;
+    setState(() => _top = top);
   }
 
   Future<void> _joinOrRequest(HouseDetails d) async {
@@ -118,6 +152,7 @@ class _HouseDetailScreenState extends State<HouseDetailScreen> {
 
   Widget _content(HouseDetails d) {
     final color = houseColor(d.colorHex);
+    final goal = _goal;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -166,6 +201,12 @@ class _HouseDetailScreenState extends State<HouseDetailScreen> {
         const SizedBox(height: 14),
         _levelCard(d, color),
         const SizedBox(height: 14),
+        if (goal != null) ...[
+          HouseGoalCard(goal: goal, color: color),
+          const SizedBox(height: 14),
+        ],
+        _warTable(d, color),
+        _topMembers(d, color),
         _trophies(d),
         _members(d),
         const SizedBox(height: 16),
@@ -212,6 +253,93 @@ class _HouseDetailScreenState extends State<HouseDetailScreen> {
           ),
           const SizedBox(height: 6),
           Text('${formatPoints(d.weekPoints)} points this week', style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
+        ]),
+      );
+
+  Widget _warTable(HouseDetails d, Color color) {
+    if (_war.isEmpty) return const SizedBox.shrink();
+    final rows = _war.take(5).toList();
+    if (d.isMember && !rows.any((h) => h.id == d.id)) {
+      for (final h in _war) {
+        if (h.id == d.id) { rows.add(h); break; }
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text('WEEKLY WAR', style: houseHeading(size: 14, color: GacomColors.textSecondary)),
+          const Spacer(),
+          const Text('Week points, resets weekly', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)),
+        ]),
+        const SizedBox(height: 8),
+        ...rows.map((h) {
+          final mine = d.isMember && h.id == d.id;
+          final c = houseColor(h.colorHex);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: mine ? c.withOpacity(0.14) : GacomColors.cardDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: mine ? c : GacomColors.border, width: mine ? 1.5 : 1),
+            ),
+            child: Row(children: [
+              SizedBox(width: 34, child: Text('#${h.rank}', style: houseHeading(size: 15, color: h.rank <= 3 ? GacomColors.gold : GacomColors.textMuted))),
+              HouseEmblem(emblem: h.emblem, colorHex: h.colorHex, size: 30),
+              const SizedBox(width: 10),
+              Expanded(child: Text(h.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: houseHeading(size: 15))),
+              if (mine) ...[const HouseChip(label: 'YOUR HOUSE', color: GacomColors.deepOrange), const SizedBox(width: 8)],
+              Text(formatPoints(h.weekPoints), style: houseHeading(size: 16, color: c)),
+            ]),
+          );
+        }),
+      ]),
+    );
+  }
+
+  Widget _scopeTab(String label, bool active, VoidCallback onTap, Color color) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: active ? color.withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: active ? color : GacomColors.border),
+          ),
+          child: Text(label, style: houseHeading(size: 11, color: active ? color : GacomColors.textMuted)),
+        ),
+      );
+
+  Widget _topMembers(HouseDetails d, Color color) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text('TOP MEMBERS', style: houseHeading(size: 14, color: GacomColors.textSecondary)),
+            const Spacer(),
+            _scopeTab('THIS WEEK', _topWeek, () => _setTopScope(true), color),
+            const SizedBox(width: 6),
+            _scopeTab('ALL TIME', !_topWeek, () => _setTopScope(false), color),
+          ]),
+          const SizedBox(height: 8),
+          if (_top.isEmpty)
+            const Text('No points scored yet.', style: TextStyle(color: GacomColors.textMuted))
+          else
+            ...List<Widget>.generate(_top.length, (k) {
+              final m = _top[k];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+                child: Row(children: [
+                  SizedBox(width: 28, child: Text('${k + 1}', style: houseHeading(size: 15, color: k < 3 ? GacomColors.gold : GacomColors.textMuted))),
+                  houseAvatar(m.avatarUrl, m.name, radius: 16),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GacomColors.textPrimary, fontWeight: FontWeight.w600))),
+                  Text(formatPoints(m.points), style: houseHeading(size: 15, color: GacomColors.textSecondary)),
+                ]),
+              );
+            }),
         ]),
       );
 

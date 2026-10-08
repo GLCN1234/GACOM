@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/services/cosmetics_service.dart';
 import '../../../core/services/duel_session.dart';
+import '../../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../odyssey/odyssey_engine.dart' show OdyMistake;
 import '../odyssey/odyssey_questions.dart';
 
@@ -402,7 +403,7 @@ class RealmDraw {
     shadow(canvas, 0, footY + 1, 30);
     if (hero && moving) {
       final HeroLook look = HeroLook.current;
-      heroTrail(canvas, look.trail, look.trailColor, phase, fx);
+      paintCosmeticTrail(canvas, look.trail, look.trailColor, phase, fx);
     }
     final Paint stroke = Paint()
       ..style = PaintingStyle.stroke

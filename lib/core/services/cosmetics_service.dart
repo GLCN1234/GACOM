@@ -7,19 +7,22 @@ class CosmeticResult {
   final bool success;
   final String? error;
   final double? balance;
-  const CosmeticResult({required this.success, this.error, this.balance});
+  /// Amount charged, when the server reports it (purchases).
+  final double? paid;
+  const CosmeticResult({required this.success, this.error, this.balance, this.paid});
 }
 
 class CosmeticsService {
-  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner'];
+  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title'];
 
   static const String _equippedSelect = '*, '
-      'name_color:cosmetic_items!equipped_name_color(id,name,value,asset), '
-      'badge:cosmetic_items!equipped_badge(id,name,value,asset), '
-      'avatar_frame:cosmetic_items!equipped_avatar_frame(id,name,value,asset), '
-      'hero_outfit:cosmetic_items!equipped_hero_outfit(id,name,value,asset), '
-      'trail:cosmetic_items!equipped_trail(id,name,value,asset), '
-      'profile_banner:cosmetic_items!equipped_profile_banner(id,name,value,asset)';
+      'name_color:cosmetic_items!equipped_name_color(id,name,value,asset,rarity), '
+      'badge:cosmetic_items!equipped_badge(id,name,value,asset,rarity), '
+      'avatar_frame:cosmetic_items!equipped_avatar_frame(id,name,value,asset,rarity), '
+      'hero_outfit:cosmetic_items!equipped_hero_outfit(id,name,value,asset,rarity), '
+      'trail:cosmetic_items!equipped_trail(id,name,value,asset,rarity), '
+      'profile_banner:cosmetic_items!equipped_profile_banner(id,name,value,asset,rarity), '
+      'title:cosmetic_items!equipped_title(id,name,value,asset,rarity)';
 
   /// The signed-in player's equipped items, cached. Null until loaded.
   static final ValueNotifier<Map<String, dynamic>?> myLoadout = ValueNotifier<Map<String, dynamic>?>(null);
@@ -123,9 +126,104 @@ class CosmeticsService {
         success: ok,
         error: ok ? null : (r['error']?.toString() ?? 'Something went wrong'),
         balance: (r['balance'] as num?)?.toDouble(),
+        paid: (r['paid'] as num?)?.toDouble(),
       );
     }
     return const CosmeticResult(success: false, error: 'Something went wrong');
+  }
+
+
+  // --- identity layer: shop rotation, bundles, sets, collection, trophies ---
+
+  static List<Map<String, dynamic>> _mapList(dynamic d) {
+    if (d is! List) return <Map<String, dynamic>>[];
+    return d.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  /// Featured item, daily deals, bundles and earnable items. Null on failure.
+  static Future<Map<String, dynamic>?> shopState() async {
+    try {
+      final r = await SupabaseService.client.rpc('get_shop_state');
+      if (r is Map) return Map<String, dynamic>.from(r);
+      return null;
+    } catch (_) { return null; }
+  }
+
+  static Future<CosmeticResult> purchaseBundle(String bundleId) async {
+    try {
+      final r = await SupabaseService.client.rpc('purchase_bundle', params: {'p_bundle_id': bundleId});
+      return _parse(r);
+    } catch (_) {
+      return const CosmeticResult(success: false, error: 'Could not reach the shop. Check your connection.');
+    }
+  }
+
+  /// Cosmetic sets with the player's progress in each.
+  static Future<List<Map<String, dynamic>>> mySets() async {
+    try {
+      return _mapList(await SupabaseService.client.rpc('my_sets'));
+    } catch (_) { return <Map<String, dynamic>>[]; }
+  }
+
+  /// {owned, total, percent, milestones[]} or null.
+  static Future<Map<String, dynamic>?> collectionStats() async {
+    try {
+      final r = await SupabaseService.client.rpc('collection_stats');
+      if (r is Map) return Map<String, dynamic>.from(r);
+      return null;
+    } catch (_) { return null; }
+  }
+
+  static Future<CosmeticResult> claimMilestone(int percent) async {
+    try {
+      final r = await SupabaseService.client.rpc('claim_collection_milestone', params: {'p_percent': percent});
+      return _parse(r);
+    } catch (_) {
+      return const CosmeticResult(success: false, error: 'Could not claim this reward. Try again.');
+    }
+  }
+
+  /// All trophies (earned and locked) for the signed-in player.
+  static Future<List<Map<String, dynamic>>> myTrophies() async {
+    try {
+      return _mapList(await SupabaseService.client.rpc('get_my_trophies'));
+    } catch (_) { return <Map<String, dynamic>>[]; }
+  }
+
+  /// Earned trophies of another player.
+  static Future<List<Map<String, dynamic>>> userTrophies(String userId) async {
+    try {
+      return _mapList(await SupabaseService.client.rpc('get_user_trophies', params: {'p_user_id': userId}));
+    } catch (_) { return <Map<String, dynamic>>[]; }
+  }
+
+  /// Whether [it] (a cosmetic_items row or cosmetic_json) is usable by the
+  /// player. Mirrors the server rule in cosmetic_is_owned().
+  static bool isOwned(Map<String, dynamic> it, Set<String> ownedIds, bool isPro) {
+    final id = it['id']?.toString();
+    if (id != null && ownedIds.contains(id)) return true;
+    if (it['owned'] == true) return true;
+    final source = (it['source'] ?? 'shop').toString();
+    final price = (it['price'] as num?)?.toInt() ?? 0;
+    final premium = it['requires_premium'] == true || source == 'premium';
+    if (source == 'shop' && price <= 0 && !premium) return true;
+    if (premium && isPro) return true;
+    return false;
+  }
+
+  /// Equipped title text, or null.
+  static String? titleFor(Map<String, dynamic>? equipped) {
+    final v = equipped?['title'];
+    if (v is! Map) return null;
+    final t = v['value']?.toString().trim();
+    return (t == null || t.isEmpty) ? null : t;
+  }
+
+  /// Rarity string of the equipped item in [key], or null.
+  static String? rarityOf(Map<String, dynamic>? equipped, String key) {
+    final v = equipped?[key];
+    if (v is! Map) return null;
+    return v['rarity']?.toString();
   }
 
   // --- helpers used by profile, leaderboard, shop ---

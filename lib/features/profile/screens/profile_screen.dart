@@ -12,6 +12,7 @@ import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
 import '../../../core/services/cosmetics_service.dart';
 import '../../../shared/widgets/cosmetic_avatar.dart';
+import '../../../shared/widgets/rarity.dart';
 import '../../arena/screens/leaderboard_screen.dart';
 import '../../houses/widgets/house_profile_card.dart';
 
@@ -432,6 +433,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     ),
                 ]),
 
+                if (CosmeticsService.titleFor(_cosm) != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: TitleText(equipped: _cosm, fontSize: 12),
+                  ),
+
                 Text('@${p['username'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 13, fontFamily: 'Rajdhani')),
 
                 if (p['gamer_tag'] != null) ...[
@@ -451,6 +458,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 const SizedBox(height: 16),
 
                 HouseProfileCard(userId: widget.userId),
+                const SizedBox(height: 16),
+
+                // Trophy shelf and the locker
+                _TrophyShelf(userId: widget.userId, isOwn: _isOwn),
+                if (_isOwn) ...[
+                  const SizedBox(height: 10),
+                  TacButton(
+                    label: 'OPEN LOCKER',
+                    icon: Icons.inventory_2_outlined,
+                    filled: false,
+                    height: 40,
+                    onPressed: () => context.push('/locker').then((_) { if (mounted) _reloadCosmetics(); }),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Stats bar
@@ -802,4 +823,188 @@ class _GridPainter extends CustomPainter {
     for (double y = 0; y < size.height; y += 30) canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
   }
   @override bool shouldRepaint(_) => false;
+}
+
+
+// ── Trophy shelf ──────────────────────────────────────────────────────────────
+
+class _TrophyShelf extends StatefulWidget {
+  final String userId;
+  final bool isOwn;
+  const _TrophyShelf({required this.userId, required this.isOwn});
+  @override
+  State<_TrophyShelf> createState() => _TrophyShelfState();
+}
+
+class _TrophyShelfState extends State<_TrophyShelf> {
+  List<Map<String, dynamic>> _all = [];
+  int _total = 0;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    List<Map<String, dynamic>> list;
+    int total = 0;
+    if (widget.isOwn) {
+      list = await CosmeticsService.myTrophies();
+      total = list.length;
+    } else {
+      list = await CosmeticsService.userTrophies(widget.userId);
+      try {
+        final defs = await SupabaseService.client.from('trophy_defs').select('key');
+        total = (defs as List).length;
+      } catch (_) {}
+      if (total < list.length) total = list.length;
+    }
+    if (!mounted) return;
+    setState(() { _all = list; _total = total; _loaded = true; });
+  }
+
+  List<Map<String, dynamic>> get _earned => _all.where((t) => t['earned'] == true).toList();
+
+  List<Map<String, dynamic>> get _featured {
+    final e = _earned;
+    e.sort((a, b) {
+      final r = Rarity.parse(b['rarity']?.toString()).index.compareTo(Rarity.parse(a['rarity']?.toString()).index);
+      if (r != 0) return r;
+      return (b['earned_at']?.toString() ?? '').compareTo(a['earned_at']?.toString() ?? '');
+    });
+    return e.take(3).toList();
+  }
+
+  IconData _icon(Map<String, dynamic> t) => CosmeticsService.iconForBadge(t['icon']?.toString()) ?? Icons.emoji_events_rounded;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || (_total == 0 && _all.isEmpty)) return const SizedBox.shrink();
+    final feat = _featured;
+    return TacticalPanel(
+      padding: const EdgeInsets.all(12),
+      onTap: _openAll,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 3, height: 14, color: Tac.gold),
+          const SizedBox(width: 8),
+          Text('TROPHIES', style: Tac.display(size: 12, weight: FontWeight.w800, letter: 1.6)),
+          const Spacer(),
+          Text('${_earned.length} of $_total', style: Tac.display(size: 13, weight: FontWeight.w800, color: Tac.gold, letter: 0.3)),
+          const SizedBox(width: 6),
+          const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: Tac.textDim),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          for (int i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: i < feat.length ? _slot(feat[i]) : _emptySlot()),
+          ],
+        ]),
+      ]),
+    );
+  }
+
+  Widget _slot(Map<String, dynamic> t) {
+    final r = Rarity.parse(t['rarity']?.toString());
+    return SizedBox(
+      height: 84,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: r.color.withValues(alpha: 0.1),
+          shape: ChamferedBorder(cut: 8, side: BorderSide(color: r.color.withValues(alpha: 0.75))),
+          shadows: r.glows ? [BoxShadow(color: r.color.withValues(alpha: 0.25), blurRadius: 10)] : null,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(_icon(t), size: 26, color: r.color),
+            const SizedBox(height: 6),
+            Text(t['name']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: Tac.display(size: 10, weight: FontWeight.w700, letter: 0.2, height: 1.1)),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptySlot() {
+    return SizedBox(
+      height: 84,
+      child: DecoratedBox(
+        decoration: const ShapeDecoration(shape: ChamferedBorder(cut: 8, side: BorderSide(color: Tac.keyline))),
+        child: const Center(child: Icon(Icons.lock_outline_rounded, size: 20, color: Tac.keyline)),
+      ),
+    );
+  }
+
+  void _openAll() {
+    final rows = widget.isOwn ? _all : _earned;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Tac.panel,
+      shape: const ChamferedBorder(cut: 18, tl: true, tr: true, br: false, bl: false, side: BorderSide(color: Tac.keyline)),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (_, scroll) => ListView.separated(
+          controller: scroll,
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+          itemCount: rows.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, i) {
+            if (i == 0) {
+              return Row(children: [
+                Container(width: 3, height: 16, color: Tac.gold),
+                const SizedBox(width: 8),
+                Expanded(child: Text('TROPHIES', style: Tac.display(size: 15, weight: FontWeight.w800, letter: 1.6))),
+                Text('${_earned.length} of $_total', style: Tac.display(size: 14, weight: FontWeight.w800, color: Tac.gold, letter: 0.3)),
+              ]);
+            }
+            return _row(rows[i - 1]);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _row(Map<String, dynamic> t) {
+    final r = Rarity.parse(t['rarity']?.toString());
+    final earned = t['earned'] == true;
+    final at = t['earned_at']?.toString();
+    final date = (earned && at != null && at.length >= 10) ? at.substring(0, 10) : null;
+    return Opacity(
+      opacity: earned ? 1.0 : 0.45,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: Tac.panel2,
+          shape: ChamferedBorder(cut: 10, side: BorderSide(color: earned ? r.color.withValues(alpha: 0.7) : Tac.keyline)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(children: [
+            Icon(earned ? _icon(t) : Icons.lock_rounded, size: 28, color: earned ? r.color : Tac.textDim),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t['name']?.toString() ?? '', style: Tac.display(size: 14, weight: FontWeight.w800, letter: 0.3)),
+                const SizedBox(height: 2),
+                Text(t['description']?.toString() ?? '', style: Tac.body(size: 13, color: Tac.textDim, height: 1.2)),
+                if (date != null) ...[
+                  const SizedBox(height: 2),
+                  Text('Earned $date', style: Tac.body(size: 12, color: Tac.textDim)),
+                ],
+              ]),
+            ),
+            const SizedBox(width: 8),
+            RarityChip(r, compact: true),
+          ]),
+        ),
+      ),
+    );
+  }
 }

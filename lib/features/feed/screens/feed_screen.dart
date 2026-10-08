@@ -15,6 +15,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
+import '../../missions/widgets/mission_entry_card.dart';
 
 
 // ── Demo posts ────────────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             flexibleSpace: FlexibleSpaceBar(collapseMode: CollapseMode.pin,
               background: _Header(greeting: _greeting, name: name, avatarUrl: _myProfile?['avatar_url'], onSearch: () => context.go(AppConstants.searchRoute), onNotifs: () => context.go(AppConstants.notificationsRoute)))),
           SliverToBoxAdapter(child: _TrendingTagsRow()),
+          const SliverToBoxAdapter(child: MissionEntryCard()),
           if (!_tournamentDismissed)
             SliverToBoxAdapter(child: _LiveTournamentBanner(onJoin: () => context.go(AppConstants.competitionsRoute), onDismiss: _dismissTournamentBanner)),
           SliverPersistentHeader(pinned: true, delegate: _TabDelegate(TabBar(controller: _tab, indicatorColor: GacomColors.deepOrange, indicatorWeight: 2.5, indicatorSize: TabBarIndicatorSize.label, isScrollable: false, labelColor: GacomColors.textPrimary, unselectedLabelColor: GacomColors.textMuted, labelStyle: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13), tabs: const [Tab(text: 'For You'), Tab(text: 'Following')]))),

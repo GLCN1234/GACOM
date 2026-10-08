@@ -3,6 +3,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/cosmetics_service.dart';
 import '../../../shared/widgets/cosmetic_avatar.dart';
+import '../../../shared/widgets/rarity.dart';
 import '../widgets/game_logo.dart';
 
 /// A game-picker grid (real icons, pulled from the same game_listings
@@ -86,7 +87,7 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       if (userIds.isNotEmpty) {
         try {
           final cosmetics = await SupabaseService.client.from('user_cosmetics')
-              .select('user_id, name_color:cosmetic_items!equipped_name_color(value), badge:cosmetic_items!equipped_badge(value), avatar_frame:cosmetic_items!equipped_avatar_frame(value,asset)')
+              .select('user_id, name_color:cosmetic_items!equipped_name_color(value), badge:cosmetic_items!equipped_badge(value), avatar_frame:cosmetic_items!equipped_avatar_frame(value,asset,rarity)')
               .filter('user_id', 'in', '(${userIds.join(',')})');
           final byUserId = { for (final c in List<Map<String, dynamic>>.from(cosmetics)) c['user_id'] as String: c };
           for (final row in rows) {
@@ -173,7 +174,7 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
       (top3[0], 1),
       if (top3.length > 2) (top3[2], 3) else (null, 3),
     ];
-    return SizedBox(height: 190, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: ordered.map((entry) {
+    return SizedBox(height: 276, child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: ordered.map((entry) {
       final (row, rank) = entry;
       if (row == null) return const Expanded(child: SizedBox());
       final user = row['user'] as Map<String, dynamic>? ?? {};
@@ -203,10 +204,18 @@ class _LeaderboardContentState extends State<LeaderboardContent> {
 
   Widget _rankRow(int rank, Map<String, dynamic> row) {
     final user = row['user'] as Map<String, dynamic>? ?? {};
+    // Row keyline follows the rarity of the equipped frame (already fetched above).
+    final frameRarity = cosmeticFrameRarity(equipped: row['cosmetics'] as Map<String, dynamic>?);
+    final keyColor = (frameRarity != null && frameRarity != Rarity.common) ? frameRarity.color : null;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: GacomColors.cardDark,
+        borderRadius: BorderRadius.circular(14),
+        border: keyColor == null ? null : Border.all(color: keyColor.withValues(alpha: 0.6)),
+        boxShadow: (frameRarity != null && frameRarity.glows) ? [BoxShadow(color: frameRarity.color.withValues(alpha: 0.18), blurRadius: 10)] : null,
+      ),
       child: Row(children: [
         SizedBox(width: 28, child: Text('$rank', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 15, color: GacomColors.textMuted))),
         CosmeticAvatar(
