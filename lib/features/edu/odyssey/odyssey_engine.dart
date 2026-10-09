@@ -10,14 +10,17 @@ class OdyEnemy {
 }
 
 class OdyOrb {
-  final double bx;
-  final double by;
+  double bx;
+  double by;
   double x;
   double y;
   final double phase;
   final int index;
   final String label;
-  OdyOrb(this.bx, this.by, this.phase, this.index, this.label)
+  /// Where this orb sits around the player; the orb drifts to keep that place.
+  final double ang;
+  final double rad;
+  OdyOrb(this.bx, this.by, this.phase, this.index, this.label, {this.ang = 0, this.rad = 200})
       : x = bx,
         y = by;
 }
@@ -57,6 +60,8 @@ class OdyMistake {
 class OdyGate {
   final OdyQuestion q;
   int? chosen;
+  /// Wrong options removed as a reward for finishing the rest mission.
+  final Set<int> hidden = <int>{};
   OdyGate(this.q);
   bool get answered => chosen != null;
   bool get correct => chosen == q.answerIndex;
@@ -77,7 +82,53 @@ class OdyActive {
   double timeLeft;
   final double total;
   final List<OdyOrb> orbs;
-  OdyActive(this.q, this.total, this.orbs) : timeLeft = total;
+  /// True when this is a question the player got wrong earlier.
+  final bool redo;
+  OdyActive(this.q, this.total, this.orbs, {this.redo = false}) : timeLeft = total;
+}
+
+/// A longer goal that stays on the board until it is done, then gets harder.
+class OdyMission {
+  final String kind; // coins, correct, stars, streak
+  final int tier;
+  final int target;
+  final int rewardScore;
+  final int rewardXp;
+  const OdyMission(this.kind, this.tier, this.target, this.rewardScore, this.rewardXp);
+
+  String get title {
+    switch (kind) {
+      case 'coins':
+        return 'Collect $target coins';
+      case 'correct':
+        return 'Answer $target questions correctly';
+      case 'stars':
+        return 'Find $target stars';
+      default:
+        return 'Reach a streak of $target';
+    }
+  }
+}
+
+/// The goal set during free roam. Finish it to open your question early with a hint.
+class OdyRestMission {
+  final String kind; // coins, stars, distance, dash
+  final int target;
+  int progress = 0;
+  OdyRestMission(this.kind, this.target);
+  bool get done => progress >= target;
+  String get title {
+    switch (kind) {
+      case 'coins':
+        return 'Collect $target coins';
+      case 'stars':
+        return target == 1 ? 'Find a star' : 'Find $target stars';
+      case 'distance':
+        return 'Travel $target steps';
+      default:
+        return 'Dash $target times';
+    }
+  }
 }
 
 /// The rules of Odyssey with no drawing code, so they can be tested alone.
@@ -150,6 +201,19 @@ class OdysseyEngine {
   OdyActive? active;
   OdyGate? gate;
   OdyQuest? quest;
+  OdyRestMission? restMission;
+  bool restMissionDone = false;
+  final List<OdyMission> missions = <OdyMission>[];
+  int missionsDone = 0;
+  int starsFound = 0;
+  int corrected = 0;
+  final List<OdyQuestion> _redo = <OdyQuestion>[];
+  int _sinceMiss = 0;
+  int heroXp = 0;
+  int _heroLevelSeen = 1;
+  /// A big message shown for a moment: level ups, finished missions, corrections.
+  String banner = '';
+  double bannerLife = 0;
   int questsDone = 0;
   int gatesCleared = 0;
   double freeLeft = 0;
@@ -166,6 +230,157 @@ class OdysseyEngine {
   OdysseyEngine({required this.pool, required this.subjects, required this.mixed, required this.seed, required this.rng, this.allowRest = true, this.labels = const <String, String>{}});
 
   int get level => 1 + correct ~/ 3;
+
+  // ---- hero: level, rank, perks -------------------------------------------------
+  static int xpToNext(int lv) => 60 + 40 * (lv - 1);
+
+  /// Level reached with [xp] experience.
+  static int heroLevelFor(int xp) {
+    int lv = 1;
+    int left = xp;
+    while (left >= xpToNext(lv) && lv < 60) {
+      left -= xpToNext(lv);
+      lv++;
+    }
+    return lv;
+  }
+
+  int get heroLevel => heroLevelFor(heroXp);
+
+  /// Experience inside the current level and what the level needs.
+  int get heroXpInLevel {
+    int lv = 1;
+    int left = heroXp;
+    while (left >= xpToNext(lv) && lv < 60) {
+      left -= xpToNext(lv);
+      lv++;
+    }
+    return left;
+  }
+
+  int get heroXpNeed => xpToNext(heroLevel);
+
+  static const List<String> ranks = <String>['Wanderer', 'Scout', 'Pathfinder', 'Ranger', 'Vanguard', 'Warden', 'Champion', 'Legend'];
+  String get heroRank => ranks[min(ranks.length - 1, (heroLevel - 1) ~/ 3)];
+  /// 0 to 7, used to dress the hero.
+  int get heroTier => min(ranks.length - 1, (heroLevel - 1) ~/ 3);
+
+  /// Perks only count outside duels so both players stay equal.
+  double get _perk => allowRest ? min(heroLevel, 20).toDouble() : 0;
+  double get speedNow => moveSpeed * (1 + 0.012 * _perk);
+  double get dashCooldownNow => dashCooldown * (1 - 0.02 * _perk);
+  double get magnetNow => 4 + 0.8 * _perk;
+
+  void _gainXp(int n) {
+    if (!allowRest || n <= 0) return;
+    heroXp += n;
+    final int lv = heroLevel;
+    if (lv > _heroLevelSeen) {
+      _heroLevelSeen = lv;
+      _say('LEVEL $lv  ${heroRank.toUpperCase()}');
+      _toast('Faster, quicker dash, wider coin pull', true);
+      cues.add('hero');
+    }
+  }
+
+  /// Restores the saved hero when a run starts.
+  void loadHero(int xp) {
+    if (!allowRest || xp <= 0) return;
+    heroXp = xp;
+    _heroLevelSeen = heroLevel;
+  }
+
+  void _say(String text) {
+    banner = text;
+    bannerLife = 2.6;
+  }
+
+  // ---- missions -----------------------------------------------------------------
+  static const List<int> _coinTiers = <int>[100, 250, 400, 700, 1000, 1500];
+  static const List<int> _correctTiers = <int>[5, 12, 25, 45, 80, 130];
+  static const List<int> _starTiers = <int>[2, 5, 10, 18, 30, 50];
+  static const List<int> _streakTiers = <int>[3, 5, 8, 12, 18, 25];
+
+  OdyMission _missionFor(String kind, int tier) {
+    final int t = min(tier, 5);
+    switch (kind) {
+      case 'coins':
+        return OdyMission(kind, tier, _coinTiers[t], 150 + 100 * t, 20 + 15 * t);
+      case 'correct':
+        return OdyMission(kind, tier, _correctTiers[t], 200 + 120 * t, 25 + 15 * t);
+      case 'stars':
+        return OdyMission(kind, tier, _starTiers[t], 150 + 100 * t, 20 + 15 * t);
+      default:
+        return OdyMission(kind, tier, _streakTiers[t], 200 + 120 * t, 25 + 15 * t);
+    }
+  }
+
+  int missionProgress(OdyMission m) {
+    switch (m.kind) {
+      case 'coins':
+        return crystals;
+      case 'correct':
+        return correct;
+      case 'stars':
+        return starsFound;
+      default:
+        return streak > bestStreak ? streak : bestStreak;
+    }
+  }
+
+  void _checkMissions() {
+    if (!allowRest) return;
+    if (missions.isEmpty) {
+      for (final String k in <String>['coins', 'correct', 'stars', 'streak']) {
+        missions.add(_missionFor(k, 0));
+      }
+    }
+    for (int i = 0; i < missions.length; i++) {
+      final OdyMission m = missions[i];
+      if (missionProgress(m) >= m.target) {
+        score += m.rewardScore;
+        missionsDone++;
+        _say('MISSION DONE  +${m.rewardScore}');
+        _toast(m.title, true);
+        cues.add('star');
+        if (hearts < maxHearts) hearts++;
+        missions[i] = _missionFor(m.kind, m.tier + 1);
+        _gainXp(m.rewardXp);
+      }
+    }
+  }
+
+  // ---- rest mission -------------------------------------------------------------
+  OdyRestMission _newRestMission(double seconds) {
+    final double mins = seconds / 60.0;
+    final int pick = rng.nextInt(4);
+    if (pick == 0) return OdyRestMission('coins', (mins * 40).round());
+    if (pick == 1) return OdyRestMission('stars', max(1, mins.round()));
+    if (pick == 2) return OdyRestMission('distance', (mins * 1400).round());
+    return OdyRestMission('dash', (mins * 6).round());
+  }
+
+  void _restStep(String kind, int amount) {
+    final OdyRestMission? m = restMission;
+    if (m == null || m.kind != kind || freeLeft <= 0 || restMissionDone) return;
+    m.progress += amount;
+    if (m.done) {
+      restMissionDone = true;
+      score += 200;
+      _gainXp(30);
+      _say('REST MISSION DONE');
+      _toast('Tap READY to answer now and get a hint', true);
+      cues.add('star');
+    }
+  }
+
+  /// Rest mission finished: open the compulsory question now, with two wrong answers removed.
+  bool readyNow() {
+    if (over || !resting || !restMissionDone || active != null || gate != null) return false;
+    freeLeft = 0;
+    _openGate(hint: true);
+    return true;
+  }
   int get finalScore => score + distance ~/ 40;
 
   static int _hash(int a, int b, int c) {
@@ -209,13 +424,14 @@ class OdysseyEngine {
     dashDirX = m == 0 ? 1 : dx / m;
     dashDirY = m == 0 ? 0 : dy / m;
     dashLeft = dashTime;
-    dashCool = dashCooldown;
+    dashCool = dashCooldownNow;
     _questStep('dash', 1);
+    _restStep('dash', 1);
     return true;
   }
 
   bool get dashing => dashLeft > 0;
-  double get dashReady => dashCool <= 0 ? 1 : 1 - dashCool / dashCooldown;
+  double get dashReady => dashCool <= 0 ? 1 : 1 - dashCool / dashCooldownNow;
 
   bool get resting => freeLeft > 0;
 
@@ -225,7 +441,9 @@ class OdysseyEngine {
   bool rest(double seconds) {
     if (!allowRest || over || active != null || gate != null || freeLeft > 0) return false;
     freeLeft = seconds;
-    _toast('Free roam. Questions return in ${(seconds / 60).round()} min', true);
+    restMissionDone = false;
+    restMission = _newRestMission(seconds);
+    _toast('Free roam. Mission: ${restMission!.title}', true);
     return true;
   }
 
@@ -233,13 +451,31 @@ class OdysseyEngine {
   bool askNow() {
     if (over || active != null || gate != null) return false;
     freeLeft = 0;
+    restMission = null;
+    restMissionDone = false;
     _ask();
     return true;
   }
 
-  void _openGate() {
+  void _openGate({bool hint = false}) {
     final OdyQuestion q = pool.pick(subjectAt(px, py));
     gate = OdyGate(q);
+    final bool earned = hint || restMissionDone;
+    if (earned) {
+      final List<int> wrong = <int>[];
+      for (int i = 0; i < q.options.length; i++) {
+        if (i != q.answerIndex) wrong.add(i);
+      }
+      wrong.shuffle(rng);
+      final int remove = q.options.length >= 4 ? 2 : (q.options.length == 3 ? 1 : 0);
+      for (int i = 0; i < remove && i < wrong.length; i++) {
+        gate!.hidden.add(wrong[i]);
+      }
+    } else if (restMission != null) {
+      _toast('Mission missed. No hint this time', false);
+    }
+    restMission = null;
+    restMissionDone = false;
     vx = 0;
     vy = 0;
     inputX = 0;
@@ -258,11 +494,14 @@ class OdysseyEngine {
       streak++;
       if (streak > bestStreak) bestStreak = streak;
       score += 150;
+      _gainXp(15);
       cues.add('correct');
     } else {
       streak = 0;
       cues.add('wrong');
       mistakes.add(OdyMistake(g.q.text, g.q.options[index], g.q.answer, g.q.subject));
+      _redo.add(g.q);
+      _sinceMiss = 0;
       // A wrong gate answer costs a heart but can never end the run.
       if (hearts > 1) hearts--;
     }
@@ -285,6 +524,7 @@ class OdysseyEngine {
       score += qu.reward;
       questsDone++;
       _toast('Quest done: +${qu.reward}', true);
+      _gainXp(12);
       cues.add('star');
       if (questsDone % 2 == 0 && hearts < maxHearts) {
         hearts++;
@@ -320,6 +560,10 @@ class OdysseyEngine {
     final double dt = dtIn > 0.05 ? 0.05 : dtIn;
     time += dt;
     novaFlash = false;
+    if (bannerLife > 0) {
+      bannerLife -= dt;
+      if (bannerLife <= 0) banner = '';
+    }
     if (gate != null) {
       for (final OdyToast t in toasts) {
         t.life -= dt;
@@ -341,8 +585,8 @@ class OdysseyEngine {
       vx = tvx;
       vy = tvy;
     } else {
-      tvx = inputX * moveSpeed;
-      tvy = inputY * moveSpeed;
+      tvx = inputX * speedNow;
+      tvy = inputY * speedNow;
       final double k = min(1.0, dt * 11);
       vx += (tvx - vx) * k;
       vy += (tvy - vy) * k;
@@ -356,6 +600,7 @@ class OdysseyEngine {
     py += vy * dt;
     distance += sp * dt;
     _questStep('distance', (sp * dt).round());
+    _restStep('distance', (sp * dt).round());
     // region change toast, once the player has stayed in the new region a moment
     final String here = subjectAt(px, py);
     if (regionNow.isEmpty) {
@@ -396,7 +641,18 @@ class OdysseyEngine {
       }
     } else {
       a.timeLeft -= dt;
+      // Answers stay with the player: an orb that is left behind drifts back to its place.
       for (final OdyOrb o in a.orbs) {
+        final double tx = px + cos(o.ang) * o.rad;
+        final double ty = py + sin(o.ang) * o.rad;
+        final double ddx = tx - o.bx;
+        final double ddy = ty - o.by;
+        final double dd = sqrt(ddx * ddx + ddy * ddy);
+        if (dd > 60) {
+          final double mv = min(dd - 40, 165 * dt);
+          o.bx += ddx / dd * mv;
+          o.by += ddy / dd * mv;
+        }
         o.x = o.bx + cos(time * 1.3 + o.phase) * 16;
         o.y = o.by + sin(time * 1.7 + o.phase) * 16;
       }
@@ -485,11 +741,13 @@ class OdysseyEngine {
       c.age += dt;
       final double dx = c.x - px;
       final double dy = c.y - py;
-      if (dx * dx + dy * dy <= (crystalRadius + playerRadius + 4) * (crystalRadius + playerRadius + 4)) {
+      if (dx * dx + dy * dy <= (crystalRadius + playerRadius + magnetNow) * (crystalRadius + playerRadius + magnetNow)) {
         crystals++;
         score += 10;
         cues.add('coin');
         _questStep('coins', 1);
+        _restStep('coins', 1);
+        if (crystals % 4 == 0) _gainXp(1);
         if (crystals % coinsPerHeart == 0) {
           if (hearts < maxHearts) {
             hearts++;
@@ -525,6 +783,7 @@ class OdysseyEngine {
       }
       _starTimer = hearts <= 2 ? 9.0 : 22.0;
     }
+    _checkMissions();
     starList.removeWhere((OdyStar st) {
       st.age += dt;
       final double dx = st.x - px;
@@ -540,9 +799,15 @@ class OdysseyEngine {
             _toast('Life star: +150', true);
           }
           cues.add('star');
+          starsFound++;
+          _gainXp(8);
+          _restStep('stars', 1);
           _questStep('stars', 1);
         } else {
           shield = 7;
+          starsFound++;
+          _gainXp(8);
+          _restStep('stars', 1);
           _questStep('stars', 1);
           _toast('Shield for 7 seconds', true);
           cues.add('shield');
@@ -574,7 +839,13 @@ class OdysseyEngine {
 
   void _ask() {
     final String subject = subjectAt(px, py);
-    final OdyQuestion q = pool.pick(subject);
+    // Now and then an earlier mistake comes back so it can be put right.
+    OdyQuestion? back;
+    if (allowRest && _redo.isNotEmpty && _sinceMiss >= 2 && rng.nextDouble() < 0.4) {
+      back = _redo.removeAt(0);
+    }
+    final bool isRedo = back != null;
+    final OdyQuestion q = back ?? pool.pick(subject);
     final double total = max(30.0, 48.0 - level * 1.2);
     final int n = q.options.length;
     final double base = rng.nextDouble() * 2 * pi;
@@ -582,9 +853,10 @@ class OdysseyEngine {
     for (int i = 0; i < n; i++) {
       final double ang = base + i * 2 * pi / n;
       final double r = 190 + rng.nextDouble() * 50;
-      orbs.add(OdyOrb(px + cos(ang) * r, py + sin(ang) * r, rng.nextDouble() * 6.28, i, q.options[i]));
+      orbs.add(OdyOrb(px + cos(ang) * r, py + sin(ang) * r, rng.nextDouble() * 6.28, i, q.options[i], ang: ang, rad: r));
     }
-    active = OdyActive(q, total, orbs);
+    active = OdyActive(q, total, orbs, redo: isRedo);
+    if (isRedo) _toast('Correction: you missed this one earlier', true);
   }
 
   void _after() {
@@ -606,9 +878,16 @@ class OdysseyEngine {
     final OdyQuestion q = a.q;
     final bool ok = index == q.answerIndex;
     _record(q, ok);
+    _sinceMiss++;
     if (ok) {
       streak++;
       if (streak > bestStreak) bestStreak = streak;
+      _gainXp(a.redo ? 28 : 12);
+      if (a.redo) {
+        corrected++;
+        score += 100;
+        _say('CORRECTION MADE  +100');
+      }
       final int streakCap = min(streak, 8);
       final int timeBonus = (a.timeLeft * 3).floor();
       final int gain = 100 + 25 * streakCap + timeBonus;
@@ -634,6 +913,8 @@ class OdysseyEngine {
       streak = 0;
       cues.add('wrong');
       mistakes.add(OdyMistake(q.text, q.options[index], q.answer, q.subject));
+      if (_redo.length < 6) _redo.add(q);
+      _sinceMiss = 0;
       _toast('Answer: ${q.answer}', false);
       hearts--;
       invuln = 1.0;
@@ -652,6 +933,8 @@ class OdysseyEngine {
     _record(q, false);
     streak = 0;
     mistakes.add(OdyMistake(q.text, 'No answer', q.answer, q.subject));
+    if (_redo.length < 6) _redo.add(q);
+    _sinceMiss = 0;
     _toast('Time up. Answer: ${q.answer}', false);
     cues.add('wrong');
     _spawnEnemy(420);
@@ -663,6 +946,6 @@ class OdysseyEngine {
     final int walk = min(20, distance ~/ 1500);
     final int streakBonus = bestStreak >= 5 ? 15 : 0;
     final int questBonus = (questsDone > 5 ? 5 : questsDone) * 4;
-    return correct * 8 + streakBonus + walk + questBonus;
+    return correct * 8 + streakBonus + walk + questBonus + min(40, missionsDone * 5) + min(30, corrected * 5);
   }
 }

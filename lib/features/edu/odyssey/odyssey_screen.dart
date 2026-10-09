@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
@@ -75,7 +76,6 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   double? _maxSeconds;
   bool _music = true;
   int _coinCue = 0;
-  int _fxLevel = 1;
 
   @override
   void initState() {
@@ -140,6 +140,12 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           }
           break;
         }
+        case 'hero': {
+          _saveHero(e);
+          s.playWin();
+          if (mounted) FeedbackFx.play(context, FxKind.levelUp);
+          break;
+        }
         case 'wrong':
         case 'hurt': {
           s.playWrong();
@@ -149,11 +155,6 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         default:
           break;
       }
-    }
-    if (e.level < _fxLevel) _fxLevel = e.level;
-    if (e.level > _fxLevel) {
-      _fxLevel = e.level;
-      if (mounted) FeedbackFx.play(context, FxKind.levelUp);
     }
     e.cues.clear();
   }
@@ -195,6 +196,25 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     setState(() => _loading = false);
   }
 
+  static const String _heroKey = 'ody_hero_xp';
+
+  Future<void> _loadHero(OdysseyEngine e) async {
+    if (_inDuel) return;
+    try {
+      final SharedPreferences p = await SharedPreferences.getInstance();
+      final int xp = p.getInt(_heroKey) ?? 0;
+      if (mounted && identical(_engine, e) && e.heroXp == 0) e.loadHero(xp);
+    } catch (_) {}
+  }
+
+  Future<void> _saveHero(OdysseyEngine e) async {
+    if (_inDuel) return;
+    try {
+      final SharedPreferences p = await SharedPreferences.getInstance();
+      if (e.heroXp > (p.getInt(_heroKey) ?? 0)) await p.setInt(_heroKey, e.heroXp);
+    } catch (_) {}
+  }
+
   void _startRun() {
     final Random rng = duelRandom();
     final OdysseyEngine e = OdysseyEngine(
@@ -207,6 +227,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       labels: <String, String>{for (final MapEntry<String, OdySubject> en in _subjects.entries) en.key: en.value.label},
     );
     _engine = e;
+    _loadHero(e);
     _ended = false;
     _saved = false;
     _journey = null;
@@ -264,6 +285,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     HapticFeedback.heavyImpact();
     if (!_saved) {
       _saved = true;
+      _saveHero(e);
       _reportJourney(e);
       GameScoreService.save(gameName: 'Odyssey', score: e.finalScore, won: e.correct > 0 ? true : null);
       final int bonus = e.xp - e.correct * 8;
@@ -416,6 +438,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   /// the current quest, otherwise the nearest coin.
   List<Widget> _objectiveLayer(OdysseyEngine e) {
     final OdyQuest? q = e.quest;
+    final OdyRestMission? rm = e.restMission;
     String text;
     Offset? target;
     double best = double.infinity;
@@ -429,7 +452,19 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       }
     }
 
-    if (q != null && q.kind == 'stars') {
+    if (rm != null && e.resting) {
+      final int shown = rm.progress > rm.target ? rm.target : rm.progress;
+      text = e.restMissionDone ? 'Mission done. Tap READY for your question' : 'Rest mission: ${rm.title}  $shown/${rm.target}';
+      if (!e.restMissionDone && rm.kind == 'coins') {
+        for (final OdyCrystal c in e.crystalList) {
+          consider(c.x, c.y);
+        }
+      } else if (!e.restMissionDone && rm.kind == 'stars') {
+        for (final OdyStar st in e.starList) {
+          consider(st.x, st.y);
+        }
+      }
+    } else if (q != null && q.kind == 'stars') {
       text = 'Find a star. Follow the arrow';
       for (final OdyStar s in e.starList) {
         consider(s.x, s.y);
@@ -513,6 +548,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         right: 12,
         top: 50,
         child: Wrap(spacing: 6, runSpacing: 4, children: <Widget>[
+          if (!_inDuel) _heroBar(e),
           _pill('${e.score + e.distance ~/ 40}', Icons.star_rounded, GacomColors.gold),
           _pill('${e.crystals} coins', Icons.monetization_on_rounded, const Color(0xFFFFD54F)),
           _pill(rs.label, Icons.place_rounded, _lighten(rs.color, 0.25)),
@@ -520,6 +556,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           if (e.shield > 0) _pill('Shield ${e.shield.ceil()}s', Icons.shield_rounded, const Color(0xFF40C4FF)),
           if (e.quest != null) _pill('${e.quest!.title}  ${e.quest!.progress > e.quest!.target ? e.quest!.target : e.quest!.progress}/${e.quest!.target}', Icons.flag_rounded, const Color(0xFF69F0AE)),
           if (e.resting) _pill('Free roam ${_clock(e.freeLeft)}', Icons.self_improvement_rounded, const Color(0xFF80D8FF)),
+          if (e.resting && e.restMission != null)
+            _pill(e.restMissionDone ? 'Mission done' : '${e.restMission!.title}  ${e.restMission!.progress > e.restMission!.target ? e.restMission!.target : e.restMission!.progress}/${e.restMission!.target}', Icons.flag_circle_rounded, e.restMissionDone ? const Color(0xFF69F0AE) : const Color(0xFFFFD54F)),
           if (_maxSeconds != null) _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
@@ -560,8 +598,38 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           left: 16,
           bottom: 30,
           child: e.resting
-              ? _roundAction(Icons.help_outline_rounded, 'ASK ME', const Color(0xFF69F0AE), () => e.askNow())
+              ? (e.restMissionDone
+                  ? _roundAction(Icons.lightbulb_rounded, 'READY', const Color(0xFFFFD54F), () => setState(e.readyNow))
+                  : _roundAction(Icons.help_outline_rounded, 'ASK ME', const Color(0xFF69F0AE), () => e.askNow()))
               : (a == null ? _roundAction(Icons.self_improvement_rounded, 'REST', const Color(0xFF80D8FF), _openRest) : const SizedBox.shrink()),
+        ),
+      if (!_inDuel && e.gate == null)
+        Positioned(
+          left: 16,
+          bottom: 84,
+          child: _roundAction(Icons.assignment_turned_in_rounded, 'MISSIONS', const Color(0xFFFFD54F), _openMissions),
+        ),
+      if (e.banner.isNotEmpty)
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 190,
+          child: IgnorePointer(
+            child: Center(
+              child: Opacity(
+                opacity: e.bannerLife.clamp(0.0, 1.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xE60B0B0F),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                  ),
+                  child: Text(e.banner, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFFFD54F), fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, letterSpacing: 1.2)),
+                ),
+              ),
+            ),
+          ),
         ),
       // dash button
       Positioned(
@@ -591,6 +659,92 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         ),
       ),
     ]);
+  }
+
+  static const List<Color> _tierColors = <Color>[
+    Color(0xFFB0BEC5), Color(0xFF81C784), Color(0xFF4FC3F7), Color(0xFFBA68C8), Color(0xFFFFB74D), Color(0xFFFF8A65), Color(0xFFFFD54F), Color(0xFFFFF59D),
+  ];
+
+  Widget _heroBar(OdysseyEngine e) {
+    final Color c = _tierColors[e.heroTier];
+    final double frac = e.heroXpNeed == 0 ? 0 : (e.heroXpInLevel / e.heroXpNeed).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), borderRadius: BorderRadius.circular(20), border: Border.all(color: c, width: 1.4)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Icon(Icons.shield_moon_rounded, size: 15, color: c),
+        const SizedBox(width: 5),
+        Text('Lv ${e.heroLevel}  ${e.heroRank}', style: TextStyle(color: c, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
+        const SizedBox(width: 7),
+        SizedBox(
+          width: 54,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(value: frac, minHeight: 5, backgroundColor: Colors.white12, color: c),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Future<void> _openMissions() async {
+    final OdysseyEngine? e = _engine;
+    if (e == null) return;
+    setState(() => _paused = true);
+    Widget row(String title, int p, int t, String reward) {
+      final int shown = p > t ? t : p;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Row(children: <Widget>[
+            Expanded(child: Text(title, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700))),
+            Text('$shown/$t', style: const TextStyle(color: GacomColors.textSecondary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
+          ]),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(value: t == 0 ? 0 : (shown / t).clamp(0.0, 1.0), minHeight: 6, backgroundColor: Colors.white12, color: const Color(0xFFFFD54F)),
+          ),
+          const SizedBox(height: 2),
+          Text(reward, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 11)),
+        ]),
+      );
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: GacomColors.cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (BuildContext c) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+            Text('LEVEL ${e.heroLevel}  ${e.heroRank.toUpperCase()}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary, letterSpacing: 1)),
+            const SizedBox(height: 4),
+            Text('${e.heroXpInLevel}/${e.heroXpNeed} XP to the next level. Every level makes you faster, shortens your dash wait and widens your coin pull.',
+                style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12.5, height: 1.4)),
+            const SizedBox(height: 16),
+            if (e.restMission != null && e.resting) ...<Widget>[
+              const Text('REST MISSION', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF80D8FF), letterSpacing: 1)),
+              const SizedBox(height: 6),
+              row(e.restMission!.title, e.restMission!.progress, e.restMission!.target, 'Finish it, then tap READY to answer early with two wrong answers removed'),
+            ],
+            if (e.quest != null) ...<Widget>[
+              const Text('QUICK QUEST', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF69F0AE), letterSpacing: 1)),
+              const SizedBox(height: 6),
+              row(e.quest!.title, e.quest!.progress, e.quest!.target, '+${e.quest!.reward} points'),
+            ],
+            const Text('MISSIONS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFFFFD54F), letterSpacing: 1)),
+            const SizedBox(height: 6),
+            for (final OdyMission m in e.missions) row(m.title, e.missionProgress(m), m.target, '+${m.rewardScore} points, +${m.rewardXp} XP, +1 heart'),
+            if (e.missions.isEmpty) const Text('Missions appear as you play.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12.5)),
+          ]),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _paused = false);
   }
 
   String _clock(double sec) {
@@ -625,7 +779,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
             const Text('FREE ROAM', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 20, color: GacomColors.textPrimary, letterSpacing: 1)),
             const SizedBox(height: 6),
-            const Text('No questions while you explore, collect coins and finish quests. When the time is up, one question must be answered before you move on.',
+            const Text('Explore and finish the rest mission, such as collecting a set number of coins. Tap READY when it is done to answer early with two wrong answers removed. When the time is up, one question must be answered before you move on.',
                 style: TextStyle(color: GacomColors.textSecondary, fontSize: 13, height: 1.4)),
             const SizedBox(height: 16),
             Row(children: <Widget>[
@@ -674,7 +828,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                     child: Text(
                       _inDuel
                           ? 'Duel rules: the same world for both players. Highest score in the time wins.'
-                          : 'Your pace is yours. Answer challenge orbs when you like, or tap REST for 1, 3 or 5 minutes of free roam and quests. When a rest ends, one question must be answered to carry on.',
+                          : 'Your pace is yours. Answer challenge orbs when you like and level up your hero as you go. Tap REST for 1, 3 or 5 minutes of free roam: finish the rest mission and you can answer early, with a hint. Open MISSIONS to see your goals. Mistakes come back later as corrections.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white60, fontSize: 12.5, height: 1.45),
                     ),
@@ -744,7 +898,13 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
+      child: g.hidden.contains(i) && !g.answered
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white12)),
+              child: const Text('Removed by your hint', style: TextStyle(color: Colors.white30, fontSize: 13, fontStyle: FontStyle.italic)),
+            )
+          : GestureDetector(
         onTap: g.answered ? null : () => setState(() => e.answerGate(i)),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -783,7 +943,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         Row(children: <Widget>[
           Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Expanded(child: Text(s.label.toUpperCase() + (a.q.fromSchool && a.q.topic.isNotEmpty ? '  /  ${a.q.topic}' : ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8))),
+          Expanded(child: Text((a.redo ? 'CORRECTION  /  ' : '') + s.label.toUpperCase() + (a.q.fromSchool && a.q.topic.isNotEmpty ? '  /  ${a.q.topic}' : ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 0.8))),
         ]),
         const SizedBox(height: 4),
         Text(a.q.text, maxLines: 4, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.3, fontWeight: FontWeight.w600)),
@@ -852,6 +1012,9 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                   _stat('Best streak', '${e.bestStreak}'),
                   _stat('XP', '+${e.xp}'),
                   if (e.questsDone > 0) _stat('Quests', '${e.questsDone}'),
+                  if (!_inDuel) _stat('Level', '${e.heroLevel}'),
+                  if (e.missionsDone > 0) _stat('Missions', '${e.missionsDone}'),
+                  if (e.corrected > 0) _stat('Corrected', '${e.corrected}'),
                 ]),
                 if (e.askedBy.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 16),
@@ -1055,6 +1218,22 @@ class _WorldPainter extends CustomPainter {
       for (int i = 1; i <= 4; i++) {
         _p.color = Colors.white.withValues(alpha: 0.18 / i);
         canvas.drawOval(Rect.fromCenter(center: Offset(px - engine.dashDirX * 18 * i, py - engine.dashDirY * 18 * i), width: 16, height: 30), _p);
+      }
+    }
+    // rank aura: grows with the hero's level
+    if (engine.allowRest && engine.heroTier >= 1) {
+      const List<Color> tc = <Color>[Color(0xFFB0BEC5), Color(0xFF81C784), Color(0xFF4FC3F7), Color(0xFFBA68C8), Color(0xFFFFB74D), Color(0xFFFF8A65), Color(0xFFFFD54F), Color(0xFFFFF59D)];
+      final Color ac = tc[engine.heroTier];
+      final double pulse = 0.5 + 0.5 * sin(engine.time * 3);
+      _p.style = PaintingStyle.fill;
+      _p.color = ac.withValues(alpha: 0.10 + 0.06 * pulse);
+      canvas.drawCircle(Offset(px, py + 2), 26 + engine.heroTier * 2.5, _p);
+      if (engine.heroTier >= 3) {
+        for (int i = 0; i < engine.heroTier - 1; i++) {
+          final double ang = engine.time * 1.6 + i * 2 * pi / (engine.heroTier - 1);
+          _p.color = ac.withValues(alpha: 0.9);
+          canvas.drawCircle(Offset(px + cos(ang) * 30, py + 2 + sin(ang) * 22), 2.6, _p);
+        }
       }
     }
     if (!blink) {
