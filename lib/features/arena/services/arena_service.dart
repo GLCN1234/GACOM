@@ -24,20 +24,21 @@ class ArenaService {
   // ── Wallet ─────────────────────────────────────────────────────────────────
   static Future<double> getWalletBalance() async {
     try {
-      final w = await _db.from('profiles').select('wallet_balance').eq('id', _uid!).single();
-      return (w['wallet_balance'] as num).toDouble();
+      final w = await _db.rpc('my_wallet');
+      return ((w as Map)['wallet_balance'] as num).toDouble();
     } catch (_) { return 0; }
   }
 
   /// Returns {'success': true} or {'success': false, 'error': <real reason>}
   static Future<Map<String, dynamic>> deductStake(int amount) async {
     try {
-      final res = await _db.rpc('deduct_arena_stake', params: {
-        'p_user_id': _uid,
+      // The raw deduct_arena_stake RPC is service-role only now; this one debits auth.uid() only.
+      final String ref = 'ENTRY_${DateTime.now().millisecondsSinceEpoch}';
+      final res = await _db.rpc('arena_deduct_my_stake', params: {
         'p_amount': amount,
-        'p_reference': 'ARENA_ENTRY_${DateTime.now().millisecondsSinceEpoch}',
+        'p_reference': ref,
       });
-      if (res?['success'] == true) return {'success': true};
+      if (res?['success'] == true) return {'success': true, 'reference': ref};
       return {'success': false, 'error': res?['error'] ?? 'RPC returned failure with no error message'};
     } catch (e) {
       debugPrint('deductStake RPC threw: $e');
@@ -45,14 +46,29 @@ class ArenaService {
     }
   }
 
-  static Future<void> refundStake(String userId, int amount) async {
-    final res = await _db.rpc('refund_arena_stake', params: {
-      'p_user_id': userId,
-      'p_amount': amount,
-      'p_reference': 'ARENA_REFUND_${DateTime.now().millisecondsSinceEpoch}',
-    });
-    if (res?['success'] != true) {
-      throw Exception(res?['error'] ?? 'Refund RPC returned failure');
+  /// Refunds a stake that was debited but never used (the match could not be
+  /// created or joined). The server checks that the debit really happened, that no
+  /// live match uses it, and refunds it once only.
+  static Future<bool> refundEntry(String reference) async {
+    try {
+      final res = await _db.rpc('arena_refund_entry', params: {'p_reference': reference});
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('refundEntry failed: $e');
+      return false;
+    }
+  }
+
+  /// Refunds the stakes of a match: reason 'cancel' (creator cancels a waiting
+  /// match) or 'draw' (a started match ended without a winner). Checked and
+  /// idempotent on the server.
+  static Future<bool> refundMatch(String matchId, String reason) async {
+    try {
+      final res = await _db.rpc('arena_refund_match', params: {'p_match': matchId, 'p_reason': reason});
+      return res is Map && res['success'] == true;
+    } catch (e) {
+      debugPrint('refundMatch failed: $e');
+      return false;
     }
   }
 
@@ -64,11 +80,13 @@ class ArenaService {
     // Free matches skip stake deduction entirely rather than calling it
     // with 0 — the RPC may enforce a real minimum stake, which would
     // wrongly reject a genuinely free match.
+    String? stakeRef;
     if (stakeAmount > 0) {
       final deductResult = await deductStake(stakeAmount);
       if (deductResult['success'] != true) {
         return {'error': 'Could not deduct stake: ${deductResult['error']}'};
       }
+      stakeRef = deductResult['reference'] as String?;
     }
     try {
       final channelId = 'arena_${DateTime.now().millisecondsSinceEpoch}';
@@ -86,7 +104,7 @@ class ArenaService {
       bool refundOk = true;
       if (stakeAmount > 0) {
         try {
-          await refundStake(_uid!, stakeAmount);
+          refundOk = stakeRef == null ? false : await refundEntry(stakeRef);
         } catch (refundError) {
           refundOk = false;
           debugPrint('REFUND ALSO FAILED: $refundError');
@@ -102,12 +120,14 @@ class ArenaService {
   static Future<Map<String, dynamic>?> joinMatch(String matchId) async {
     final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
     final stakeAmount = match['stake_amount'] as int;
+    String? stakeRef;
     if (stakeAmount > 0) {
       final deductResult = await deductStake(stakeAmount);
       if (deductResult['success'] != true) {
         debugPrint('joinMatch: deduct failed — ${deductResult['error']}');
         return null;
       }
+      stakeRef = deductResult['reference'] as String?;
     }
     try {
       final updated = await _db.from('arena_matches').update({
@@ -120,7 +140,7 @@ class ArenaService {
       debugPrint('joinMatch update failed, attempting refund: $e');
       if (stakeAmount > 0) {
         try {
-          await refundStake(_uid!, stakeAmount);
+          if (stakeRef != null) await refundEntry(stakeRef);
         } catch (refundError) {
           debugPrint('joinMatch REFUND ALSO FAILED: $refundError');
         }
@@ -131,12 +151,7 @@ class ArenaService {
 
   static Future<void> cancelMatch(String matchId) async {
     try {
-      final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
-      await _db.from('arena_matches').update({'status': 'cancelled'}).eq('id', matchId);
-      await refundStake(match['creator_id'] as String, match['stake_amount'] as int);
-      if (match['opponent_id'] != null) {
-        await refundStake(match['opponent_id'] as String, match['stake_amount'] as int);
-      }
+      await refundMatch(matchId, 'cancel');
     } catch (_) {}
   }
 
@@ -218,10 +233,7 @@ class ArenaService {
     if (winnerId != null) {
       await declareWinner(matchId, winnerId);
     } else {
-      final match = await _db.from('arena_matches').select('*').eq('id', matchId).single();
-      await _db.from('arena_matches').update({'status': 'cancelled'}).eq('id', matchId);
-      await refundStake(match['creator_id'] as String, match['stake_amount'] as int);
-      if (match['opponent_id'] != null) await refundStake(match['opponent_id'] as String, match['stake_amount'] as int);
+      await refundMatch(matchId, 'dispute');
     }
   }
 

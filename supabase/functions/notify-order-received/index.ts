@@ -1,74 +1,69 @@
-// Called right after a new order is inserted (from cart_screen.dart).
-// Emails everyone in store_staff_roles with can_manage_orders = true so
-// they know to package/approve the order — this is the "we receive an
-// email when an order comes in" piece of the fulfillment workflow.
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+// Called right after a new order is inserted (from cart_screen.dart). Emails
+// everyone in store_staff_roles with can_manage_orders = true so they package
+// and approve the order.
+//
+// Security notes:
+//   - the caller must be signed in AND own the order (or be an admin); before,
+//     anyone could trigger emails for any order id
+//   - everything interpolated into the email is HTML-escaped
+//   - at most one notification per order per isolate-minute (rate limit) and
+//     a hard cap on managers emailed
+import { secureServe, requireUser, rateLimit, serviceClient, fetchWithTimeout, asUuid, escapeHtml, requireEnv, HttpError, ADMIN_ROLES, redact } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 const FROM_ADDRESS = 'GACOM Store <orders@gamicom.net>'
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+secureServe('notify-order-received', async (req, ctx) => {
+  const { user } = await requireUser(req)
+  rateLimit(`notify-order:${user.id}`, 10, 60_000)
 
-  try {
-    const { orderId } = await req.json()
-    if (!orderId) throw new Error('orderId is required')
+  const body = await ctx.readJson()
+  const orderId = asUuid(body.orderId, 'orderId')
+  const resendKey = requireEnv('RESEND_API_KEY')
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
-    const resendKey = Deno.env.get('RESEND_API_KEY')
-    if (!resendKey) throw new Error('RESEND_API_KEY not configured')
+  const supabase = serviceClient() // caller authenticated above
+  const { data: order } = await supabase.from('orders').select('*').eq('id', orderId).maybeSingle()
+  if (!order) throw new HttpError(404, 'Order not found')
+  if (order.user_id !== user.id) {
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    if (!ADMIN_ROLES.includes(String(prof?.role ?? ''))) throw new HttpError(403, 'Not authorised')
+  }
+  rateLimit(`notify-order-id:${orderId}`, 1, 10 * 60_000) // one email burst per order
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders').select('*').eq('id', orderId).single()
-    if (orderError) throw orderError
+  const { data: managers, error: mErr } = await supabase.from('store_staff_roles').select('user_id').eq('can_manage_orders', true).limit(20)
+  if (mErr) throw mErr
+  if (!managers || managers.length === 0) {
+    return ctx.json({ success: true, note: 'No order managers assigned yet — nobody to notify.' })
+  }
 
-    const { data: managers, error: managersError } = await supabase
-      .from('store_staff_roles').select('user_id').eq('can_manage_orders', true)
-    if (managersError) throw managersError
+  // deno-lint-ignore no-explicit-any
+  const itemsHtml = (Array.isArray(order.items) ? order.items : []).slice(0, 100).map((i: any) =>
+    `<li>Product ${escapeHtml(i.product_id)} × ${escapeHtml(i.quantity)} — ₦${escapeHtml(i.total_price)}</li>`).join('')
 
-    if (!managers || managers.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'No order managers assigned yet — nobody to notify.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
-    const itemsHtml = (order.items ?? []).map((i: any) =>
-      `<li>Product ${i.product_id} × ${i.quantity} — ₦${i.total_price}</li>`).join('')
-
-    const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#0a0a0a;color:#eaeaea;padding:24px;max-width:600px;margin:0 auto;">
-      <h1 style="color:#ff6b1a;font-size:20px;">New Order — ${order.reference}</h1>
-      <p>Status: <strong>${order.status}</strong></p>
-      <p>Delivery to: ${order.delivery_state ?? 'unspecified'} (est. ${order.delivery_days ?? '?'} days)</p>
+  const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#0a0a0a;color:#eaeaea;padding:24px;max-width:600px;margin:0 auto;">
+      <h1 style="color:#ff6b1a;font-size:20px;">New Order — ${escapeHtml(order.reference)}</h1>
+      <p>Status: <strong>${escapeHtml(order.status)}</strong></p>
+      <p>Delivery to: ${escapeHtml(order.delivery_state ?? 'unspecified')} (est. ${escapeHtml(order.delivery_days ?? '?')} days)</p>
       <ul>${itemsHtml}</ul>
-      <p>Subtotal: ₦${order.subtotal} · Delivery: ₦${order.delivery_fee} · <strong>Total: ₦${order.total}</strong></p>
+      <p>Subtotal: ₦${escapeHtml(order.subtotal)} · Delivery: ₦${escapeHtml(order.delivery_fee)} · <strong>Total: ₦${escapeHtml(order.total)}</strong></p>
       <p style="color:#888;font-size:12px;">Log in to the admin dashboard to package and approve this order.</p>
     </body></html>`
 
-    let sent = 0
-    for (const m of managers) {
-      const { data: userRes } = await supabase.auth.admin.getUserById(m.user_id)
-      const email = userRes?.user?.email
-      if (!email) continue
-      const res = await fetch(RESEND_ENDPOINT, {
+  let sent = 0
+  for (const m of managers) {
+    const { data: userRes } = await supabase.auth.admin.getUserById(m.user_id)
+    const email = userRes?.user?.email
+    if (!email) continue
+    try {
+      const res = await fetchWithTimeout(RESEND_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${resendKey}` },
-        body: JSON.stringify({ from: FROM_ADDRESS, to: [email], subject: `New order ${order.reference}`, html }),
-      })
+        body: JSON.stringify({ from: FROM_ADDRESS, to: [email], subject: `New order ${String(order.reference).slice(0, 60)}`, html }),
+      }, 10_000)
       if (res.ok) sent++
+    } catch (e) {
+      console.error('[notify-order-received] send failed:', redact(String(e)))
     }
-
-    return new Response(JSON.stringify({ success: true, notified: sent }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-
-  } catch (error) {
-    console.error('notify-order-received error:', error)
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
-})
+  return ctx.json({ success: true, notified: sent })
+}, { maxBodyBytes: 2 * 1024 })

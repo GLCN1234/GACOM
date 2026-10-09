@@ -91,11 +91,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
     try {
-      final profile = await SupabaseService.client
-          .from('profiles')
-          .select('wallet_balance, wallet_locked_balance, total_winnings')
-          .eq('id', userId)
-          .single();
+      final profile = Map<String, dynamic>.from(await SupabaseService.client.rpc('my_wallet') as Map);
       final txns = await SupabaseService.client
           .from('wallet_transactions')
           .select()

@@ -417,6 +417,16 @@ class _MyMatchTab extends ConsumerStatefulWidget {
 
 class _MyMatchTabState extends ConsumerState<_MyMatchTab> {
   final _evidenceCtrl = TextEditingController();
+  // Room credentials come from get_match_room (players and staff only), not from the table row.
+  Map<String, dynamic>? _room;
+  String? _roomFor;
+
+  Future<void> _fetchRoom(String matchId) async {
+    try {
+      final r = await SupabaseService.client.rpc('get_match_room', params: {'p_match': matchId});
+      if (mounted && _roomFor == matchId) setState(() => _room = r is Map ? Map<String, dynamic>.from(r) : null);
+    } catch (_) {}
+  }
 
   Map<String, dynamic>? get _myMatch {
     final userId = SupabaseService.currentUserId;
@@ -444,8 +454,13 @@ class _MyMatchTabState extends ConsumerState<_MyMatchTab> {
 
     final p1 = match['player1'] as Map<String, dynamic>?;
     final p2 = match['player2'] as Map<String, dynamic>?;
-    final roomId = match['room_id_assigned'];
-    final roomPass = match['room_password_assigned'];
+    if (_roomFor != match['id']?.toString()) {
+      _roomFor = match['id']?.toString();
+      _room = null;
+      if (_roomFor != null) _fetchRoom(_roomFor!);
+    }
+    final roomId = _room?['room_id'] ?? match['room_id_assigned'];
+    final roomPass = _room?['room_password'] ?? match['room_password_assigned'];
     final status = match['status'] as String? ?? 'scheduled';
 
     return ListView(padding: const EdgeInsets.all(20), children: [

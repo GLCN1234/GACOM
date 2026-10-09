@@ -1,3 +1,4 @@
+import '../../../core/utils/safe_url.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -178,7 +179,7 @@ Widget _buildParagraph(String inner, {bool isSmallPrint = false}) {
       style: TextStyle(color: GacomColors.deepOrange, decoration: TextDecoration.underline, fontSize: baseStyle.fontSize),
       recognizer: TapGestureRecognizer()
         ..onTap = () {
-          final uri = Uri.tryParse(url);
+          final uri = safeHttpsUri(url);
           if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
         },
     ));

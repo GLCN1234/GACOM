@@ -94,7 +94,7 @@ class CosmeticsService {
     final uid = SupabaseService.currentUserId;
     if (uid == null) return null;
     try {
-      final row = await SupabaseService.client.from('profiles').select('wallet_balance').eq('id', uid).maybeSingle();
+      final row = await SupabaseService.client.rpc('my_wallet') as Map?;
       return (row?['wallet_balance'] as num?)?.toDouble();
     } catch (_) { return null; }
   }

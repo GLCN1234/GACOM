@@ -4,8 +4,9 @@ class AppConstants {
   static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 
   // Paystack
+  // Public key only. The Paystack SECRET key must never be in the client; it
+  // lives in Supabase secrets and is used by the paystack-* edge functions.
   static const String paystackPublicKey = 'YOUR_PAYSTACK_PUBLIC_KEY';
-  static const String paystackSecretKey = 'YOUR_PAYSTACK_SECRET_KEY';
 
   // App
   static const String appName = 'GACOM';

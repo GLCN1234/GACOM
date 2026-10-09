@@ -35,6 +35,10 @@ final _demoProfile = {
   'global_rank': 142,
 };
 
+const String _publicCols = 'id, username, display_name, bio, avatar_url, banner_url, role, verification_status, '
+    'gamer_tag, favorite_games, location, website, twitter_handle, discord_handle, competitions_won, '
+    'competitions_entered, followers_count, following_count, posts_count, is_online, is_private, country, created_at';
+
 class ProfileScreen extends ConsumerStatefulWidget {
   final String userId;
   const ProfileScreen({super.key, required this.userId});
@@ -69,8 +73,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   Future<void> _load() async {
     try {
-      final p = await SupabaseService.client
-          .from('profiles').select('*').eq('id', widget.userId).single();
+      // Public columns only: wallet, winnings, ban and KYC columns are private to their owner.
+      final row = await SupabaseService.client
+          .from('profiles').select(_publicCols).eq('id', widget.userId).single();
+      final p = Map<String, dynamic>.from(row);
+      if (_isOwn) {
+        try {
+          final w = await SupabaseService.client.rpc('my_wallet') as Map;
+          p['wallet_balance'] = w['wallet_balance'];
+          p['total_winnings'] = w['total_winnings'];
+        } catch (_) {}
+      }
       final posts = await SupabaseService.client
           .from('posts').select('*')
           .eq('author_id', widget.userId).eq('is_deleted', false)
@@ -535,7 +548,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           children: [
             _Grid(posts: _posts.where((x) => x['post_type'] != 'clip').toList()),
             _Grid(posts: _posts.where((x) => x['post_type'] == 'clip').toList()),
-            _StatsTab(profile: p),
+            _StatsTab(profile: p, showWallet: _isOwn),
             const LeaderboardContent(),
           ],
         ),
@@ -694,7 +707,8 @@ class _TotalPointsCardState extends State<_TotalPointsCard> {
 
 class _StatsTab extends StatelessWidget {
   final Map<String, dynamic> profile;
-  const _StatsTab({required this.profile});
+  final bool showWallet;
+  const _StatsTab({required this.profile, this.showWallet = false});
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(20), children: [
     _Block('Tournament Record', [
@@ -702,11 +716,13 @@ class _StatsTab extends StatelessWidget {
       _Row('Win Rate', '${(profile['win_rate'] as num?)?.toStringAsFixed(1) ?? '0'}%'),
       _Row('Global Rank', '#${profile['global_rank'] ?? 'N/A'}'),
     ]),
-    const SizedBox(height: 16),
-    _Block('Wallet', [
-      _Row('Balance', '₦${(profile['wallet_balance'] as num?)?.toStringAsFixed(0) ?? '0'}'),
-      _Row('Total Winnings', '₦${(profile['total_winnings'] as num?)?.toStringAsFixed(0) ?? '0'}'),
-    ]),
+    if (showWallet) ...[
+      const SizedBox(height: 16),
+      _Block('Wallet', [
+        _Row('Balance', '₦${(profile['wallet_balance'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+        _Row('Total Winnings', '₦${(profile['total_winnings'] as num?)?.toStringAsFixed(0) ?? '0'}'),
+      ]),
+    ],
     const SizedBox(height: 16),
     _MyScoresSection(userId: profile['id'] as String?),
     const SizedBox(height: 80),

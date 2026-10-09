@@ -30,6 +30,8 @@ class AppUpdateInfo {
 
   static double _num(dynamic v) => v is num ? v.toDouble() : (double.tryParse('$v') ?? 0);
 
+  static String? _ownUrl(String u) => u.startsWith('${AppUpdateService.base}/') ? u : null;
+
   static AppUpdateInfo? parse(String body) {
     try {
       final dynamic j = jsonDecode(body);
@@ -43,8 +45,9 @@ class AppUpdateInfo {
         minBuild: minBuild,
         version: '${j['version'] ?? ''}',
         notes: notes,
-        fullUrl: '${j['full_url'] ?? AppUpdateService.fullUrl}',
-        arm64Url: '${j['arm64_url'] ?? ''}',
+        // Only ever download from our own release bucket, whatever the manifest says.
+        fullUrl: _ownUrl('${j['full_url'] ?? ''}') ?? AppUpdateService.fullUrl,
+        arm64Url: _ownUrl('${j['arm64_url'] ?? ''}') ?? '',
         fullMb: _num(j['full_mb']),
         arm64Mb: _num(j['arm64_mb']),
       );

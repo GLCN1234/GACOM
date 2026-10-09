@@ -123,8 +123,7 @@ class _TriviaGameState extends State<TriviaGame> {
       await widget.onWinner(oppId as String);
     } else {
       // Draw — refund
-      await ArenaService.refundStake(widget.match['creator_id'] as String, widget.match['stake_amount'] as int);
-      await ArenaService.refundStake(widget.match['opponent_id'] as String, widget.match['stake_amount'] as int);
+      await ArenaService.refundMatch(widget.match['id'] as String, 'draw');
       await SupabaseService.client.from('arena_matches').update({'status': 'completed'}).eq('id', widget.match['id']);
     }
   }

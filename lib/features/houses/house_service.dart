@@ -429,7 +429,7 @@ class HouseService {
   static Future<double> walletBalance() async {
     final uid = SupabaseService.currentUserId;
     if (uid == null) return 0.0;
-    final w = await SupabaseService.client.from('profiles').select('wallet_balance').eq('id', uid).single();
+    final w = await SupabaseService.client.rpc('my_wallet') as Map;
     return (w['wallet_balance'] as num?)?.toDouble() ?? 0.0;
   }
 }

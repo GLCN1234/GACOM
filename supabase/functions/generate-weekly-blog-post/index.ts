@@ -5,12 +5,8 @@
 //
 // Requires GROQ_API_KEY and UNSPLASH_ACCESS_KEY (unsplash.com/developers
 // — free "Demo" tier, 50 requests/hour, far more than one post/day needs).
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { secureServe, requireCronOrAdmin, serviceClient, redact, fetchWithTimeout, safeHttpsUrlOrNull, sanitizeBasicHtml } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
@@ -145,13 +141,11 @@ function slugify(title: string): string {
   return title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+// Cron-only: pg_cron must send the x-cron-secret header (CRON_SECRET); a signed-in
+// admin may also trigger a run by hand. The public anon key is NOT enough.
+secureServe('generate-weekly-blog-post', async (req, ctx) => {
+  await requireCronOrAdmin(req)
+  const supabase = serviceClient()
 
   try {
     const groqKey = Deno.env.get('GROQ_API_KEY')
@@ -165,7 +159,7 @@ Deno.serve(async (req) => {
     const slug = `${slugify(draft.title)}-${Date.now().toString(36)}`
 
     let coverImageUrl: string | null = null
-    let content = draft.content.trim()
+    let content = sanitizeBasicHtml(draft.content).trim()
     const unsplashKey = Deno.env.get('UNSPLASH_ACCESS_KEY')
     if (unsplashKey && draft.image_keywords) {
       const image = await fetchUnsplashImage(unsplashKey, String(draft.image_keywords))
@@ -189,12 +183,10 @@ Deno.serve(async (req) => {
     }).select().single()
     if (error) throw error
 
-    return new Response(JSON.stringify({ success: true, post: data }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return ctx.json({ success: true, post: data })
 
   } catch (error) {
-    console.error('generate-weekly-blog-post error:', error)
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('generate-weekly-blog-post error:', redact(String((error as Error)?.stack ?? error)).slice(0, 1500))
+    return ctx.json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
   }
-})
+}, { maxBodyBytes: 4 * 1024, ipRateLimit: { limit: 20, windowMs: 60_000 } })

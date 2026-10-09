@@ -102,7 +102,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
     final uid = SupabaseService.currentUserId;
     if (uid == null) return;
     try {
-      final p = await SupabaseService.client.from('profiles').select('display_name, avatar_url, wallet_balance').eq('id', uid).single();
+      final p = await SupabaseService.client.from('profiles').select('display_name, avatar_url').eq('id', uid).single();
       if (mounted) setState(() => _myProfile = p);
     } catch (_) {}
   }

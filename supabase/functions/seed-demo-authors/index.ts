@@ -1,12 +1,10 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// DEV/DEMO ONLY. Creates ~40 fake auth users. Refused unless
+// ALLOW_SEED_FUNCTIONS=true AND the caller is an admin or presents the
+// x-seed-secret header (SEED_SECRET). Leave ALLOW_SEED_FUNCTIONS unset in
+// production.
+import { secureServe, requireSeedAccess, serviceClient, redact } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const usernames = [
+const usernames: [string, string, boolean][] = [
   ['xXSniperKingXx', 'Sniper King', true], ['NijaGameQueen', 'Nija Game Queen', true],
   ['LagosGamer247', 'Lagos Gamer', false], ['AbujaAceGamer', 'Abuja Ace', false],
   ['ClutchQueenNG', 'Clutch Queen', true], ['HeadshotHarry', 'Headshot Harry', false],
@@ -29,50 +27,34 @@ const usernames = [
   ['MVPMichael', 'MVP Michael', true], ['LegendaryLade', 'Legendary Lade', false],
 ]
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-  try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-    const created: { username: string, id: string }[] = []
-    const errors: string[] = []
+secureServe('seed-demo-authors', async (req, ctx) => {
+  await requireSeedAccess(req)
+  const supabase = serviceClient()
+  const created: { username: string, id: string }[] = []
+  const errors: string[] = []
 
-    for (const [username, displayName, verified] of usernames) {
-      const email = `${username.toLowerCase()}@gacom-demo-seed.internal`
-      const { data: userData, error: userError } = await supabase.auth.admin.createUser({
-        email,
-        password: crypto.randomUUID(),
-        email_confirm: true,
-      })
-      if (userError || !userData.user) {
-        errors.push(`${username}: ${userError?.message ?? 'unknown error'}`)
-        continue
-      }
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: userData.user.id,
-        username,
-        display_name: displayName,
-        verification_status: verified ? 'verified' : 'unverified',
-      }, { onConflict: 'id' })
-      if (profileError) {
-        errors.push(`${username} (profile): ${profileError.message}`)
-        continue
-      }
-      created.push({ username, id: userData.user.id })
+  for (const [username, displayName, verified] of usernames) {
+    const email = `${username.toLowerCase()}@gacom-demo-seed.internal`
+    const { data: userData, error: userError } = await supabase.auth.admin.createUser({
+      email,
+      password: crypto.randomUUID(),
+      email_confirm: true,
+    })
+    if (userError || !userData.user) {
+      errors.push(`${username}: ${redact(String(userError?.message ?? 'unknown error')).slice(0, 120)}`)
+      continue
     }
-
-    return new Response(
-      JSON.stringify({ created, errors, createdCount: created.length }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: userData.user.id,
+      username,
+      display_name: displayName,
+      verification_status: verified ? 'verified' : 'unverified',
+    }, { onConflict: 'id' })
+    if (profileError) {
+      errors.push(`${username} (profile): ${redact(String(profileError.message)).slice(0, 120)}`)
+      continue
+    }
+    created.push({ username, id: userData.user.id })
   }
-})
+  return ctx.json({ created, errors, createdCount: created.length })
+}, { maxBodyBytes: 1024, ipRateLimit: { limit: 5, windowMs: 60_000 } })

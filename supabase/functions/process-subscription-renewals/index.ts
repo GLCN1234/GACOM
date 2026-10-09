@@ -7,24 +7,18 @@
 //     expiring within REMINDER_DAYS: a reminder email, not an auto-charge
 //     — because for these there is nothing to auto-charge; only the
 //     person themselves can initiate another transfer.
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { secureServe, requireCronOrAdmin, serviceClient, redact, fetchWithTimeout, safeHttpsUrlOrNull, sanitizeBasicHtml } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 const FROM_ADDRESS = 'GACOM Edu <edu@gamicom.net>'
 const REMINDER_DAYS = 3
 const MAX_RENEWAL_ATTEMPTS = 3 // after this many failures, stop retrying and just remind them instead
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+// Cron-only: pg_cron must send the x-cron-secret header (CRON_SECRET); a signed-in
+// admin may also trigger a run by hand. The public anon key is NOT enough.
+secureServe('process-subscription-renewals', async (req, ctx) => {
+  await requireCronOrAdmin(req)
+  const supabase = serviceClient()
   const paystackKey = Deno.env.get('PAYSTACK_SECRET_KEY')
   const resendKey = Deno.env.get('RESEND_API_KEY')
 
@@ -126,12 +120,10 @@ Deno.serve(async (req) => {
       reminded++
     }
 
-    return new Response(JSON.stringify({ success: true, renewed, renewalFailed, reminded }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return ctx.json({ success: true, renewed, renewalFailed, reminded })
 
   } catch (error) {
-    console.error('process-subscription-renewals error:', error)
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('process-subscription-renewals error:', redact(String((error as Error)?.stack ?? error)).slice(0, 1500))
+    return ctx.json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
   }
-})
+}, { maxBodyBytes: 4 * 1024, ipRateLimit: { limit: 20, windowMs: 60_000 } })

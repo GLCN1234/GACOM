@@ -1,135 +1,80 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Confirms a Paystack payment with Paystack itself, then credits the wallet or
+// activates an Edu subscription. Previously unauthenticated: anyone could
+// trigger crediting for any reference. Now:
+//   - the caller must be signed in and the reference must belong to them
+//     (wallet_transactions.user_id / edu_subscriptions.user_id)
+//   - the amount credited is Paystack's own confirmed amount, never the client's
+//   - crediting stays idempotent inside credit_wallet_from_reference
+// The same crediting logic runs from the signed webhook (paystack-webhook).
+import {
+  secureServe, requireUser, requireEnv, rateLimit, serviceClient, fetchWithTimeout,
+  asString, HttpError, redact,
+} from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+secureServe('paystack-verify', async (req, ctx) => {
+  const { user } = await requireUser(req)
+  rateLimit(`paystack-verify:${user.id}`, 30, 60_000)
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  const body = await ctx.readJson()
+  const reference = asString(body.reference, 'reference', { max: 100, pattern: /^[A-Za-z0-9_.=-]+$/ })
+  const secretKey = requireEnv('PAYSTACK_SECRET_KEY')
+
+  const svc = serviceClient() // caller authenticated above
+
+  // The reference must be one of this user's own.
+  const isEdu = reference.startsWith('EDU_')
+  const { data: owned } = isEdu
+    ? await svc.from('edu_subscriptions').select('id, amount, status').eq('reference', reference).eq('user_id', user.id).maybeSingle()
+    : await svc.from('wallet_transactions').select('id').eq('reference', reference).eq('user_id', user.id).maybeSingle()
+  if (!owned) throw new HttpError(404, 'Payment record not found')
+
+  // A subscription reference activates once. Replaying an old, already-used reference must not
+  // grant another month (Paystack keeps reporting that payment as successful forever).
+  if (isEdu && owned.status === 'active') return ctx.json({ success: true, subscription: 'active' })
+  if (isEdu && owned.status !== 'pending') throw new HttpError(409, 'This payment has already been used')
+
+  const vRes = await fetchWithTimeout(
+    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
+    { headers: { 'Authorization': `Bearer ${secretKey}` } },
+    20_000,
+  )
+  const v = await vRes.json().catch(() => ({}))
+  if (!v?.status || v.data?.status !== 'success') {
+    // gateway_response is a short human string from Paystack ("Declined"); safe to relay.
+    const msg = typeof v?.data?.gateway_response === 'string' ? v.data.gateway_response.slice(0, 120) : 'Payment not successful'
+    return ctx.json({ success: false, error: msg })
   }
 
-  try {
-    const { reference } = await req.json()
-    if (!reference) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'reference is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+  const amountKobo = Number(v.data.amount)
+  if (!Number.isFinite(amountKobo) || amountKobo <= 0) throw new HttpError(502, 'Payment provider returned an invalid amount')
+  const amountNaira = amountKobo / 100
 
-    const secretKey = Deno.env.get('PAYSTACK_SECRET_KEY')
-    if (!secretKey) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Paystack secret key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Ask Paystack directly whether this transaction actually succeeded —
-    // never trust the client's claim that payment went through.
-    const verifyRes = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-      { headers: { 'Authorization': `Bearer ${secretKey}` } }
-    )
-    const verifyData = await verifyRes.json()
-
-    if (!verifyData.status || verifyData.data?.status !== 'success') {
-      return new Response(
-        JSON.stringify({ success: false, error: verifyData.data?.gateway_response ?? 'Payment not successful' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Paystack's own confirmed amount (kobo) is the only amount we trust.
-    const amountNaira = verifyData.data.amount / 100
-    // If this was a card payment with a reusable authorization, capture
-    // it now — this is what lets a future renewal actually auto-charge
-    // the card without the person doing anything. Bank transfers and
-    // other channels never carry a reusable authorization at all; this
-    // just comes back empty/false for those, which is expected.
-    const authorization = verifyData.data.authorization
-    const channel = authorization?.channel as string | undefined
-    const authCode = authorization?.reusable ? authorization.authorization_code as string : null
-
-    // Service role client — bypasses RLS, needed to credit another user's
-    // wallet_balance row from a server context.
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
-    // Edu Gaming subscription payments use a distinct reference prefix and
-    // activate a subscription row instead of crediting the wallet.
-    if (reference.startsWith('EDU_')) {
-      const { data: subRow, error: subFetchError } = await supabase
-        .from('edu_subscriptions')
-        .select('id, amount')
-        .eq('reference', reference)
-        .maybeSingle()
-      if (subFetchError || !subRow) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Subscription record not found for this reference' }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      const expectedNaira = (subRow.amount ?? 0) / 100
-      if (Math.abs(amountNaira - expectedNaira) > 0.01) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Amount mismatch' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      const expiresAt = new Date()
-      expiresAt.setMonth(expiresAt.getMonth() + 1)
-      const { error: updateError } = await supabase
-        .from('edu_subscriptions')
-        .update({
-          status: 'active',
-          expires_at: expiresAt.toISOString(),
-          authorization_code: authCode,
-          payment_channel: channel ?? null,
-          // Only ever true for a genuine reusable card authorization —
-          // this is the single flag the renewal job checks before
-          // attempting to auto-charge anyone.
-          auto_renew: authCode !== null,
-          renewal_failed_count: 0,
-        })
-        .eq('reference', reference)
-      if (updateError) {
-        return new Response(
-          JSON.stringify({ success: false, error: updateError.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      return new Response(
-        JSON.stringify({ success: true, subscription: 'active' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const { data, error } = await supabase.rpc('credit_wallet_from_reference', {
-      p_reference: reference,
-      p_amount: amountNaira,
-    })
-
+  if (isEdu) {
+    const expectedNaira = (owned.amount ?? 0) / 100
+    if (Math.abs(amountNaira - expectedNaira) > 0.01) return ctx.json({ success: false, error: 'Amount mismatch' }, 400)
+    const auth = v.data.authorization
+    const authCode = auth?.reusable ? String(auth.authorization_code) : null
+    const expiresAt = new Date()
+    expiresAt.setMonth(expiresAt.getMonth() + 1)
+    const { error } = await svc.from('edu_subscriptions').update({
+      status: 'active',
+      expires_at: expiresAt.toISOString(),
+      authorization_code: authCode,
+      payment_channel: auth?.channel ? String(auth.channel) : null,
+      auto_renew: authCode !== null,
+      renewal_failed_count: 0,
+    }).eq('reference', reference).eq('user_id', user.id)
     if (error) {
-      return new Response(
-        JSON.stringify({ success: false, error: error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      console.error('[paystack-verify] edu update failed:', redact(String(error.message)))
+      throw new HttpError(500, 'Could not activate the subscription. Please contact support.')
     }
-
-    return new Response(
-      JSON.stringify(data),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ success: false, error: String(err) }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return ctx.json({ success: true, subscription: 'active' })
   }
-})
+
+  const { data, error } = await svc.rpc('credit_wallet_from_reference', { p_reference: reference, p_amount: amountNaira })
+  if (error) {
+    console.error('[paystack-verify] credit failed:', redact(String(error.message)))
+    throw new HttpError(500, 'Could not credit the wallet. Please contact support.')
+  }
+  return ctx.json(data)
+}, { maxBodyBytes: 4 * 1024 })

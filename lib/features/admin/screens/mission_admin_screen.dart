@@ -1,3 +1,4 @@
+import '../../../core/utils/safe_url.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,7 +11,7 @@ int _i(dynamic v) => (v as num?)?.toInt() ?? 0;
 Map<String, dynamic>? _map(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : null;
 
 Future<bool> _openUrl(String url) async {
-  final u = Uri.tryParse(url);
+  final u = safeHttpsUri(url);
   if (u == null) return false;
   try {
     return await launchUrl(u, mode: LaunchMode.externalApplication);

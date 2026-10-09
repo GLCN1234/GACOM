@@ -45,6 +45,12 @@ import '../../features/admin/screens/store_admin_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
 import '../../features/ads/screens/ads_screen.dart';
+import '../../features/admin/screens/security_center_screen.dart';
+import '../../features/support/desk/support_admin_screen.dart';
+import '../../features/support/desk/support_desk_screen.dart';
+import '../../features/support/desk/support_desk_ticket_screen.dart';
+import '../../features/support/screens/my_tickets_screen.dart';
+import '../../features/support/support_service.dart';
 import '../../features/support/screens/support_chat_screen.dart';
 import '../../features/support/screens/agent_chat_screen.dart';
 import '../../features/exco/screens/exco_dashboard_screen.dart';
@@ -129,13 +135,64 @@ import '../../features/arena/screens/games/jigsaw_screen.dart';
 import '../../features/arena/games/void_protocols/void_protocols_screen.dart';
 import '../../features/arena/games/chrono_spire/chrono_spire_screen.dart';
 
+/// Server-checked role for route guards. The role is read from the `profiles`
+/// table (never from client-editable auth user_metadata) and cached per user id.
+/// This only hides admin screens from non-admins; the real enforcement is RLS
+/// and the role checks inside the edge functions.
+class _RoleGuard {
+  static String? _uid;
+  static String? _role;
+
+  static Future<String> role() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return '';
+    if (_uid == user.id && _role != null) return _role!;
+    try {
+      final row = await Supabase.instance.client
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+      _uid = user.id;
+      _role = (row?['role'] as String?) ?? 'user';
+      return _role!;
+    } catch (_) {
+      return ''; // fail closed; the next navigation retries
+    }
+  }
+
+  static void clear() {
+    _uid = null;
+    _role = null;
+  }
+
+  static bool isAdminLocation(String loc) => loc == '/admin' || loc.startsWith('/admin/');
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     initialLocation: AppConstants.splashRoute,
-    redirect: (context, state) {
+    redirect: (context, state) async {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
       final loc = state.matchedLocation;
+      // Admin area: needs an admin/super_admin role loaded from the server.
+      // (/admin/support is the staff desk, which also admits support staff;
+      // the server still decides what data they can see.)
+      if (isLoggedIn && _RoleGuard.isAdminLocation(loc)) {
+        final role = await _RoleGuard.role();
+        final isStaffDesk = loc == '/admin/support' || loc.startsWith('/admin/support/');
+        final adminOnly = loc == '/admin/security' || loc.startsWith('/admin/security/') || isStaffDesk;
+        final allowed = role == 'admin' ||
+            role == 'super_admin' ||
+            (!adminOnly && role == 'moderator') ||
+            (isStaffDesk && (role == 'support' || role == 'support_agent' || role == 'moderator' || role == 'exco'));
+        if (!allowed) return AppConstants.homeRoute;
+      }
+      if (isLoggedIn && loc == '/exco-dashboard') {
+        final role = await _RoleGuard.role();
+        if (role != 'admin' && role != 'super_admin' && role != 'moderator' && role != 'exco') return AppConstants.homeRoute;
+      }
       if (loc == '/reset-password') return null;
       final isAuthRoute = loc == AppConstants.loginRoute ||
           loc == AppConstants.registerRoute ||
@@ -254,6 +311,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppConstants.adsRoute, builder: (_, __) => const AdsScreen()),
           GoRoute(path: AppConstants.supportRoute, builder: (_, __) => const SupportChatScreen()),
           GoRoute(path: AppConstants.agentChatRoute, builder: (_, __) => const AgentChatScreen()),
+          GoRoute(path: '/support/tickets', builder: (_, __) => const MyTicketsScreen()),
+          GoRoute(path: '/support/ticket/:id', builder: (_, s) => TicketScreen(ticketId: s.pathParameters['id']!)),
+          GoRoute(path: '/support/desk', builder: (_, __) => const SupportDeskScreen()),
+          GoRoute(path: '/support/desk/ticket/:id', builder: (_, s) => SupportDeskTicketScreen(ticketId: s.pathParameters['id']!, initial: s.extra is SupportTicket ? s.extra as SupportTicket : null)),
           GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
           GoRoute(path: '/exco-dashboard', builder: (_, __) => const ExcoDashboardScreen()),
           // ── Edu Gaming routes ──────────────────────────────────────────
@@ -387,6 +448,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: AppConstants.adminRoute, builder: (_, __) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/errors', builder: (_, __) => const ErrorLogsScreen()),
+      GoRoute(path: '/admin/security', builder: (_, __) => const SecurityCenterScreen()),
+      GoRoute(path: '/admin/support', builder: (_, __) => const SupportAdminScreen()),
       GoRoute(path: '/leaderboard', builder: (_, __) => const LeaderboardScreen()),
       GoRoute(path: '/customization', builder: (_, __) => const CustomizationScreen()),
       GoRoute(path: '/locker', builder: (_, __) => const LockerScreen()),
@@ -406,6 +469,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    _RoleGuard.clear();
     if (data.event == AuthChangeEvent.passwordRecovery) {
       router.go('/reset-password');
     }

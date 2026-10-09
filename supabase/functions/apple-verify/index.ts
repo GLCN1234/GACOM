@@ -1,19 +1,22 @@
 // Confirms an iOS In-App Purchase with Apple, then credits the wallet or
 // activates Premium. The app only tells us a transaction id; everything that
-// matters (product, bundle, expiry) is read from Apple's own servers.
+// matters (product, bundle, expiry) is read from Apple's own servers using the
+// App Store Server API (authenticated with our private key, over TLS), so the
+// signed transaction we decode comes straight from Apple and not from the client.
 //
-// Secrets to set (see the apply instructions):
+// Secrets to set (see docs/APPSEC_AUDIT.md):
 //   APPLE_ISSUER_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY (contents of the .p8),
 //   APPLE_BUNDLE_ID (com.mobtechsynergies.gacom)
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+//   APPLE_ALLOW_SANDBOX=true  ONLY while App Review / TestFlight needs it.
+//     Sandbox purchases are free, so with this unset they are refused and
+//     cannot be turned into real wallet credit.
+//
+// Security notes:
+//   - user identity from the JWT only; the purchase is bound to that user by
+//     apple_apply_transaction (a transaction/subscription cannot move accounts)
+//   - the product the client claims must match what Apple says it bought
+//   - generic errors to the caller; detail only in server logs
+import { secureServe, requireUser, requireEnv, rateLimit, serviceClient, fetchWithTimeout, asString, HttpError, redact } from '../_shared/security.ts'
 
 function b64url(input: ArrayBuffer | Uint8Array | string): string {
   const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : new Uint8Array(input)
@@ -23,7 +26,9 @@ function b64url(input: ArrayBuffer | Uint8Array | string): string {
 }
 
 function decodePayload(jws: string): Record<string, unknown> {
-  const part = jws.split('.')[1]
+  const parts = jws.split('.')
+  if (parts.length !== 3) throw new Error('Malformed signed transaction')
+  const part = parts[1]
   const padded = part.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((part.length + 3) % 4)
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(padded), (c) => c.charCodeAt(0))))
 }
@@ -46,53 +51,68 @@ async function appleToken(): Promise<string> {
 async function fetchTransaction(id: string, token: string): Promise<Record<string, unknown> | null> {
   // Real purchases live on the production host; App Review and sandbox
   // testers live on the sandbox host. Try production first.
-  for (const host of ['api.storekit.itunes.apple.com', 'api.storekit-sandbox.itunes.apple.com']) {
-    const res = await fetch(`https://${host}/inApps/v1/transactions/${encodeURIComponent(id)}`, {
+  const allowSandbox = Deno.env.get('APPLE_ALLOW_SANDBOX') === 'true'
+  const hosts = [
+    { host: 'api.storekit.itunes.apple.com', env: 'Production' },
+    ...(allowSandbox ? [{ host: 'api.storekit-sandbox.itunes.apple.com', env: 'Sandbox' }] : []),
+  ]
+  for (const { host, env } of hosts) {
+    const res = await fetchWithTimeout(`https://${host}/inApps/v1/transactions/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${token}` },
-    })
+    }, 15_000)
     if (res.status === 200) {
       const body = await res.json()
-      if (body.signedTransactionInfo) return decodePayload(body.signedTransactionInfo as string)
+      if (body.signedTransactionInfo) {
+        const tx = decodePayload(body.signedTransactionInfo as string)
+        // The host we asked must agree with the environment Apple stamped on it.
+        if (tx.environment && String(tx.environment).toLowerCase() !== env.toLowerCase()) return null
+        return tx
+      }
     }
   }
   return null
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+secureServe('apple-verify', async (req, ctx) => {
+  const { user } = await requireUser(req)
+  rateLimit(`apple:${user.id}`, 20, 60_000)
+
+  const body = await ctx.readJson()
+  const transactionId = asString(body.transaction_id, 'transaction_id', { max: 64, pattern: /^[0-9A-Za-z_\-]+$/ })
+  const claimedProduct = body.product_id === undefined ? '' : asString(body.product_id, 'product_id', { max: 128, optional: true })
+
+  const bundleId = requireEnv('APPLE_BUNDLE_ID')
+  for (const k of ['APPLE_ISSUER_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY']) requireEnv(k)
+
+  let tx: Record<string, unknown> | null
   try {
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
-    })
-    const { data: userData } = await userClient.auth.getUser()
-    const user = userData?.user
-    if (!user) return json({ success: false, error: 'Please sign in again' }, 401)
-
-    const { transaction_id } = await req.json()
-    if (!transaction_id) return json({ success: false, error: 'transaction_id is required' }, 400)
-
-    for (const k of ['APPLE_ISSUER_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY', 'APPLE_BUNDLE_ID']) {
-      if (!Deno.env.get(k)) return json({ success: false, error: `Server is missing ${k}` }, 500)
-    }
-
-    const tx = await fetchTransaction(String(transaction_id), await appleToken())
-    if (!tx) return json({ success: false, error: 'Apple could not confirm this purchase yet. It will retry.' })
-    if (tx.bundleId !== Deno.env.get('APPLE_BUNDLE_ID')) return json({ success: false, error: 'Wrong app' }, 400)
-    if (tx.revocationDate) return json({ success: false, error: 'This purchase was refunded' })
-
-    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-    const { data, error } = await admin.rpc('apple_apply_transaction', {
-      p_user: user.id,
-      p_transaction_id: String(tx.transactionId),
-      p_original_transaction_id: tx.originalTransactionId ? String(tx.originalTransactionId) : null,
-      p_product_id: String(tx.productId),
-      p_environment: tx.environment ? String(tx.environment) : null,
-      p_expires_at: tx.expiresDate ? new Date(Number(tx.expiresDate)).toISOString() : null,
-    })
-    if (error) return json({ success: false, error: error.message }, 500)
-    return json(data)
-  } catch (err) {
-    return json({ success: false, error: String(err) }, 500)
+    tx = await fetchTransaction(transactionId, await appleToken())
+  } catch (e) {
+    if (e instanceof HttpError) throw e
+    console.error('[apple-verify] apple lookup failed:', redact(String(e)))
+    tx = null
   }
+  if (!tx) return ctx.json({ success: false, error: 'Apple could not confirm this purchase yet. It will retry.' })
+  if (tx.bundleId !== bundleId) return ctx.json({ success: false, error: 'Wrong app' }, 400)
+  if (tx.revocationDate) return ctx.json({ success: false, error: 'This purchase was refunded' })
+  if (String(tx.transactionId) !== transactionId) return ctx.json({ success: false, error: 'Transaction mismatch' }, 400)
+  if (claimedProduct && String(tx.productId) !== claimedProduct) {
+    return ctx.json({ success: false, error: 'Product mismatch' }, 400)
+  }
+
+  // Service role only after the caller and the purchase are verified.
+  const admin = serviceClient()
+  const { data, error } = await admin.rpc('apple_apply_transaction', {
+    p_user: user.id, // from the verified JWT, never from the body
+    p_transaction_id: String(tx.transactionId),
+    p_original_transaction_id: tx.originalTransactionId ? String(tx.originalTransactionId) : null,
+    p_product_id: String(tx.productId),
+    p_environment: tx.environment ? String(tx.environment) : null,
+    p_expires_at: tx.expiresDate ? new Date(Number(tx.expiresDate)).toISOString() : null,
+  })
+  if (error) {
+    console.error('[apple-verify] apply failed:', redact(String(error.message ?? error)))
+    return ctx.json({ success: false, error: 'Could not apply this purchase. Please try again.' }, 500)
+  }
+  return ctx.json(data)
 })

@@ -103,11 +103,7 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
     final entryFee = (_competition?['entry_fee'] as num?)?.toDouble() ?? 0;
 
     if (isPaid) {
-      final profile = await SupabaseService.client
-          .from('profiles')
-          .select('wallet_balance')
-          .eq('id', userId)
-          .single();
+      final profile = await SupabaseService.client.rpc('my_wallet') as Map;
       final balance = (profile['wallet_balance'] as num).toDouble();
       if (balance < entryFee) {
         if (mounted) GacomSnackbar.show(context, 'Insufficient wallet balance. Please fund your wallet.', isError: true);
@@ -117,25 +113,23 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
 
     setState(() => _joining = true);
     try {
-      await SupabaseService.client.from('competition_participants').insert({
-        'competition_id': widget.competitionId,
-        'user_id': userId,
-        'payment_status': isPaid ? 'paid' : 'free',
-        'gamer_tag_used': SupabaseService.currentUser?.userMetadata?['gamer_tag'],
-      });
-
       if (isPaid) {
-        final profile = await SupabaseService.client.from('profiles').select('wallet_balance').eq('id', userId).single();
-        final currentBalance = (profile['wallet_balance'] as num).toDouble();
-        await SupabaseService.client.from('profiles').update({'wallet_balance': currentBalance - entryFee, 'wallet_locked_balance': entryFee}).eq('id', userId);
-        await SupabaseService.client.from('wallet_transactions').insert({
+        // Paid entry is charged and recorded on the server in one step; the
+        // client can no longer write wallet_balance or a 'paid' row itself.
+        final res = await SupabaseService.client.rpc('join_paid_competition', params: {'p_competition_id': widget.competitionId});
+        if (res is Map && res['success'] != true) {
+          if (mounted) {
+            setState(() => _joining = false);
+            GacomSnackbar.show(context, (res['error'] ?? 'Failed to join. Try again.').toString(), isError: true);
+          }
+          return;
+        }
+      } else {
+        await SupabaseService.client.from('competition_participants').insert({
+          'competition_id': widget.competitionId,
           'user_id': userId,
-          'type': 'competition_entry',
-          'amount': entryFee,
-          'balance_before': currentBalance,
-          'balance_after': currentBalance - entryFee,
-          'status': 'success',
-          'description': 'Entry fee: ${_competition?['title']}',
+          'payment_status': 'free',
+          'gamer_tag_used': SupabaseService.currentUser?.userMetadata?['gamer_tag'],
         });
       }
 

@@ -12,12 +12,8 @@
 //
 // Requires GEMINI_API_KEY and RESEND_API_KEY secrets (already set from
 // the original weekly setup).
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { secureServe, requireCronOrAdmin, serviceClient, redact, fetchWithTimeout, safeHttpsUrlOrNull, sanitizeBasicHtml } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const GEMINI_MODEL = 'gemini-flash-lite-latest'
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
@@ -48,9 +44,9 @@ function buildPrompt(): string {
 }
 
 async function callGemini(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const response = await fetch(GEMINI_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -126,13 +122,11 @@ async function sendResendBatch(resendKey: string, emails: string[], subject: str
   return { ok: true }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+// Cron-only: pg_cron must send the x-cron-secret header (CRON_SECRET); a signed-in
+// admin may also trigger a run by hand. The public anon key is NOT enough.
+secureServe('generate-and-send-newsletter', async (req, ctx) => {
+  await requireCronOrAdmin(req)
+  const supabase = serviceClient()
 
   try {
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
@@ -160,10 +154,10 @@ Deno.serve(async (req) => {
       const raw = await callGemini(geminiKey, buildPrompt())
       const draft = parseJson(raw)
       if (!draft.subject || !draft.html_content) throw new Error('Gemini response missing required fields')
-      const fullHtml = wrapEmail(draft.html_content)
+      const fullHtml = wrapEmail(sanitizeBasicHtml(draft.html_content))
 
       const { data: newIssue, error: insertError } = await supabase.from('newsletter_issues').insert({
-        subject: draft.subject, html_content: fullHtml, status: 'sending', recipient_count: 0,
+        subject: String(draft.subject).replace(/[\r\n]+/g, ' ').slice(0, 120), html_content: fullHtml, status: 'sending', recipient_count: 0,
       }).select().single()
       if (insertError) throw insertError
       issue = newIssue
@@ -181,8 +175,7 @@ Deno.serve(async (req) => {
     if (!pending || pending.length === 0) {
       // Rotation complete — everyone subscribed has this edition now.
       await supabase.from('newsletter_issues').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', issue.id)
-      return new Response(JSON.stringify({ success: true, note: 'Rotation complete, edition fully delivered.', recipient_count: issue.recipient_count }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return ctx.json({ success: true, note: 'Rotation complete, edition fully delivered.', recipient_count: issue.recipient_count })
     }
 
     // 3. Resolve emails for today's batch and send.
@@ -194,8 +187,7 @@ Deno.serve(async (req) => {
     const emails = Array.from(idToEmail.values())
 
     if (emails.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'No resolvable emails in this batch.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return ctx.json({ success: true, note: 'No resolvable emails in this batch.' })
     }
 
     const result = await sendResendBatch(resendKey, emails, issue.subject, issue.html_content)
@@ -209,12 +201,10 @@ Deno.serve(async (req) => {
     await supabase.from('profiles').update({ newsletter_last_sent_issue_id: issue.id }).in('id', sentIds)
     await supabase.from('newsletter_issues').update({ recipient_count: (issue.recipient_count ?? 0) + sentIds.length }).eq('id', issue.id)
 
-    return new Response(JSON.stringify({ success: true, sent_today: sentIds.length, edition_id: issue.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return ctx.json({ success: true, sent_today: sentIds.length, edition_id: issue.id })
 
   } catch (error) {
-    console.error('generate-and-send-newsletter error:', error)
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('generate-and-send-newsletter error:', redact(String((error as Error)?.stack ?? error)).slice(0, 1500))
+    return ctx.json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
   }
-})
+}, { maxBodyBytes: 4 * 1024, ipRateLimit: { limit: 20, windowMs: 60_000 } })

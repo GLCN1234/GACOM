@@ -83,7 +83,13 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
 
   Future<Map<String, dynamic>?> _loadProfile(String uid) async {
     try {
-      return await SupabaseService.client.from('profiles').select('display_name, avatar_url, wallet_balance').eq('id', uid).maybeSingle();
+      final row = await SupabaseService.client.from('profiles').select('display_name, avatar_url').eq('id', uid).maybeSingle();
+      if (row == null) return null;
+      final out = Map<String, dynamic>.from(row);
+      try {
+        out['wallet_balance'] = (await SupabaseService.client.rpc('my_wallet') as Map)['wallet_balance'];
+      } catch (_) {}
+      return out;
     } catch (_) { return null; }
   }
 

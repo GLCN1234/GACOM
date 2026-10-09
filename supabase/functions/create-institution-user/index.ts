@@ -1,87 +1,69 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+// Creates (or resets) the login account for an institution. Admin only: the
+// role is checked server side from the JWT + profiles.role.
+//
+// Security notes:
+//   - login_email / login_code / institution_id validated; the password policy
+//     is enforced here (min 8) because this sets a real auth password
+//   - an existing ADMIN or other privileged account can never be overwritten
+//     into an 'institution' role through this endpoint
+//   - the existing-user lookup pages through auth users instead of trusting a
+//     single 1000-row page
+//   - errors are generic; details only in server logs
+import { secureServe, requireAdmin, asString, asUuid, HttpError, redact, ADMIN_ROLES } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+secureServe('create-institution-user', async (req, ctx) => {
+  const { svc: admin, user } = await requireAdmin(req)
 
-  try {
-    const { institution_id, login_email, login_code } = await req.json()
+  const body = await ctx.readJson()
+  const institutionId = asUuid(body.institution_id, 'institution_id')
+  const email = asString(body.login_email, 'login_email', { max: 254, pattern: EMAIL_RE }).toLowerCase()
+  const code = asString(body.login_code, 'login_code', { min: 8, max: 72 })
+  const localPart = email.split('@')[0]
+  const profileRow = (id: string) => ({
+    id,
+    display_name: localPart.replace(/\./g, ' '),
+    role: 'institution',
+    username: localPart,
+  })
 
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('No auth header')
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password: code,
+    email_confirm: true,
+    user_metadata: { institution_id: institutionId, role: 'institution' },
+    // app_metadata is writable only with the service role; ownership checks read this one
+    app_metadata: { institution_id: institutionId },
+  })
 
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user } } = await userClient.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
-
-    const { data: profile } = await userClient
-      .from('profiles').select('role').eq('id', user.id).single()
-
-    if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
-      throw new Error('Not authorized')
+  if (createError) {
+    if (!String(createError.message ?? '').toLowerCase().includes('already')) {
+      console.error('[create-institution-user] create failed:', redact(String(createError.message)))
+      throw new HttpError(400, 'Could not create the institution account')
     }
+    let existing: { id: string; email?: string } | undefined
+    for (let page = 1; page <= 20 && !existing; page++) {
+      const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
+      const users = list?.users ?? []
+      existing = users.find((u: { email?: string }) => (u.email ?? '').toLowerCase() === email)
+      if (users.length < 1000) break
+    }
+    if (!existing) throw new HttpError(400, 'Could not create the institution account')
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
-    const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email: login_email,
-      password: login_code,
-      email_confirm: true,
-      user_metadata: { institution_id, role: 'institution' }
+    const { data: prof } = await admin.from('profiles').select('role').eq('id', existing.id).maybeSingle()
+    const role = String(prof?.role ?? '')
+    if (existing.id === user.id || ADMIN_ROLES.includes(role) || (role && role !== 'institution' && role !== 'user')) {
+      throw new HttpError(409, 'That email belongs to an existing account that cannot be converted')
+    }
+    await admin.auth.admin.updateUserById(existing.id, {
+      password: code, email_confirm: true, user_metadata: { institution_id: institutionId, role: 'institution' },
+      app_metadata: { institution_id: institutionId },
     })
-
-    if (createError) {
-      if (createError.message.includes('already registered')) {
-        const { data: list } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
-        const existing = list?.users.find((u: any) => u.email === login_email)
-        if (existing) {
-          await adminClient.auth.admin.updateUserById(existing.id, {
-            password: login_code, email_confirm: true
-          })
-          await adminClient.from('profiles').upsert({
-            id: existing.id,
-            display_name: login_email.split('@')[0].replace(/\./g, ' '),
-            role: 'institution',
-            username: login_email.split('@')[0],
-          })
-          return new Response(JSON.stringify({ success: true }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-        }
-      }
-      throw createError
-    }
-
-    if (newUser?.user) {
-      await adminClient.from('profiles').upsert({
-        id: newUser.user.id,
-        display_name: login_email.split('@')[0].replace(/\./g, ' '),
-        role: 'institution',
-        username: login_email.split('@')[0],
-      })
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, user_id: newUser?.user?.id }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
-  } catch (error: any) {
-    console.error('create-institution-user error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    await admin.from('profiles').upsert(profileRow(existing.id))
+    return ctx.json({ success: true })
   }
-})
+
+  if (created?.user) await admin.from('profiles').upsert(profileRow(created.user.id))
+  return ctx.json({ success: true, user_id: created?.user?.id })
+}, { maxBodyBytes: 4 * 1024, ipRateLimit: { limit: 30, windowMs: 60_000 } })

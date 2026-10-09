@@ -1,9 +1,14 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+// Security notes:
+//   - user mode: the caller must be signed in with role institution/admin/
+//     super_admin and (unless admin) own the curriculum's institution; every
+//     body field is validated and length capped
+//   - queue mode (mode=advance_queue) is for pg_cron only: x-cron-secret or admin
+//   - teacher-supplied text reaches Gemini wrapped as untrusted data
+//   - Gemini key travels in a header (not the URL); errors are generic
+import {
+  secureServe, requireRole, requireCronOrAdmin, serviceClient, requireEnv, redact, HttpError,
+  asUuid, asString, asInt, wrapUntrusted, UNTRUSTED_NOTICE, cleanText, fetchWithTimeout,
+} from '../_shared/security.ts'
 
 const GEMINI_MODEL = 'gemini-flash-lite-latest'
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`
@@ -51,15 +56,15 @@ Every question must still be a real, gradeable academic question underneath. Nev
 CRITICAL: Respond with ONLY a raw JSON object as instructed in each request. No markdown code fences, no explanation text before or after.`
 
 async function callGemini(apiKey: string, prompt: string, maxTokens: number, attempt = 1): Promise<string> {
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const response = await fetchWithTimeout(GEMINI_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: GACOM_GAME_DESIGNER_SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: `${GACOM_GAME_DESIGNER_SYSTEM_PROMPT}\n\n${UNTRUSTED_NOTICE}` }] },
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { maxOutputTokens: maxTokens, temperature: 0.8 },
     }),
-  })
+  }, 60_000)
 
   if (response.status === 429 && attempt <= 3) {
     // Gemini free tier is per-minute/per-day RPM-limited, not a hard daily
@@ -110,9 +115,9 @@ async function generateQuestionBatch(
   apiKey: string, subject: string, classLevel: string, topic: string, content: string,
   level: typeof LEVELS[0], worldTheme: string, storyIntro: string, storyProgress: string,
 ): Promise<{ questions: any[]; chapterUpdate: string }> {
-  const prompt = `Subject: ${subject}
-Class Level: ${classLevel}
-Topic: ${topic}
+  const prompt = `Subject: ${wrapUntrusted('subject', subject, 100)}
+Class Level: ${wrapUntrusted('class_level', classLevel, 50)}
+Topic: ${wrapUntrusted('topic', topic, 200)}
 Difficulty Stage: ${level.label}
 Stage Instructions: ${level.instruction}
 World Theme: ${worldTheme}
@@ -122,7 +127,7 @@ ${storyIntro}
 ${storyProgress || '(This is the first chapter — nothing has happened yet.)'}
 
 Curriculum Content to teach:
-${content.slice(0, 2000)}
+${wrapUntrusted('content', content, 2000)}
 
 Generate exactly ${BATCH_SIZE} questions for the "${level.label}" stage, continuing the SAME story above — reference what already happened, don't restart the premise or introduce a contradictory new goal.
 Use a mix of these mechanics (wrap in story — never show raw academic phrasing): ${QUESTION_TYPES.join(' | ')}
@@ -147,7 +152,7 @@ Respond with ONLY this JSON object, nothing else:
 }
 
 async function generateStoryIntro(apiKey: string, subject: string, topic: string, worldTheme: string): Promise<string> {
-  const prompt = `Write a short (3-4 sentence) adventure story intro that frames the topic "${topic}" (subject: ${subject}) as a "${worldTheme}"-themed quest. Shown to the student before they start playing — hook them immediately like the opening of a game.
+  const prompt = `Write a short (3-4 sentence) adventure story intro that frames the topic ${wrapUntrusted('topic', topic, 200)} (subject: ${wrapUntrusted('subject', subject, 100)}) as a "${worldTheme}"-themed quest. Shown to the student before they start playing — hook them immediately like the opening of a game.
 
 Respond with ONLY the story text, no JSON, no quotes, no extra formatting.`
   try { return await callGemini(apiKey, prompt, 300) }
@@ -161,28 +166,33 @@ function batchToLevel(batchNumber: number): { level: typeof LEVELS[0]; batchInLe
   return { level: LEVELS[levelIdx], batchInLevel }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+secureServe('generate-curriculum-games', async (req, ctx) => {
+  const body = await ctx.readJson()
+  const geminiKey = requireEnv('GEMINI_API_KEY')
+
+  if (body.mode === 'advance_queue') {
+    await requireCronOrAdmin(req)
+    return await handleAdvanceQueue(serviceClient(), geminiKey, ctx)
+  }
+
+  const { user, svc, role } = await requireRole(req, ['institution', 'admin', 'super_admin'])
+  const curriculum_id = asUuid(body.curriculum_id, 'curriculum_id')
+  const subject = asString(body.subject, 'subject', { max: 100 })
+  const class_level = asString(body.class_level, 'class_level', { max: 50 })
+  const topic = asString(body.topic, 'topic', { max: 200 })
+  const content = asString(body.content, 'content', { max: 30_000, optional: true })
+  const batch_number = asInt(body.batch_number ?? 0, 'batch_number', { min: 0, max: TOTAL_BATCHES })
+
+  const { data: owned } = await svc.from('institution_curricula').select('institution_id').eq('id', curriculum_id).maybeSingle()
+  if (!owned) throw new HttpError(404, 'Curriculum not found')
+  if (role === 'institution' && owned.institution_id !== user.app_metadata?.institution_id) {
+    throw new HttpError(403, 'Not authorised')
+  }
+  const supabase = svc // authorised above
 
   try {
-    const body = await req.json()
-    const { curriculum_id, subject, class_level, topic, content, batch_number } = body
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiKey) throw new Error('GEMINI_API_KEY not configured')
-
-    if (body.mode === 'advance_queue') {
-      return await handleAdvanceQueue(supabase, geminiKey)
-    }
-
     if (batch_number === 0) {
-      const { data: curriculum } = await supabase
-        .from('institution_curricula').select('institution_id').eq('id', curriculum_id).single()
+      const curriculum = owned
 
       if (curriculum?.institution_id) {
         const { data: institution } = await supabase
@@ -195,8 +205,7 @@ Deno.serve(async (req) => {
               status: 'failed',
               error_message: 'Institution AI plan limit reached — upgrade your plan or contact GACOM to generate more topics.',
             }).eq('id', curriculum_id)
-            return new Response(JSON.stringify({ error: 'AI generation limit reached. Please upgrade your institution plan.' }),
-              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            return ctx.json({ error: 'AI generation limit reached. Please upgrade your institution plan.' }, 402)
           }
         }
       }
@@ -213,14 +222,11 @@ Deno.serve(async (req) => {
         total_questions: 0,
       }).eq('id', curriculum_id)
 
-      return new Response(
-        JSON.stringify({ done: false, next_batch: 1, total_batches: TOTAL_BATCHES, progress_label: 'Story written', world_theme: worldTheme }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      return ctx.json({ done: false, next_batch: 1, total_batches: TOTAL_BATCHES, progress_label: 'Story written', world_theme: worldTheme })
     }
 
     const { level, batchInLevel } = batchToLevel(batch_number)
-    if (!level) throw new Error(`Invalid batch_number: ${batch_number}`)
+    if (!level) throw new HttpError(400, 'Invalid batch_number')
 
     const { data: existing } = await supabase
       .from('institution_curricula').select('generated_questions, world_theme, story_intro, story_progress').eq('id', curriculum_id).single()
@@ -246,33 +252,23 @@ Deno.serve(async (req) => {
       status: isLastBatch ? 'ready' : 'processing',
     }).eq('id', curriculum_id)
 
-    if (isLastBatch) {
-      const { data: curriculum } = await supabase
-        .from('institution_curricula').select('institution_id').eq('id', curriculum_id).single()
-      if (curriculum?.institution_id) {
-        await supabase.rpc('increment_ai_calls', { inst_id: curriculum.institution_id })
-      }
+    if (isLastBatch && owned.institution_id) {
+      await supabase.rpc('increment_ai_calls', { inst_id: owned.institution_id })
     }
 
-    return new Response(
-      JSON.stringify({
-        done: isLastBatch,
-        next_batch: isLastBatch ? null : batch_number + 1,
-        total_batches: TOTAL_BATCHES,
-        progress_label: `${level.label} — batch ${batchInLevel + 1}/${BATCHES_PER_LEVEL}`,
-        total_questions: allQuestions.length,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
+    return ctx.json({
+      done: isLastBatch,
+      next_batch: isLastBatch ? null : batch_number + 1,
+      total_batches: TOTAL_BATCHES,
+      progress_label: `${level.label} — batch ${batchInLevel + 1}/${BATCHES_PER_LEVEL}`,
+      total_questions: allQuestions.length,
+    })
   } catch (error) {
-    console.error('generate-curriculum-games error:', error)
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    if (error instanceof HttpError) throw error
+    console.error('generate-curriculum-games error:', redact(String((error as Error)?.stack ?? error)).slice(0, 1500))
+    return ctx.json({ error: 'Generation failed. Please try again.' }, 500)
   }
-})
+}, { maxBodyBytes: 64 * 1024, ipRateLimit: { limit: 60, windowMs: 60_000 } })
 
 // ── Background queue processor ──────────────────────────────────
 // Called by a Supabase pg_cron job every minute, NOT by the browser.
@@ -285,7 +281,8 @@ Deno.serve(async (req) => {
 const MAX_BATCHES_PER_TICK = 6
 const TIME_BUDGET_MS = 100_000
 
-async function handleAdvanceQueue(supabase: any, geminiKey: string): Promise<Response> {
+// deno-lint-ignore no-explicit-any
+async function handleAdvanceQueue(supabase: any, geminiKey: string, ctx: { json: (b: unknown, s?: number) => Response }): Promise<Response> {
   const startTime = Date.now()
   const results: any[] = []
 
@@ -301,8 +298,7 @@ async function handleAdvanceQueue(supabase: any, geminiKey: string): Promise<Res
     if (result.quota_exceeded) break
   }
 
-  return new Response(JSON.stringify({ processed: results.length, results }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return ctx.json({ processed: results.length, results })
 }
 
 async function processOneBatch(supabase: any, geminiKey: string, row: any): Promise<any> {
@@ -354,8 +350,8 @@ async function processOneBatch(supabase: any, geminiKey: string, row: any): Prom
     return { curriculum_id: curriculumId, batch: nextBatch, done: isLastBatch, progress_label: progressLabel }
 
   } catch (error) {
-    const message = (error as Error).message
-    console.error(`advance_queue error on ${curriculumId}, batch ${nextBatch}:`, error)
+    const message = redact((error as Error).message ?? 'error').slice(0, 200)
+    console.error(`advance_queue error on ${curriculumId}, batch ${nextBatch}:`, message)
     if (message.startsWith('DAILY_QUOTA_EXCEEDED')) {
       // Not this topic's fault — Gemini's rate/quota limit was hit.
       // Don't count it as a strike, just release the lock so cron

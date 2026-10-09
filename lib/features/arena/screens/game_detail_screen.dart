@@ -1,3 +1,4 @@
+import '../../../core/utils/safe_url.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -96,7 +97,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           onPressed: () async {
             final url = g['play_url'] as String?;
             if (url == null) return;
-            final uri = Uri.tryParse(url);
+            final uri = safeHttpsUri(url);
             if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
           },
           style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),

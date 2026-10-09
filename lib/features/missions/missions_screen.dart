@@ -1,3 +1,4 @@
+import '../../core/utils/safe_url.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -354,7 +355,7 @@ class _MissionCardState extends State<_MissionCard> {
   String? get _status => m['status']?.toString();
 
   Future<void> _open(String url) async {
-    final u = Uri.tryParse(url);
+    final u = safeHttpsUri(url);
     if (u == null) return;
     try {
       await launchUrl(u, mode: LaunchMode.externalApplication);

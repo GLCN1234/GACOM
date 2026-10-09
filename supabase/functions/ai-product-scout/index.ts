@@ -8,12 +8,8 @@
 //
 // Requires GROQ_API_KEY and UNSPLASH_ACCESS_KEY (same secrets already
 // set up for the blog and icon-seeder functions).
-import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { secureServe, requireCronOrAdmin, serviceClient, redact, fetchWithTimeout, safeHttpsUrlOrNull, sanitizeBasicHtml } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions'
 const GROQ_MODEL = 'openai/gpt-oss-20b'
@@ -155,13 +151,11 @@ function sanitizeJsonControlChars(text: string): string {
   return result
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+// Cron-only: pg_cron must send the x-cron-secret header (CRON_SECRET); a signed-in
+// admin may also trigger a run by hand. The public anon key is NOT enough.
+secureServe('ai-product-scout', async (req, ctx) => {
+  await requireCronOrAdmin(req)
+  const supabase = serviceClient()
 
   try {
     const groqKey = Deno.env.get('GROQ_API_KEY')
@@ -173,12 +167,11 @@ Deno.serve(async (req) => {
     const candidates: any[] = Array.isArray(parsed.products) ? parsed.products : []
 
     if (candidates.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'Nothing worth proposing this run.', added: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return ctx.json({ success: true, note: 'Nothing worth proposing this run.', added: 0 })
     }
 
     const filtered = candidates.slice(0, MAX_PRODUCTS_PER_RUN)
-      .filter(c => c.name && c.source_price_ngn && c.source_url)
+      .filter(c => c.name && Number(c.source_price_ngn) > 0 && Number(c.source_price_ngn) < 100_000_000 && safeHttpsUrlOrNull(c.source_url, 500))
 
     const rows = []
     for (const c of filtered) {
@@ -196,7 +189,7 @@ Deno.serve(async (req) => {
         category: String(c.category ?? 'Accessories').slice(0, 50),
         price: Math.round(sourcePrice * MARKUP_MULTIPLIER),
         source_price: sourcePrice,
-        source_url: String(c.source_url).slice(0, 500),
+        source_url: safeHttpsUrlOrNull(c.source_url, 500),
         price_confidence: String(c.price_confidence ?? 'unknown').toLowerCase().includes('low') ? 'low' : 'high',
         is_ai_sourced: true,
         review_status: 'approved',
@@ -209,19 +202,16 @@ Deno.serve(async (req) => {
     }
 
     if (rows.length === 0) {
-      return new Response(JSON.stringify({ success: true, note: 'Proposals were missing required fields, none inserted.', added: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return ctx.json({ success: true, note: 'Proposals were missing required fields, none inserted.', added: 0 })
     }
 
     const { error: insertError } = await supabase.from('products').insert(rows)
     if (insertError) throw insertError
 
-    return new Response(JSON.stringify({ success: true, added: rows.length, withImages: rows.filter(r => r.images.length > 0).length }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return ctx.json({ success: true, added: rows.length, withImages: rows.filter(r => r.images.length > 0).length })
 
   } catch (error) {
-    console.error('ai-product-scout error:', error)
-    return new Response(JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('ai-product-scout error:', redact(String((error as Error)?.stack ?? error)).slice(0, 1500))
+    return ctx.json({ success: false, error: 'Something went wrong. Please try again.' }, 500)
   }
-})
+}, { maxBodyBytes: 4 * 1024, ipRateLimit: { limit: 20, windowMs: 60_000 } })
