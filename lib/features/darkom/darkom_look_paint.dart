@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../../shared/widgets/weapon_art.dart';
+import '../character3d/fighter3d.dart';
+import '../character3d/rig.dart';
 import '../edu/realms/realm_kit.dart' show RealmDraw;
 import 'darkom_armory.dart';
 import 'darkom_look.dart';
@@ -17,6 +19,27 @@ WeaponPainter _painterFor(DarkomLook look) {
   final WeaponPainter np = WeaponPainter(asset: look.weaponAsset);
   _weaponPainters[key] = np;
   return np;
+}
+
+final Expando<CharLook> _lookWith = Expando<CharLook>('lookWith');
+final Expando<CharLook> _lookBare = Expando<CharLook>('lookBare');
+
+CharLook _charLook(DarkomLook look, bool weapon) {
+  final Expando<CharLook> cache = weapon ? _lookWith : _lookBare;
+  final CharLook? hit = cache[look];
+  if (hit != null) return hit;
+  final CharLook made = CharLook.from(
+    skin: look.skinColor,
+    hair: look.hairColor,
+    shirt: look.shirtColor,
+    pants: look.pantsColor,
+    hairStyle: look.hairStyle,
+    weapon: weapon ? look.weaponKind : 'none',
+    weaponAsset: look.weaponAsset,
+    frameColors: look.frameColors,
+  );
+  cache[look] = made;
+  return made;
 }
 
 /// Draws a player (any player, local or remote) at (x, y): outfit, hair,
@@ -34,29 +57,37 @@ void paintDarkomLook(
   bool showWeapon = true,
   double aim = 0,
   double weaponLen = 46,
+  double swing = -1,
+  double time = 0,
+  bool priority = false,
 }) {
+  // 3D first; it carries the weapon skin in the hand. Falls back to the flat person.
+  final double face3 = swing >= 0 ? (cos(aim) >= 0 ? 1.0 : -1.0) : facing;
+  final bool d3 = Fighter3D.draw(canvas, _charLook(look, showWeapon), x, y, phase: phase, moving: moving, facing: face3, scale: scale, swing: swing, time: time, priority: priority);
   canvas.save();
   canvas.translate(x, y);
   canvas.scale(scale, scale);
-  RealmDraw.person(
-    canvas,
-    0,
-    0,
-    phase: phase,
-    moving: moving,
-    facing: facing,
-    shirt: look.shirtColor,
-    pants: look.pantsColor,
-    skin: look.skinColor,
-    hair: look.hairColor,
-    hairStyle: look.hairStyle,
-  );
+  if (!d3) {
+    RealmDraw.person(
+      canvas,
+      0,
+      0,
+      phase: phase,
+      moving: moving,
+      facing: facing,
+      shirt: look.shirtColor,
+      pants: look.pantsColor,
+      skin: look.skinColor,
+      hair: look.hairColor,
+      hairStyle: look.hairStyle,
+    );
+  }
   if (moving && look.trail != 'none') {
     canvas.save();
     paintCosmeticTrail(canvas, look.trail, look.trailTint, phase, facing >= 0 ? 1.0 : -1.0);
     canvas.restore();
   }
-  if (showWeapon) {
+  if (showWeapon && !d3) {
     final double len = weaponLen;
     final double fwd = look.weaponKind == 'shield' ? len * 0.2 : len * 0.28;
     final double cx = cos(aim) * fwd;

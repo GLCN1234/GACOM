@@ -1,3 +1,4 @@
+import '../../character3d/fighter3d.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../darkom_look.dart';
@@ -60,6 +61,7 @@ class HubPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    Fighter3D.begin(shared: 8);
     final HubSim s = scene.sim;
     final double t = s.time;
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -391,7 +393,7 @@ class HubPainter extends CustomPainter {
     if (em != null && em.index == 4 && nowMs - em.startMs < 2200) bob = -(sin(s.time * 14)).abs() * 5;
     final bool fade = a < 0.98;
     if (fade) c.saveLayer(Rect.fromLTWH(x - 60, y - 140, 120, 170), Paint()..color = Color.fromRGBO(255, 255, 255, a));
-    paintDarkomLook(c, look, x, y + bob, phase: phase, moving: moving, facing: facing, showWeapon: true, aim: facing >= 0 ? 0.35 : pi - 0.35, weaponLen: 40);
+    paintDarkomLook(c, look, x, y + bob, phase: phase, moving: moving, facing: facing, showWeapon: true, aim: facing >= 0 ? 0.35 : pi - 0.35, weaponLen: 40, time: s.time, priority: me);
     paintDarkomNameTag(c, look, x, y + bob, nameColor: me ? const Color(0xFF7CF7FF) : Colors.white);
     if (fade) c.restore();
   }

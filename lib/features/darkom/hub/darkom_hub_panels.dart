@@ -417,7 +417,7 @@ class _LookPreview extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.drawOval(Rect.fromCenter(center: Offset(size.width / 2, size.height * 0.86), width: 70, height: 16), Paint()..color = const Color(0x66000000));
-    paintDarkomLook(canvas, look, size.width / 2, size.height * 0.84, scale: 1.9, moving: false, facing: 1, showWeapon: true, aim: 0.35, weaponLen: 46);
+    paintDarkomLook(canvas, look, size.width / 2, size.height * 0.84, scale: 1.9, moving: false, facing: 1, showWeapon: true, aim: 0.35, weaponLen: 46, priority: true);
   }
 
   @override

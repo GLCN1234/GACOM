@@ -1,3 +1,5 @@
+import '../character3d/fighter3d.dart';
+import '../character3d/rig.dart' show CharLook;
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/services/cosmetics_service.dart';
@@ -53,6 +55,7 @@ class DarkomPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     _t = g.time;
+    Fighter3D.begin(shared: 8);
     final DarkomTheme th = g.theme;
     final DarkomWorld w = g.world;
     canvas.drawRect(Offset.zero & size, _p..color = const Color(0xFF05060A));
@@ -571,6 +574,25 @@ class DarkomPainter extends CustomPainter {
     }
   }
 
+  static final CharLook _civ3 = CharLook.from(skin: const Color(0xFF8D5A3A), hair: const Color(0xFF1B1B1B), shirt: const Color(0xFF26A69A), pants: const Color(0xFF37474F), hairStyle: 'low', weapon: 'none', weaponAsset: const <String, dynamic>{});
+  CharLook? _hl3;
+  HeroLook? _hl3Src;
+  String _hl3Weapon = '';
+  Object? _hl3Asset;
+
+  CharLook _heroLook3(String wk, bool axeAway) {
+    final HeroLook h = HeroLook.current;
+    final String w = axeAway ? 'none' : wk;
+    final Map<String, dynamic> asset = g.armory.assetFor(wk);
+    if (_hl3 == null || !identical(_hl3Src, h) || _hl3Weapon != w || !identical(_hl3Asset, asset)) {
+      _hl3 = CharLook.from(skin: h.skin, hair: h.hair, shirt: h.shirt, pants: h.pants, hairStyle: h.hairStyle, weapon: w, weaponAsset: asset);
+      _hl3Src = h;
+      _hl3Weapon = w;
+      _hl3Asset = asset;
+    }
+    return _hl3!;
+  }
+
   void _drawHero(Canvas c) {
     final double x = g.hx;
     final double y = g.hy;
@@ -642,9 +664,27 @@ class DarkomPainter extends CustomPainter {
     final bool behind = sin(ang) < -0.35;
     final bool flick = g.invuln > 0 && g.invuln < 50 && ((_t * 16).floor() % 2 == 0);
     if (flick) c.saveLayer(Rect.fromCenter(center: Offset(x, y), width: 260, height: 260), Paint()..color = const Color(0x77FFFFFF));
-    if (!axeAway && behind) g.armory.draw(c, wk, hx, hy, ang, len);
-    RealmDraw.person(c, x, y - 8, phase: g.hphase, moving: g.hmoving || g.dashT > 0 || g.chargeT > 0, facing: g.faceSign, hero: true, scale: 1.2);
-    if (!axeAway && !behind) g.armory.draw(c, wk, hx, hy, ang, len);
+    double swing3 = -1;
+    double face3 = g.faceSign;
+    double spin3 = 0;
+    if (g.swingT >= 0) {
+      swing3 = (g.swingT / (g.swingDur <= 0 ? 1.0 : g.swingDur)).clamp(0.0, 1.0).toDouble();
+      face3 = cos(g.swingAng) >= 0 ? 1.0 : -1.0;
+    } else if (g.spinT >= 0) {
+      swing3 = (g.spinT / 0.4).clamp(0.0, 1.0).toDouble();
+      spin3 = 2 * pi * swing3;
+    }
+    final bool d3 = Fighter3D.draw(c, _heroLook3(wk, axeAway), x, y - 8,
+        phase: g.hphase, moving: g.hmoving || g.dashT > 0 || g.chargeT > 0, facing: face3, scale: 1.2, swing: swing3, time: _t, yawAdd: spin3, priority: true);
+    if (d3) {
+      if (g.swingT >= 0 && g.swingDur > 0) {
+        paintSwingArc(c, x, y - 10, g.swingAng, g.swingDir >= 0 ? 1.0 : -1.0, swing3, wk == 'dagger' ? 26 : 38, g.armory.glowFor(wk) ?? _cyan);
+      }
+    } else {
+      if (!axeAway && behind) g.armory.draw(c, wk, hx, hy, ang, len);
+      RealmDraw.person(c, x, y - 8, phase: g.hphase, moving: g.hmoving || g.dashT > 0 || g.chargeT > 0, facing: g.faceSign, hero: true, scale: 1.2);
+      if (!axeAway && !behind) g.armory.draw(c, wk, hx, hy, ang, len);
+    }
     if (g.hitFlash > 0) {
       c.drawCircle(Offset(x, y - 4), 20, _p..color = _red.withValues(alpha: 0.45 * (g.hitFlash / 0.22).clamp(0.0, 1.0).toDouble()));
     }
@@ -679,10 +719,22 @@ class DarkomPainter extends CustomPainter {
     c.saveLayer(box, Paint()..color = Color.fromRGBO(255, 255, 255, spawnA));
     RealmDraw.glow(c, Offset(e.x, e.y + 4), 30, _cyan, alpha: 0.12);
     // two colour fringes
-    c.saveLayer(box, Paint()..color = const Color(0x66FFFFFF));
-    RealmDraw.person(c, e.x - 4 + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: const Color(0xFF00E5FF), pants: const Color(0xFF00B8D4), skin: const Color(0xFF80DEEA), hair: const Color(0xFF00E5FF), scale: 1.2, hairStyle: look.hairStyle);
-    RealmDraw.person(c, e.x + 4 + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: const Color(0xFFFF2E93), pants: const Color(0xFFC2185B), skin: const Color(0xFFF48FB1), hair: const Color(0xFFFF2E93), scale: 1.2, hairStyle: look.hairStyle);
-    c.restore();
+    final bool echo3 = Fighter3D.draw(
+        c,
+        CharLook.from(skin: _inv(look.skin), hair: _inv(look.hair), shirt: _inv(look.shirt), pants: _inv(look.pants), hairStyle: look.hairStyle, weapon: 'none', weaponAsset: const <String, dynamic>{}),
+        e.x + jx,
+        e.y - 8,
+        phase: e.phase,
+        moving: e.moving,
+        facing: fs,
+        scale: 1.2,
+        time: _t);
+    if (!echo3) {
+      c.saveLayer(box, Paint()..color = const Color(0x66FFFFFF));
+      RealmDraw.person(c, e.x - 4 + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: const Color(0xFF00E5FF), pants: const Color(0xFF00B8D4), skin: const Color(0xFF80DEEA), hair: const Color(0xFF00E5FF), scale: 1.2, hairStyle: look.hairStyle);
+      RealmDraw.person(c, e.x + 4 + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: const Color(0xFFFF2E93), pants: const Color(0xFFC2185B), skin: const Color(0xFFF48FB1), hair: const Color(0xFFFF2E93), scale: 1.2, hairStyle: look.hairStyle);
+      c.restore();
+    }
     // weapon behind or in front
     double ang = fs > 0 ? -1.15 : pi + 1.15;
     if (e.tele > 0 && e.tShape != 0) {
@@ -698,7 +750,7 @@ class DarkomPainter extends CustomPainter {
     final double wx = e.x + fs * 9 + jx;
     final double wy = e.y - 12;
     if (behind) g.armory.draw(c, e.weapon, wx, wy, ang, _weaponLen(e.weapon), alpha: 0.9);
-    RealmDraw.person(c, e.x + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: _inv(look.shirt), pants: _inv(look.pants), skin: _inv(look.skin), hair: _inv(look.hair), scale: 1.2, hairStyle: look.hairStyle);
+    if (!echo3) RealmDraw.person(c, e.x + jx, e.y - 8, phase: e.phase, moving: e.moving, facing: fs, shirt: _inv(look.shirt), pants: _inv(look.pants), skin: _inv(look.skin), hair: _inv(look.hair), scale: 1.2, hairStyle: look.hairStyle);
     if (!behind) g.armory.draw(c, e.weapon, wx, wy, ang, _weaponLen(e.weapon), alpha: 0.9);
     if (glitch) {
       for (int i = 0; i < 3; i++) {
@@ -863,7 +915,9 @@ class DarkomPainter extends CustomPainter {
       ..strokeWidth = 2
       ..color = const Color(0xFF69F0AE).withValues(alpha: 0.6);
     c.drawCircle(Offset(cr.x, cr.y + 8), 20, _s);
-    RealmDraw.person(c, cr.x, cr.y - 8, phase: cr.phase, moving: cr.moving, facing: cr.face, shirt: const Color(0xFF26A69A), pants: const Color(0xFF37474F), skin: const Color(0xFF8D5A3A), hair: const Color(0xFF1B1B1B), scale: 1.05);
+    if (!Fighter3D.draw(c, _civ3, cr.x, cr.y - 8, phase: cr.phase, moving: cr.moving, facing: cr.face, scale: 1.05, time: _t)) {
+      RealmDraw.person(c, cr.x, cr.y - 8, phase: cr.phase, moving: cr.moving, facing: cr.face, shirt: const Color(0xFF26A69A), pants: const Color(0xFF37474F), skin: const Color(0xFF8D5A3A), hair: const Color(0xFF1B1B1B), scale: 1.05);
+    }
     if (cr.flash > 0) c.drawCircle(Offset(cr.x, cr.y - 4), 16, _p..color = _red.withValues(alpha: 0.4));
     _text(c, cr.name, Offset(cr.x, cr.y - 46), 11, const Color(0xFF69F0AE));
     if (cr.hp < cr.maxHp) _bar(c, cr.x, cr.y - 36, 34, cr.hp / cr.maxHp, const Color(0xFF69F0AE));

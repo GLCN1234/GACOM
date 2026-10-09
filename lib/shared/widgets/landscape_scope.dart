@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 /// Keeps an open-world game in landscape while it is on screen.
 ///
 /// On Android and iOS the phone is turned sideways and the system bars are
-/// hidden; everything is put back when the game closes. In a browser the page
-/// cannot always force a rotation, so when the window is still tall and narrow
-/// a prompt asks the player to turn the device, with a way to play anyway.
+/// hidden; everything is put back when the game closes. A browser often cannot
+/// force a rotation (rotation lock, or the page is not installed), so when the
+/// window is still tall and narrow the game is turned a quarter turn by the app
+/// itself and fills the screen. Touches follow the turn. As soon as the device
+/// really is sideways the window is wide and nothing is turned.
 class LandscapeScope extends StatefulWidget {
   final Widget child;
   const LandscapeScope({super.key, required this.child});
@@ -16,7 +18,7 @@ class LandscapeScope extends StatefulWidget {
 }
 
 class _LandscapeScopeState extends State<LandscapeScope> {
-  bool _playAnyway = false;
+  bool _manualPortrait = false;
 
   @override
   void initState() {
@@ -32,7 +34,7 @@ class _LandscapeScopeState extends State<LandscapeScope> {
       ]);
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } catch (_) {
-      // some platforms ignore this; the prompt below covers a tall window
+      // some platforms ignore this; the quarter turn below covers a tall window
     }
   }
 
@@ -49,37 +51,56 @@ class _LandscapeScopeState extends State<LandscapeScope> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints bc) {
       final bool tall = bc.maxHeight > bc.maxWidth * 1.05;
+      final bool turn = tall && !_manualPortrait;
+      if (!turn) {
+        return Stack(children: <Widget>[
+          Positioned.fill(child: widget.child),
+          if (tall)
+            Positioned(
+              left: 8,
+              bottom: 8,
+              child: _chip(Icons.screen_rotation_rounded, 'Landscape', () => setState(() => _manualPortrait = false)),
+            ),
+        ]);
+      }
+      final MediaQueryData mq = MediaQuery.of(context);
+      final MediaQueryData swapped = mq.copyWith(
+        size: Size(mq.size.height, mq.size.width),
+        padding: EdgeInsets.zero,
+        viewPadding: EdgeInsets.zero,
+        viewInsets: EdgeInsets.zero,
+      );
       return Stack(children: <Widget>[
-        Positioned.fill(child: widget.child),
-        if (tall && !_playAnyway)
-          Positioned.fill(
-            child: Material(
-              color: const Color(0xF2080B14),
-              child: SafeArea(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                      const Icon(Icons.screen_rotation_rounded, color: Color(0xFFFFD54F), size: 64),
-                      const SizedBox(height: 16),
-                      const Text('TURN YOUR PHONE SIDEWAYS',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, letterSpacing: 1.2)),
-                      const SizedBox(height: 8),
-                      const Text('This game plays best in landscape. Rotate your device and it will fill the screen.',
-                          textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4)),
-                      const SizedBox(height: 20),
-                      TextButton(
-                        onPressed: () => setState(() => _playAnyway = true),
-                        child: const Text('Play anyway', style: TextStyle(color: Colors.white54, fontSize: 14)),
-                      ),
-                    ]),
-                  ),
-                ),
-              ),
+        Positioned.fill(
+          child: ColoredBox(
+            color: Colors.black,
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: MediaQuery(data: swapped, child: widget.child),
             ),
           ),
+        ),
+        Positioned(
+          left: 8,
+          bottom: 8,
+          child: _chip(Icons.stay_current_portrait_rounded, 'Portrait', () => setState(() => _manualPortrait = true)),
+        ),
       ]);
     });
   }
+
+  Widget _chip(IconData icon, String label, VoidCallback tap) => Material(
+      type: MaterialType.transparency,
+      child: GestureDetector(
+        onTap: tap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          decoration: BoxDecoration(color: const Color(0x88000000), borderRadius: BorderRadius.circular(14)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            Icon(icon, color: Colors.white70, size: 14),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+      ));
 }

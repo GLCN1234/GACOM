@@ -1,3 +1,4 @@
+import '../../character3d/fighter3d.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/weapon_art.dart';
@@ -53,6 +54,7 @@ class ArenaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    Fighter3D.begin(shared: 8);
     canvas.drawRect(Offset.zero & size, _p..color = const Color(0xFF05060A));
     final bool overview = g.phase == ArPhase.lobby || g.phase == ArPhase.failed;
     double zoom;
@@ -238,6 +240,9 @@ class ArenaPainter extends CustomPainter {
       aim: aim,
       showWeapon: !axeOut,
       weaponLen: swinging ? 56 : 46,
+      swing: swinging ? (p.swingT / (p.swingDur <= 0 ? 1.0 : p.swingDur)).clamp(0.0, 1.0).toDouble() : -1.0,
+      time: g.clock,
+      priority: true,
     );
     if (alpha < 0.99) c.restore();
     if (guarding || charging) {
@@ -408,7 +413,7 @@ class ArenaLookPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final double s = size.height / 110;
-    paintDarkomLook(canvas, look, size.width / 2, size.height * 0.78, scale: s, aim: -0.4, weaponLen: 46);
+    paintDarkomLook(canvas, look, size.width / 2, size.height * 0.78, scale: s, aim: -0.4, weaponLen: 46, priority: true);
   }
 
   @override

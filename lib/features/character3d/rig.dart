@@ -71,6 +71,9 @@ class CharLook {
     );
   }
 
+  /// A number that changes whenever anything visible changes; used as a cache key.
+  int get sig => Object.hash(skin.value, hair.value, shirt.value, pants.value, hairStyle, accent.value, weapon, metal.value, metalHi.value, metalEx.value, wood.value, glow?.value);
+
   CharLook withWeapon(String kind, Map<String, dynamic> asset) => CharLook.from(
         skin: skin,
         hair: hair,
@@ -202,7 +205,9 @@ class CharRig {
     final Bone wristL = elL.children.first;
 
     // weapon
-    if (l.weapon == 'shield') {
+    if (l.weapon == 'none') {
+      wristR.child('grip', 0, -0.4, 0);
+    } else if (l.weapon == 'shield') {
       elL.child('shield', 0.95, -1.6, 0.9).meshes.add(_shield(l));
       wristR.child('grip', 0, -0.4, 0);
     } else {
@@ -385,10 +390,12 @@ class CharAnims {
     return p;
   }
 
-  static List<double> run(double t, String weapon) {
+  static List<double> run(double t, String weapon) => runPhase(t * 9.5, weapon);
+
+  /// Run cycle driven by a stride phase in radians (one full step pair per 2*pi).
+  static List<double> runPhase(double ph, String weapon) {
     final List<double> p = Pose.blank();
     final List<double> g = _guard(weapon);
-    final double ph = t * 9.5;
     final double s = sin(ph);
     p[Pose.rootY] = (sin(ph * 2).abs()) * 0.55 - 0.15;
     p[Pose.torsoX] = 0.16;
@@ -465,10 +472,15 @@ class CharAnims {
   }
 
   static List<double> attack(double t, String weapon) {
+    final double len = attackLength(weapon);
+    return attackAt((t % len) / len, weapon, t);
+  }
+
+  /// A swing at progress [ph] (0 to 1); [t] only feeds the idle sway underneath.
+  static List<double> attackAt(double ph0, String weapon, double t) {
     final List<double> p = idle(t, weapon);
     final List<double> g = _guard(weapon);
-    final double len = attackLength(weapon);
-    final double ph = (t % len) / len;
+    final double ph = ph0 < 0 ? 0.0 : (ph0 > 1 ? 1.0 : ph0);
     final List<List<double>> keys = _attackKeys(weapon, g);
     int k = 0;
     while (k < keys.length - 2 && ph > keys[k + 1][0]) {

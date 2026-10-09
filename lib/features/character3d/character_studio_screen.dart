@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/services/cosmetics_service.dart';
 import '../darkom/darkom_armory.dart';
 import '../darkom/darkom_look.dart';
 import 'character_view.dart';
+import 'fighter3d.dart';
 import 'rig.dart';
 
 /// Route: '/character'. Your fighter in 3D, wearing what you have equipped.
@@ -13,7 +15,7 @@ class CharacterStudioScreen extends StatefulWidget {
   State<CharacterStudioScreen> createState() => _CharacterStudioScreenState();
 }
 
-class _CharacterStudioScreenState extends State<CharacterStudioScreen> {
+class _CharacterStudioScreenState extends State<CharacterStudioScreen> with WidgetsBindingObserver {
   static const Color _ink = Color(0xFF0B0F1C);
   static const Color _cyan = Color(0xFF2ED3E6);
   static const Color _amber = Color(0xFFFFD54F);
@@ -28,19 +30,44 @@ class _CharacterStudioScreenState extends State<CharacterStudioScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    Fighter3D.begin();
     _load();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load(force: true);
+  }
+
+  /// Opens the shop and picks up whatever was bought or equipped when you come back.
+  Future<void> _openShop() async {
+    await context.push('/customization');
+    if (!mounted) return;
+    await _load(force: true);
+  }
+
+  Future<void> _load({bool force = false}) async {
     DarkomLook d;
     DarkomArmory a;
+    if (force) {
+      try {
+        await CosmeticsService.refreshLoadout();
+      } catch (_) {}
+    }
     try {
       d = await DarkomLook.mine(weaponKind: _weapon);
     } catch (_) {
       return;
     }
     try {
-      a = await DarkomArmory.load();
+      a = await DarkomArmory.load(force: force);
     } catch (_) {
       a = DarkomArmory.plain();
     }
@@ -112,6 +139,13 @@ class _CharacterStudioScreenState extends State<CharacterStudioScreen> {
         ]),
         const SizedBox(height: 16),
         _chip(_auto ? 'Auto turn: on' : 'Auto turn: off', _auto, () => setState(() => _auto = !_auto), icon: Icons.threed_rotation_rounded),
+        const SizedBox(height: 10),
+        _chip(Fighter3D.enabled ? '3D in games: on' : '3D in games: off', Fighter3D.enabled, () async {
+          await Fighter3D.setEnabled(!Fighter3D.enabled);
+          if (mounted) setState(() {});
+        }, icon: Icons.sports_esports_rounded),
+        const SizedBox(height: 10),
+        _chip('Shop and looks', false, _openShop, icon: Icons.storefront_rounded),
         const SizedBox(height: 14),
         const Text('Drag the fighter to turn it. Skins and looks you equip in the shop show up here and in Darkom City.',
             style: TextStyle(color: Colors.white38, fontSize: 12, height: 1.4)),
