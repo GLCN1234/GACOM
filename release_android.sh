@@ -33,9 +33,17 @@ flutter build apk --release $DEFINES
 rm -rf "$OUT" && mkdir -p "$OUT"
 cp build/app/outputs/flutter-apk/app-release.apk "$OUT/gacom-latest.apk"
 
-# small build: 64-bit ARM phones only (most phones from the last several years)
-flutter build apk --release --split-per-abi $DEFINES
-cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$OUT/gacom-latest-arm64.apk"
+# small build: 64-bit ARM phones only (most phones from the last several years).
+# It needs a lot of memory. On a small machine (a Codespace) it can crash, so it is
+# optional: set SKIP_ARM64=1 to leave it out, and a failure here no longer stops the release.
+if [ -z "$SKIP_ARM64" ]; then
+  (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+  if flutter build apk --release --split-per-abi $DEFINES; then
+    cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$OUT/gacom-latest-arm64.apk"
+  else
+    echo "Small build failed (probably memory). Continuing with the standard build only."
+  fi
+fi
 
 python3 - "$VERSION" "$BUILD" "$NOTES" "$BASE" <<'PY'
 import hashlib, json, os, sys
@@ -45,12 +53,13 @@ def info(name):
     h = hashlib.sha256(open(p, 'rb').read()).hexdigest()
     return round(os.path.getsize(p) / 1048576, 1), h
 fm, fh = info('gacom-latest.apk')
-am, ah = info('gacom-latest-arm64.apk')
+has_arm = os.path.exists(os.path.join('release_out', 'gacom-latest-arm64.apk'))
+am, ah = info('gacom-latest-arm64.apk') if has_arm else (0, '')
 m = {
     'version': version, 'build': build, 'min_build': 1,
     'notes': [n.strip() for n in notes.split('|') if n.strip()],
     'full_url': base + '/gacom-latest.apk', 'full_mb': fm, 'full_sha256': fh,
-    'arm64_url': base + '/gacom-latest-arm64.apk', 'arm64_mb': am, 'arm64_sha256': ah,
+    'arm64_url': (base + '/gacom-latest-arm64.apk') if has_arm else '', 'arm64_mb': am, 'arm64_sha256': ah,
 }
 json.dump(m, open('release_out/latest.json', 'w'), indent=2)
 print(json.dumps(m, indent=2))
@@ -67,7 +76,7 @@ if [ -n "$SUPABASE_SERVICE_KEY" ]; then
   }
   # files first, manifest last, so nobody is told about a build that is not there yet
   up gacom-latest.apk application/vnd.android.package-archive
-  up gacom-latest-arm64.apk application/vnd.android.package-archive
+  if [ -f "$OUT/gacom-latest-arm64.apk" ]; then up gacom-latest-arm64.apk application/vnd.android.package-archive; fi
   up latest.json application/json
   echo "Done. People will be offered build $BUILD the next time they open the app."
 else
