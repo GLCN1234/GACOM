@@ -787,6 +787,10 @@ begin
     insert into public.institution_secrets (institution_id, login_code)
       select id, login_code from public.institutions where login_code is not null
       on conflict (institution_id) do update set login_code = excluded.login_code, updated_at = now();
+    alter table public.institutions alter column login_code drop not null;
+    if exists (select 1 from information_schema.columns where table_schema='public' and table_name='institutions' and column_name='login_email') then
+      alter table public.institutions alter column login_email drop not null;
+    end if;
     update public.institutions set login_code = null where login_code is not null;
   end if;
 end $$;
