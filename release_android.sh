@@ -28,6 +28,12 @@ done
 
 flutter pub get
 
+# A Codespace has little memory. Stop any leftover build processes before building,
+# or the build can be killed halfway ("Gradle daemon disappeared").
+(cd android && ./gradlew --stop >/dev/null 2>&1) || true
+pkill -f GradleDaemon >/dev/null 2>&1 || true
+pkill -f KotlinCompileDaemon >/dev/null 2>&1 || true
+
 # ARM64_ONLY=1 builds one 64-bit ARM file (about a third of the size, fits the 50 MB
 # Supabase free-plan limit, runs on almost every phone made in the last several years).
 rm -rf "$OUT" && mkdir -p "$OUT"
