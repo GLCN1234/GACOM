@@ -66,6 +66,7 @@ import '../../shared/tutorial/how_to_gate.dart';
 import '../../shared/widgets/pc_controls_gate.dart';
 import '../../features/darkom/arena/darkom_arena_args.dart';
 import '../../features/darkom/arena/darkom_arena_screen.dart';
+import '../../features/character3d/character_studio_screen.dart';
 import '../../features/darkom/darkom_screen.dart';
 import '../../features/darkom/hub/darkom_hub_screen.dart';
 import '../../features/edu/realms/realm_hub_screen.dart';
@@ -336,6 +337,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             final RealmConfig cfg = s.extra is RealmConfig ? s.extra as RealmConfig : const RealmConfig();
             return DuelEntry(gameKey: info.id, child: LandscapeScope(child: info.build(cfg)));
           }),
+          GoRoute(path: '/character', builder: (_, __) => const CharacterStudioScreen()),
           GoRoute(path: '/darkom/hub', builder: (_, __) => HowToGate(gameKey: 'darkomhub', child: const LandscapeScope(child: DarkomHubScreen()))),
           GoRoute(path: '/darkom/arena', builder: (_, s) => s.extra is DarkomArenaArgs ? LandscapeScope(child: DarkomArenaScreen(args: s.extra as DarkomArenaArgs)) : const LandscapeScope(child: DarkomHubScreen())),
           GoRoute(path: '/darkom', builder: (_, __) => HowToGate(gameKey: 'darkom', child: PcControlsGate(gameKey: 'darkom', child: const LandscapeScope(child: DarkomScreen())))),

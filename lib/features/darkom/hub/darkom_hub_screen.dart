@@ -799,6 +799,12 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
               Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: live ? kHubGreen : kHubAmber)),
             ]),
           ),
+          const SizedBox(width: 10),
+          Material(
+            color: const Color(0xE60B0F1C),
+            shape: const CircleBorder(side: BorderSide(color: kHubViolet, width: 1.5)),
+            child: InkWell(customBorder: const CircleBorder(), onTap: () => context.push('/character'), child: const SizedBox(width: 42, height: 42, child: Icon(Icons.threed_rotation_rounded, color: kHubViolet))),
+          ),
         ]),
       ),
     );
