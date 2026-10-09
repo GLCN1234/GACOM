@@ -175,6 +175,9 @@ abstract class RealmLogic {
 
   void step(double dt);
 
+  /// Heading of the result screen.
+  String get resultTitle => 'RUN COMPLETE';
+
   void setInput(double x, double y) {
     final double m = sqrt(x * x + y * y);
     if (m > 1) {

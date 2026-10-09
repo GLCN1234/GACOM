@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart';
 import 'darkom_armory.dart';
@@ -51,6 +52,28 @@ class _DarkomScreenState extends State<DarkomScreen> {
     setState(() => _boot = DarkomBoot(progress, armory, ghost, mission: widget.mission));
   }
 
+  /// The next open mission after this one, in board order.
+  DarkomMission? _nextMission(DarkomMission cur, int chapter) {
+    final int i = darkomMissions.indexWhere((DarkomMission m) => m.id == cur.id);
+    for (int k = i + 1; k < darkomMissions.length; k++) {
+      if (darkomMissions[k].isOpen(chapter)) return darkomMissions[k];
+    }
+    return null;
+  }
+
+  List<RealmResultAction> _resultActions(RealmLogic l) {
+    final DarkomMission? ms = widget.mission;
+    final DarkomBoot? b = _boot;
+    if (ms == null || b == null || l is! DarkomLogic || !l.missionDone) return const <RealmResultAction>[];
+    final DarkomMission? nx = _nextMission(ms, b.progress.chapter);
+    if (nx == null) return const <RealmResultAction>[];
+    return <RealmResultAction>[
+      RealmResultAction('NEXT MISSION', () {
+        if (mounted) context.pushReplacement('/darkom/play', extra: nx);
+      }),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final DarkomBoot? b = _boot;
@@ -90,6 +113,8 @@ class _DarkomScreenState extends State<DarkomScreen> {
       joystick: true,
       background: const Color(0xFF05060A),
       learning: false,
+      resultActions: _resultActions,
+      exitLabel: ms != null ? 'MISSION BOARD' : 'EXIT',
     );
   }
 }

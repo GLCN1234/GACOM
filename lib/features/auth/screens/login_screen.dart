@@ -344,7 +344,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'https://gacom.gg/reset-password',
+        redirectTo: 'https://gamicom.net/#/reset-password',
       );
     } catch (_) {
       // Supabase never reveals if email exists — always show success for security

@@ -376,6 +376,13 @@ class DarkomLogic extends RealmLogic {
   }
 
   @override
+  String get resultTitle {
+    if (mission == null) return 'RUN COMPLETE';
+    if (missionDone) return 'MISSION COMPLETE';
+    return missionFailed ? 'MISSION FAILED' : 'MISSION OVER';
+  }
+
+  @override
   bool get modal => false;
 
   // ---- objective guidance -------------------------------------------------

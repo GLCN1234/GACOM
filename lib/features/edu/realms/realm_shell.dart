@@ -31,6 +31,13 @@ typedef RealmHudBuilder = Widget Function(BuildContext context, RealmLogic logic
 /// The common screen around every realm game: loading, intro, pause, music,
 /// joystick and keyboard, result screen, saving progress and duels. A game
 /// only supplies its [RealmLogic], a painter and optional overlays.
+/// An extra button on the result screen (for example "Next mission").
+class RealmResultAction {
+  final String label;
+  final VoidCallback onTap;
+  const RealmResultAction(this.label, this.onTap);
+}
+
 class RealmShell extends StatefulWidget {
   /// Name used for the leaderboard and score saving, such as 'Biome'.
   final String gameName;
@@ -57,6 +64,12 @@ class RealmShell extends StatefulWidget {
   /// or the learning progress.
   final bool learning;
 
+  /// Extra buttons shown above PLAY AGAIN once the run is over.
+  final List<RealmResultAction> Function(RealmLogic l)? resultActions;
+
+  /// Text of the exit button on the result screen.
+  final String exitLabel;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -75,6 +88,8 @@ class RealmShell extends StatefulWidget {
     this.duelSeconds = 240,
     this.background = Colors.black,
     this.learning = true,
+    this.resultActions,
+    this.exitLabel = 'EXIT',
   });
 
   @override
@@ -693,7 +708,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                const Text('RUN COMPLETE', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: Colors.white, letterSpacing: 1.5)),
+                Text(l.resultTitle, style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 26, color: Colors.white, letterSpacing: 1.5)),
                 const SizedBox(height: 4),
                 Text('$total', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 54, color: GacomColors.deepOrange)),
                 const SizedBox(height: 6),
@@ -746,9 +761,14 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                   JourneyResultCard(result: _journey),
                 ],
                 const SizedBox(height: 18),
-                if (!_inDuel) _bigButton('PLAY AGAIN', () => setState(_newRun)),
+                if (!_inDuel && widget.resultActions != null)
+                  for (final RealmResultAction a in widget.resultActions!(l)) ...<Widget>[
+                    _bigButton(a.label, a.onTap),
+                    const SizedBox(height: 10),
+                  ],
+                if (!_inDuel) _bigButton('PLAY AGAIN', () => setState(_newRun), secondary: widget.resultActions != null && widget.resultActions!(l).isNotEmpty),
                 if (!_inDuel) const SizedBox(height: 10),
-                _bigButton(_inDuel ? 'SEND RESULT' : 'EXIT', _exit, secondary: !_inDuel),
+                _bigButton(_inDuel ? 'SEND RESULT' : widget.exitLabel, _exit, secondary: !_inDuel),
               ]),
             ),
           ),

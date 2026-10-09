@@ -1063,7 +1063,7 @@ class _PrivacyPolicyScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: const [
           _PolicySection('Summary',
-              'GACOM is run by Mobtech Synergies Ltd (RC-7477445), Lagos, Nigeria. We collect only what we need to run your account, games, community and payments. We do not sell your data and we do not use advertising trackers. The full policy is at gamicom.net/privacy.'),
+              'GACOM Brands is a product of Mobtech Synergies Ltd (RC-7477445), Lagos, Nigeria. We collect only what we need to run your account, games, community and payments. We do not sell your data and we do not use advertising trackers. The full policy is at gamicom.net/privacy.'),
           _PolicySection('1. What we collect',
               'Account details (email, username, display name, gamer tag), profile information you add, your posts, messages and uploads, wallet and order records, gameplay progress and scores, and basic device and error information. Card details are entered with Paystack and never reach our servers.'),
           _PolicySection('2. How we use it',
@@ -1081,7 +1081,7 @@ class _PrivacyPolicyScreen extends StatelessWidget {
           _PolicySection('8. Security',
               'Connections are encrypted, each account can reach only its own private records, and passwords are never stored in readable form. No service is completely secure, so use a strong, unique password.'),
           _PolicySection('9. Contact',
-              'privacy@gamicom.net\nMobtech Synergies Ltd, Lagos, Nigeria.\nEffective 9 October 2026.'),
+              'privacy@gamicom.net\nGACOM Brands, a product of Mobtech Synergies Ltd, Lagos, Nigeria.\nEffective 9 October 2026.'),
           SizedBox(height: 40),
         ],
       ),

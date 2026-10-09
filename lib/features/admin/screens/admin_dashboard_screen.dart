@@ -878,7 +878,7 @@ class _ExcoSectionState extends ConsumerState<_ExcoSection> {
       const Text('Identify by email address. They get special dashboard access.', style: TextStyle(color: GacomColors.textMuted, fontSize: 13)),
       const SizedBox(height: 16),
       Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(16), border: Border.all(color: GacomColors.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GacomTextField(controller: _emailCtrl, label: 'User Email', hint: 'executive@gacom.gg', prefixIcon: Icons.email_rounded, keyboardType: TextInputType.emailAddress),
+        GacomTextField(controller: _emailCtrl, label: 'User Email', hint: 'executive@gamicom.net', prefixIcon: Icons.email_rounded, keyboardType: TextInputType.emailAddress),
         const SizedBox(height: 14),
         const Text('Role', style: TextStyle(color: GacomColors.textMuted, fontSize: 12)),
         const SizedBox(height: 8),
