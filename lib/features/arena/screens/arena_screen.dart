@@ -230,6 +230,28 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
                 ])),
     );
   }
+  Widget _darkomBanner() => GestureDetector(
+    onTap: () => context.push('/darkom'),
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF1A0B2E), Color(0xFF0B1B2E)]),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFB060FF).withOpacity(0.6)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.shield_moon_rounded, size: 34, color: Color(0xFFB060FF)),
+        const SizedBox(width: 14),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('DARKOM CITY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white, letterSpacing: 1.2)),
+          SizedBox(height: 2),
+          Text('Fight through the blackout, defeat your own Echo. Your weapon skins live here.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.3)),
+        ])),
+        const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+      ]),
+    ),
+  );
+
   Widget _buildBrowse() => RefreshIndicator(
     color: GacomColors.deepOrange,
     onRefresh: _load,
@@ -246,6 +268,8 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
             Text('100% Skill Competition — No Gambling', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: GacomColors.success)),
           ]),
         ),
+        const SizedBox(height: 16),
+        _darkomBanner(),
         const SizedBox(height: 20),
 
         // Game selector

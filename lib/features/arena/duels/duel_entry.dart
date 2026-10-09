@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/arena_identity_chip.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/tutorial/how_to_gate.dart';
 import '../../../shared/widgets/pc_controls_gate.dart';
@@ -40,13 +41,31 @@ class _DuelEntryState extends State<DuelEntry> {
 
   @override
   Widget build(BuildContext context) {
-    if (DuelSession.current != null || DuelRegistry.byKey(widget.gameKey) == null) {
-      return HowToGate(gameKey: widget.gameKey, enabled: DuelSession.current == null, child: PcControlsGate(gameKey: widget.gameKey, child: widget.child));
+    if (DuelSession.current != null) {
+      return HowToGate(gameKey: widget.gameKey, enabled: false, child: PcControlsGate(gameKey: widget.gameKey, child: widget.child));
+    }
+    if (DuelRegistry.byKey(widget.gameKey) == null) {
+      return HowToGate(gameKey: widget.gameKey, child: PcControlsGate(gameKey: widget.gameKey, child: Stack(
+        fit: StackFit.expand,
+        children: [
+          widget.child,
+          Positioned(
+            right: 8,
+            top: MediaQuery.of(context).viewPadding.top + 52,
+            child: const IgnorePointer(child: ArenaIdentityChip()),
+          ),
+        ],
+      )));
     }
     return HowToGate(gameKey: widget.gameKey, child: PcControlsGate(gameKey: widget.gameKey, child: Stack(
       fit: StackFit.expand,
       children: [
         widget.child,
+        Positioned(
+          right: 8,
+          top: MediaQuery.of(context).viewPadding.top + 52,
+          child: const IgnorePointer(child: ArenaIdentityChip()),
+        ),
         Positioned(
           left: 0,
           top: MediaQuery.of(context).size.height * 0.42,

@@ -57,6 +57,7 @@ import '../../features/edu/odyssey/odyssey_hub_screen.dart';
 import '../../features/edu/edu_more_games_screen.dart';
 import '../../shared/tutorial/how_to_gate.dart';
 import '../../shared/widgets/pc_controls_gate.dart';
+import '../../features/darkom/darkom_screen.dart';
 import '../../features/edu/realms/realm_hub_screen.dart';
 import '../../features/edu/realms/realm_kit.dart';
 import '../../features/edu/realms/realm_registry.dart';
@@ -270,6 +271,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             final RealmConfig cfg = s.extra is RealmConfig ? s.extra as RealmConfig : const RealmConfig();
             return DuelEntry(gameKey: info.id, child: info.build(cfg));
           }),
+          GoRoute(path: '/darkom', builder: (_, __) => HowToGate(gameKey: 'darkom', child: PcControlsGate(gameKey: 'darkom', child: const DarkomScreen()))),
           GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),
           GoRoute(path: '/edu/odyssey/play', builder: (_, s) => HowToGate(gameKey: 'odyssey', child: PcControlsGate(gameKey: 'odyssey', child: OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig())))),

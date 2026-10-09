@@ -52,6 +52,11 @@ class RealmShell extends StatefulWidget {
   final double duelSeconds;
   final Color background;
 
+  /// False for games that are not question based (Darkom City): the result
+  /// screen then hides accuracy and review, and nothing is sent to Journey
+  /// or the learning progress.
+  final bool learning;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -69,6 +74,7 @@ class RealmShell extends StatefulWidget {
     this.joystick = true,
     this.duelSeconds = 240,
     this.background = Colors.black,
+    this.learning = true,
   });
 
   @override
@@ -255,11 +261,14 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     HapticFeedback.heavyImpact();
     if (!_saved) {
       _saved = true;
-      _reportJourney(l);
+      if (widget.learning) _reportJourney(l);
+      l.onRunEnd().catchError((Object _) {}).whenComplete(() {
+        if (mounted) setState(() {});
+      });
       GameScoreService.save(gameName: widget.gameName, score: l.finalScore, won: l.stats.correct > 0 ? true : null);
       final int bonus = l.xp - l.stats.correct * 8;
       bool first = true;
-      l.stats.askedBy.forEach((String sid, int asked) {
+      if (widget.learning) l.stats.askedBy.forEach((String sid, int asked) {
         final int right = l.stats.correctBy[sid] ?? 0;
         EduProgressRecorder.recordSession(
           subject: sid,
@@ -305,6 +314,12 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
       if (event.logicalKey == LogicalKeyboardKey.space && widget.actions.isNotEmpty) {
         l.onAction(widget.actions.first.id);
       }
+      if ((event.logicalKey == LogicalKeyboardKey.shiftLeft || event.logicalKey == LogicalKeyboardKey.shiftRight) && widget.actions.length > 2) {
+        l.onAction(widget.actions[2].id);
+      }
+      if (event.logicalKey == LogicalKeyboardKey.keyQ && widget.actions.length > 3) {
+        l.onAction(widget.actions[3].id);
+      }
       if (event.logicalKey == LogicalKeyboardKey.keyE && widget.actions.length > 1) {
         l.onAction(widget.actions[1].id);
       }
@@ -347,7 +362,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
       ),
     );
     if (leave == true) {
-      if (!_ended && l.stats.asked > 0) {
+      if (!_ended && (l.stats.asked > 0 || !widget.learning)) {
         l.over = true;
         _finish(l);
       }
@@ -659,9 +674,9 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                 Text('$total', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 54, color: GacomColors.deepOrange)),
                 const SizedBox(height: 6),
                 Wrap(alignment: WrapAlignment.center, spacing: 18, runSpacing: 8, children: <Widget>[
-                  _stat('Correct', '${st.correct}/${st.asked}'),
-                  _stat('Accuracy', '${(st.accuracy * 100).round()}%'),
-                  _stat('Best streak', '${st.bestStreak}'),
+                  if (widget.learning) _stat('Correct', '${st.correct}/${st.asked}'),
+                  if (widget.learning) _stat('Accuracy', '${(st.accuracy * 100).round()}%'),
+                  if (widget.learning) _stat('Best streak', '${st.bestStreak}'),
                   _stat('XP', '+${l.xp}'),
                   for (final MapEntry<String, String> e in l.extraStats.entries) _stat(e.key, e.value),
                 ]),
@@ -702,7 +717,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                         ]),
                       )),
                 ],
-                if (!_inDuel && _journey != null) ...<Widget>[
+                if (widget.learning && !_inDuel && _journey != null) ...<Widget>[
                   const SizedBox(height: 16),
                   JourneyResultCard(result: _journey),
                 ],

@@ -225,6 +225,10 @@ abstract class RealmLogic {
   /// The shell draws a pointing arrow from it. Null hides the arrow.
   Offset? get objectiveDelta => null;
 
+  /// Called once by the shell when the run ends, so a game can save its own
+  /// progress (for example to the server). The shell redraws when it returns.
+  Future<void> onRunEnd() async {}
+
   /// Optional short distance label for the arrow, such as "120 m".
   String? get objectiveDistance => null;
 }
