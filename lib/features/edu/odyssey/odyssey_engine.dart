@@ -949,6 +949,8 @@ class OdysseyEngine {
     final int walk = min(20, distance ~/ 1500);
     final int streakBonus = bestStreak >= 5 ? 15 : 0;
     final int questBonus = (questsDone > 5 ? 5 : questsDone) * 4;
-    return correct * 8 + streakBonus + walk + questBonus + min(40, missionsDone * 5) + min(30, corrected * 5);
+    final int missionBonus = min<int>(40, missionsDone * 5);
+    final int fixBonus = min<int>(30, corrected * 5);
+    return correct * 8 + streakBonus + walk + questBonus + missionBonus + fixBonus;
   }
 }
