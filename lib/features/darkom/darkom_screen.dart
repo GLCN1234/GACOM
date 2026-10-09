@@ -5,6 +5,7 @@ import 'darkom_armory.dart';
 import 'darkom_ghost.dart';
 import 'darkom_hud.dart';
 import 'darkom_logic.dart';
+import 'darkom_missions.dart';
 import 'darkom_painter.dart';
 import 'darkom_service.dart';
 import 'darkom_story.dart';
@@ -14,8 +15,11 @@ const Color _dkAccent = Color(0xFFFF2E93);
 /// Darkom City: an open, top-down, cyber-noir action game.
 /// Route: '/darkom'.
 class DarkomScreen extends StatefulWidget {
-  const DarkomScreen({super.key, this.config = const RealmConfig(useSchool: false)});
+  const DarkomScreen({super.key, this.config = const RealmConfig(useSchool: false), this.mission});
   final RealmConfig config;
+
+  /// A mission picked on the board. Null plays the story (or free roam).
+  final DarkomMission? mission;
 
   @override
   State<DarkomScreen> createState() => _DarkomScreenState();
@@ -44,7 +48,7 @@ class _DarkomScreenState extends State<DarkomScreen> {
       ghost = await DarkomGhost.load();
     } catch (_) {}
     if (!mounted) return;
-    setState(() => _boot = DarkomBoot(progress, armory, ghost));
+    setState(() => _boot = DarkomBoot(progress, armory, ghost, mission: widget.mission));
   }
 
   @override
@@ -62,13 +66,14 @@ class _DarkomScreenState extends State<DarkomScreen> {
         ),
       );
     }
-    final bool roam = b.progress.chapter >= 6;
-    final DarkomChapterDef ch = darkomChapter(roam ? 5 : b.progress.chapter);
+    final DarkomMission? ms = widget.mission;
+    final bool roam = ms == null && b.progress.chapter >= 6;
+    final DarkomChapterDef ch = ms != null ? ms.asChapter() : darkomChapter(roam ? 5 : b.progress.chapter);
     return RealmShell(
       gameName: 'Darkom City',
       gameId: 'darkom',
-      title: roam ? 'Darkom City: Free Roam' : 'Chapter ${ch.n}: ${ch.name}',
-      story: roam ? darkomRoamIntro : '${ch.fixer}, ${ch.fixerRole}: "${ch.intro}"',
+      title: ms != null ? ms.title : (roam ? 'Darkom City: Free Roam' : 'Chapter ${ch.n}: ${ch.name}'),
+      story: ms != null ? ms.brief : (roam ? darkomRoamIntro : '${ch.fixer}, ${ch.fixerRole}: "${ch.intro}"'),
       howTo: 'Drag anywhere to move. ATTACK fights with your weapon and aims at the nearest enemy. SPECIAL is a strong move that recharges, DASH is a short safe dodge, SWAP changes weapon. Follow the arrow and the minimap flag. On a computer: WASD to move, SPACE to attack, E for special, SHIFT to dash, Q to swap weapon.',
       icon: Icons.location_city_rounded,
       accent: _dkAccent,

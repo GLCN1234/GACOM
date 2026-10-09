@@ -7,6 +7,7 @@ import 'darkom_armory.dart';
 import 'darkom_combat.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart';
+import 'darkom_missions.dart';
 import 'darkom_service.dart';
 import 'darkom_story.dart';
 import 'darkom_world.dart';
@@ -17,7 +18,10 @@ class DarkomBoot {
   DarkomProgress progress;
   DarkomArmory armory;
   DarkomGhost? ghost;
-  DarkomBoot(this.progress, this.armory, this.ghost);
+
+  /// Set when a mission from the board is being played instead of the story.
+  DarkomMission? mission;
+  DarkomBoot(this.progress, this.armory, this.ghost, {this.mission});
 }
 
 const int darkomMaxEnemies = 24;
@@ -30,6 +34,9 @@ const double darkomZoneRadius = 150;
 class DarkomLogic extends RealmLogic {
   final DarkomBoot boot;
   final int chapterNo;
+
+  /// The board mission being played, or null for the story and free roam.
+  final DarkomMission? mission;
   final bool roam;
   final DarkomChapterDef ch;
   final DarkomTheme theme;
@@ -41,9 +48,11 @@ class DarkomLogic extends RealmLogic {
   DarkomLogic(RealmContent content, this.boot)
       : chapterNo = _chapterOf(boot),
         roam = _chapterOf(boot) >= 6,
-        ch = darkomChapter(_chapterOf(boot)),
-        theme = darkomTheme(darkomChapter(_chapterOf(boot)).district),
-        world = DarkomWorld.generate(darkomChapter(_chapterOf(boot)).district, content.seed + _chapterOf(boot) * 7919),
+        mission = boot.mission,
+        ch = boot.mission != null ? boot.mission!.asChapter() : darkomChapter(_chapterOf(boot)),
+        theme = darkomTheme(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district),
+        world = DarkomWorld.generate(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district,
+            content.seed + (boot.mission != null ? boot.mission!.seedSalt : _chapterOf(boot) * 7919)),
         armory = boot.armory,
         rnd = content.rng,
         heroName = _nameNow(),
@@ -52,6 +61,7 @@ class DarkomLogic extends RealmLogic {
   }
 
   static int _chapterOf(DarkomBoot b) {
+    if (b.mission != null) return b.mission!.district;
     final int c = b.progress.chapter;
     return c < 1 ? 1 : (c > 6 ? 6 : c);
   }
@@ -152,6 +162,11 @@ class DarkomLogic extends RealmLogic {
   Offset checkpoint = Offset.zero;
   final List<String> doneKeys = <String>[];
   int contractsDone = 0;
+  int collected = 0;
+  final List<Offset> chipPts = <Offset>[];
+  bool missionDone = false;
+  bool missionFailed = false;
+  DarkomMissionResult? missionRes;
   bool echoDefeated = false;
   int kills = 0;
   int roamBounties = 0;
@@ -193,6 +208,14 @@ class DarkomLogic extends RealmLogic {
       weaponUse[k] = 0;
     }
     mana = maxMana;
+    final DarkomMission? ms = mission;
+    if (ms != null) {
+      lives = ms.lives;
+      queue = <int>[0];
+      preDone = 0;
+      startContract();
+      return;
+    }
     if (roam) {
       say(ch.fixer, darkomRoamIntro, ch.fixerColor, dur: 7);
       waveBreak = 2.5;
@@ -285,6 +308,13 @@ class DarkomLogic extends RealmLogic {
     final List<RealmChip> out = <RealmChip>[];
     if (roam) {
       out.add(RealmChip('Wave $wave', Icons.local_fire_department_rounded, const Color(0xFFFF9100)));
+    } else if (mission != null) {
+      final DarkomMission m = mission!;
+      out.add(RealmChip(m.tierName, Icons.assignment_rounded, m.tierColor));
+      if (m.limit > 0 && phase == 0) {
+        final int left = max(0, m.limit - time.floor());
+        out.add(RealmChip('${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')}', Icons.timer_rounded, left <= 15 ? const Color(0xFFFF5252) : const Color(0xFFFFD54F)));
+      }
     } else if (phase >= 1) {
       out.add(RealmChip(echoDefeated ? 'Echo down' : 'Echo', Icons.bolt_rounded, const Color(0xFF00E5FF)));
     } else {
@@ -299,6 +329,27 @@ class DarkomLogic extends RealmLogic {
   Map<String, String> get extraStats {
     final Map<String, String> m = <String, String>{};
     m['District'] = theme.name;
+    final DarkomMission? ms = mission;
+    if (ms != null) {
+      m['Mission'] = ms.title;
+      m['Result'] = missionDone ? 'Complete' : (missionFailed ? 'Failed' : 'Not finished');
+      m['Kills'] = '$kills';
+      final DarkomMissionResult? mr = missionRes;
+      if (mr != null) {
+        if (!mr.accepted) {
+          m['Note'] = 'Run not counted';
+        } else {
+          m['Points'] = '+${mr.points + mr.dailyBonus}';
+          if (mr.dailyBonus > 0) m['Daily bonus'] = '+${mr.dailyBonus}';
+          m['Total points'] = '${mr.totalPoints}';
+        }
+      } else if (missionDone && reportDone) {
+        m['Saved'] = 'Offline';
+      } else if (missionDone && reported) {
+        m['Saving'] = '...';
+      }
+      return m;
+    }
     if (roam) {
       m['Waves'] = '$wavesCleared';
     } else {
@@ -376,6 +427,18 @@ class DarkomLogic extends RealmLogic {
           }
           case 'survive':
             return zone;
+          case 'collect': {
+            Offset? best;
+            double bd = 1e18;
+            for (final Offset c in chipPts) {
+              final double d = (c - heroPos).distanceSquared;
+              if (d < bd) {
+                bd = d;
+                best = c;
+              }
+            }
+            return best;
+          }
           default:
             return null;
         }
@@ -449,12 +512,14 @@ class DarkomLogic extends RealmLogic {
     }
   }
 
-  String contractLabel() => 'Contract ${(qi < queue.length ? queue[qi] : 0) + 1} of ${ch.contracts.length}';
+  String contractLabel() => mission != null ? 'Mission' : 'Contract ${(qi < queue.length ? queue[qi] : 0) + 1} of ${ch.contracts.length}';
 
   String contractText() {
     switch (cKind) {
       case 'clear':
         return 'defeat shades ($cKills/$cTarget)';
+      case 'collect':
+        return 'collect data chips ($collected/$cTarget)';
       case 'recover':
         return carrying ? 'carry the shard to the extraction gate' : 'grab the memory shard';
       case 'escort': {
@@ -805,19 +870,19 @@ class DarkomLogic extends RealmLogic {
 
   double get hpScale {
     final double c = roam ? (5 + wave * 0.05) : chapterNo.toDouble();
-    return 1 + 0.12 * (c - 1);
+    return (1 + 0.12 * (c - 1)) * (mission?.hpMul ?? 1.0);
   }
 
   double get dmgScale {
     if (roam) return 1.25;
-    return 0.9 + 0.07 * chapterNo;
+    return (0.9 + 0.07 * chapterNo) * (mission?.dmgMul ?? 1.0);
   }
 
   DEnemy? makeEnemy(String type, double x, double y, {bool bounty = false, String name = ''}) {
     if (enemies.length >= darkomMaxEnemies) return null;
     final DarkomEnemyDef d = darkomEnemies[type] ?? darkomEnemies['shade']!;
     double hpv = d.hp * hpScale;
-    if (bounty) hpv = d.hp * (1 + 0.15 * (roam ? 4 + wave * 0.3 : chapterNo - 1));
+    if (bounty) hpv = d.hp * (1 + 0.15 * (roam ? 4 + wave * 0.3 : chapterNo - 1)) * (mission?.hpMul ?? 1.0);
     final DEnemy e = DEnemy(nextId++, type, x, y, hpv, d.r, d.speed * (1 + 0.03 * (chapterNo > 5 ? 4 : chapterNo - 1)), d.dmg * dmgScale);
     e.bounty = bounty;
     e.name = name;
@@ -877,6 +942,8 @@ class DarkomLogic extends RealmLogic {
         final int cap = 4 + c;
         return max(3, want < cap ? want : cap);
       }
+      case 'collect':
+        return 3 + c ~/ 2;
       case 'recover':
         return 3 + c ~/ 2 + (carrying ? 2 : 0);
       case 'escort':
@@ -927,8 +994,22 @@ class DarkomLogic extends RealmLogic {
     courier = null;
     hunted = null;
     huntDone = false;
+    collected = 0;
+    chipPts.clear();
     checkpoint = world.circleHits(hx, hy, darkomHeroRadius) ? world.nearestClear(hx, hy) : Offset(hx, hy);
     switch (def.kind) {
+      case 'collect': {
+        final List<Offset> avoid = <Offset>[heroPos];
+        for (int i = 0; i < def.target; i++) {
+          final Offset c = world.pickPoint(rnd, extractPos, minDist: 260, avoid: avoid);
+          avoid.add(c);
+          chipPts.add(c);
+        }
+        for (int i = 0; i < 2; i++) {
+          spawnNear('shade', chipPts[i % chipPts.length], 120, 220);
+        }
+        break;
+      }
       case 'recover': {
         final Offset s = world.pickPoint(rnd, extractPos, minDist: 900, avoid: <Offset>[heroPos]);
         shard = s;
@@ -974,7 +1055,7 @@ class DarkomLogic extends RealmLogic {
     if (qi >= queue.length) return;
     final int idx = queue[qi];
     final DarkomContractDef def = ch.contracts[idx];
-    doneKeys.add(ch.keyFor(idx));
+    if (mission == null) doneKeys.add(ch.keyFor(idx));
     contractsDone++;
     cues.add('win');
     showBanner('CONTRACT COMPLETE', const Color(0xFF69F0AE), dur: 2.4);
@@ -989,7 +1070,13 @@ class DarkomLogic extends RealmLogic {
     zone = null;
     hunted = null;
     huntDone = false;
+    chipPts.clear();
     qi++;
+    if (mission != null) {
+      missionDone = true;
+      finishChapter();
+      return;
+    }
     if (qi >= queue.length) {
       beginApproach();
     } else {
@@ -1076,12 +1163,22 @@ class DarkomLogic extends RealmLogic {
     phase = 4;
     endT = 2.8;
     invuln = 99;
-    showBanner('CHAPTER COMPLETE', const Color(0xFFFFD54F), dur: 2.8);
+    showBanner(mission != null ? 'MISSION COMPLETE' : 'CHAPTER COMPLETE', const Color(0xFFFFD54F), dur: 2.8);
     say(ch.fixer, ch.outro, ch.fixerColor, dur: 4.5);
   }
 
   void _updateContract(double dt) {
     if (heroDead || phase == 4) return;
+    final DarkomMission? ms = mission;
+    if (ms != null && ms.limit > 0 && phase == 0 && time > ms.limit) {
+      missionFailed = true;
+      phase = 4;
+      endT = 2.4;
+      invuln = 99;
+      cues.add('bad');
+      showBanner('TIME UP', const Color(0xFFFF5252), dur: 2.4);
+      return;
+    }
     if (roam) {
       _updateRoam(dt);
       return;
@@ -1113,6 +1210,19 @@ class DarkomLogic extends RealmLogic {
       case 'clear':
         if (cKills >= cTarget) completeContract();
         break;
+      case 'collect': {
+        for (int i = chipPts.length - 1; i >= 0; i--) {
+          if ((chipPts[i] - heroPos).distance < 44) {
+            final Offset c = chipPts.removeAt(i);
+            collected++;
+            cues.add('good');
+            spark(c.dx, c.dy, const Color(0xFF00E5FF), n: 10);
+            floatText(c.dx, c.dy - 10, '$collected/$cTarget', const Color(0xFF00E5FF), size: 16);
+          }
+        }
+        if (collected >= cTarget) completeContract();
+        break;
+      }
       case 'recover': {
         if (!carrying) {
           final Offset? s = shard;
@@ -1214,6 +1324,23 @@ class DarkomLogic extends RealmLogic {
   Future<void> onRunEnd() async {
     if (reported) return;
     reported = true;
+    final DarkomMission? ms = mission;
+    if (ms != null) {
+      DarkomMissionResult? mr;
+      if (missionDone) {
+        try {
+          mr = await DarkomService.reportMission(missionId: ms.id, kills: kills, score: finalScore, durationSec: time.round());
+        } catch (_) {
+          mr = null;
+        }
+      }
+      missionRes = mr;
+      if (mr != null) {
+        result = DarkomRunResult(accepted: mr.accepted, xp: mr.xp, chapter: boot.progress.chapter, chapterAdvanced: false, newContracts: const <String>[], unlocks: const <String>[]);
+      }
+      reportDone = true;
+      return;
+    }
     try {
       final DarkomGhost? g = ghostRec?.build(echoWeapon);
       if (g != null) {

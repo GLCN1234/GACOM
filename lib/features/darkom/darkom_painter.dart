@@ -444,6 +444,17 @@ class DarkomPainter extends CustomPainter {
       c.restore();
       _text(c, 'MEMORY SHARD', shard + const Offset(0, 36), 12, _cyan);
     }
+    for (final Offset chip in g.chipPts) {
+      if (!_view.contains(chip)) continue;
+      c.drawCircle(chip, 30, _p..color = _cyan.withValues(alpha: 0.08 + 0.08 * pulse));
+      c.save();
+      c.translate(chip.dx, chip.dy - 6 - 3 * pulse);
+      final Rect r = Rect.fromCenter(center: Offset.zero, width: 22, height: 22);
+      c.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)), _p..color = const Color(0xFF0B2A33));
+      c.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)), _s..strokeWidth = 2..color = _cyan);
+      c.drawRect(Rect.fromCenter(center: Offset.zero, width: 8, height: 8), _p..color = _cyan);
+      c.restore();
+    }
     if (g.phase == 0 && g.cKind == 'recover' && g.carrying) {
       _drawFlag(c, g.extractPos, 'EXTRACTION', const Color(0xFF69F0AE));
     }

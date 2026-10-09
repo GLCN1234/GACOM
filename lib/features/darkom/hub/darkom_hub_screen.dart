@@ -474,7 +474,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
     if (p == null || _paused || _sheets > 0) return;
     switch (p.id) {
       case 'story':
-        _goto(context.push<void>('/darkom'));
+        _goto(context.push<void>('/darkom/missions'));
         break;
       case 'arena':
         _openDuel();

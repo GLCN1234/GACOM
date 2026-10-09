@@ -87,7 +87,7 @@ class HubWorld {
   static const HubCircle fountain = HubCircle(900, 660, 85);
 
   static const List<HubPortal> portals = <HubPortal>[
-    HubPortal(id: 'story', label: 'STORY GATE', hint: 'Play the Darkom City story', x: 900, y: 262, color: kHubCyan, icon: Icons.location_city_rounded),
+    HubPortal(id: 'story', label: 'STORY GATE', hint: 'Missions, daily jobs and the story', x: 900, y: 262, color: kHubCyan, icon: Icons.location_city_rounded),
     HubPortal(id: 'arena', label: 'ARENA GATE', hint: 'Challenge a player to a 1v1 duel', x: 1640, y: 622, color: kHubMagenta, icon: Icons.sports_martial_arts_rounded),
     HubPortal(id: 'squad', label: 'SQUAD HALL', hint: 'Team up with your house', x: 160, y: 622, color: kHubGreen, icon: Icons.groups_rounded),
     HubPortal(id: 'locker', label: 'LOCKER', hint: 'Change how your hero looks', x: 380, y: 1112, color: kHubViolet, icon: Icons.checkroom_rounded),

@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,7 +190,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           const TextSpan(text: ' & '),
                           WidgetSpan(
                             child: GestureDetector(
-                              onTap: () {},
+                              onTap: () => launchUrl(Uri.parse('https://gamicom.net/privacy'), mode: LaunchMode.externalApplication),
                               child: const Text(
                                 'Privacy Policy',
                                 style: TextStyle(

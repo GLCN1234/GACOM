@@ -84,6 +84,68 @@ class DarkomRunResult {
   }
 }
 
+/// What the player has done on the mission board.
+class DarkomMissionStats {
+  final int points;
+  final Map<String, int> done; // mission id -> times cleared
+  final Set<String> dailyDone; // mission ids whose daily bonus was taken today
+  final int missionsToday;
+  final bool offline;
+
+  const DarkomMissionStats({
+    required this.points,
+    required this.done,
+    required this.dailyDone,
+    required this.missionsToday,
+    this.offline = false,
+  });
+
+  static const DarkomMissionStats empty =
+      DarkomMissionStats(points: 0, done: <String, int>{}, dailyDone: <String>{}, missionsToday: 0, offline: true);
+
+  int get cleared => done.length;
+
+  factory DarkomMissionStats.fromJson(Map<String, dynamic> j) {
+    final Map<String, dynamic> d = _dkMap(j['done']);
+    return DarkomMissionStats(
+      points: _dkInt(j['points']),
+      done: d.map((String k, dynamic v) => MapEntry<String, int>(k, _dkInt(v, 1))),
+      dailyDone: _dkStrings(j['daily_done']).toSet(),
+      missionsToday: _dkInt(j['missions_today']),
+    );
+  }
+}
+
+/// What the server decided about one finished mission.
+class DarkomMissionResult {
+  final bool accepted;
+  final int points;
+  final int dailyBonus;
+  final int xp;
+  final bool first;
+  final int totalPoints;
+
+  const DarkomMissionResult({
+    required this.accepted,
+    required this.points,
+    required this.dailyBonus,
+    required this.xp,
+    required this.first,
+    required this.totalPoints,
+  });
+
+  factory DarkomMissionResult.fromJson(Map<String, dynamic> j) {
+    return DarkomMissionResult(
+      accepted: j['accepted'] == true,
+      points: _dkInt(j['points']),
+      dailyBonus: _dkInt(j['daily_bonus']),
+      xp: _dkInt(j['xp']),
+      first: j['first'] == true,
+      totalPoints: _dkInt(j['total_points']),
+    );
+  }
+}
+
 class DarkomService {
   DarkomService._();
 
@@ -122,6 +184,42 @@ class DarkomService {
       final Map<String, dynamic> j = _dkMap(r);
       if (j['success'] != true) return null;
       return DarkomRunResult.fromJson(j);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Never throws. [DarkomMissionStats.empty] offline or when signed out.
+  static Future<DarkomMissionStats> loadMissionStats() async {
+    try {
+      if (SupabaseService.currentUserId == null) return DarkomMissionStats.empty;
+      final dynamic r = await SupabaseService.client.rpc('darkom_get_missions');
+      if (r is! Map) return DarkomMissionStats.empty;
+      return DarkomMissionStats.fromJson(_dkMap(r));
+    } catch (_) {
+      return DarkomMissionStats.empty;
+    }
+  }
+
+  /// Never throws. Null when the mission could not be reported.
+  static Future<DarkomMissionResult?> reportMission({
+    required String missionId,
+    required int kills,
+    required int score,
+    required int durationSec,
+  }) async {
+    try {
+      if (SupabaseService.currentUserId == null) return null;
+      final dynamic r = await SupabaseService.client.rpc('darkom_report_mission', params: <String, dynamic>{
+        'p_mission': missionId,
+        'p_kills': kills,
+        'p_score': score,
+        'p_duration_sec': durationSec,
+      });
+      if (r is! Map) return null;
+      final Map<String, dynamic> j = _dkMap(r);
+      if (j['success'] != true) return null;
+      return DarkomMissionResult.fromJson(j);
     } catch (_) {
       return null;
     }
