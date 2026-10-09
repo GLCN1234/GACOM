@@ -1045,7 +1045,17 @@ class _InstitutionsAdminState extends State<_InstitutionsAdminSection> {
   Future<void> _load() async {
     try {
       final rows = await SupabaseService.client.from('institutions').select('*').order('name');
-      if (mounted) setState(() { _institutions = List<Map<String,dynamic>>.from(rows as List); _loading = false; });
+      final list = List<Map<String,dynamic>>.from(rows as List);
+      try {
+        final codes = await SupabaseService.client.rpc('admin_institution_codes');
+        if (codes is Map) {
+          for (final m in list) {
+            final c = codes[m['id'].toString()];
+            if (c != null) m['login_code'] = c;
+          }
+        }
+      } catch (_) {}
+      if (mounted) setState(() { _institutions = list; _loading = false; });
     } catch (e) { if (mounted) setState(() => _loading = false); }
   }
 
