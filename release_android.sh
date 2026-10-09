@@ -28,20 +28,24 @@ done
 
 flutter pub get
 
-# standard build: works on every Android phone
-flutter build apk --release $DEFINES
+# ARM64_ONLY=1 builds one 64-bit ARM file (about a third of the size, fits the 50 MB
+# Supabase free-plan limit, runs on almost every phone made in the last several years).
 rm -rf "$OUT" && mkdir -p "$OUT"
-cp build/app/outputs/flutter-apk/app-release.apk "$OUT/gacom-latest.apk"
-
-# small build: 64-bit ARM phones only (most phones from the last several years).
-# It needs a lot of memory. On a small machine (a Codespace) it can crash, so it is
-# optional: set SKIP_ARM64=1 to leave it out, and a failure here no longer stops the release.
-if [ -z "$SKIP_ARM64" ]; then
-  (cd android && ./gradlew --stop >/dev/null 2>&1) || true
-  if flutter build apk --release --split-per-abi $DEFINES; then
-    cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$OUT/gacom-latest-arm64.apk"
-  else
-    echo "Small build failed (probably memory). Continuing with the standard build only."
+if [ -n "$ARM64_ONLY" ]; then
+  flutter build apk --release --target-platform android-arm64 $DEFINES
+  cp build/app/outputs/flutter-apk/app-release.apk "$OUT/gacom-latest-arm64.apk"
+else
+  # standard build: works on every Android phone
+  flutter build apk --release $DEFINES
+  cp build/app/outputs/flutter-apk/app-release.apk "$OUT/gacom-latest.apk"
+  # small build: 64-bit ARM only. Needs a lot of memory; set SKIP_ARM64=1 to leave it out.
+  if [ -z "$SKIP_ARM64" ]; then
+    (cd android && ./gradlew --stop >/dev/null 2>&1) || true
+    if flutter build apk --release --split-per-abi $DEFINES; then
+      cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$OUT/gacom-latest-arm64.apk"
+    else
+      echo "Small build failed (probably memory). Continuing with the standard build only."
+    fi
   fi
 fi
 
@@ -52,13 +56,14 @@ def info(name):
     p = os.path.join('release_out', name)
     h = hashlib.sha256(open(p, 'rb').read()).hexdigest()
     return round(os.path.getsize(p) / 1048576, 1), h
-fm, fh = info('gacom-latest.apk')
+has_full = os.path.exists(os.path.join('release_out', 'gacom-latest.apk'))
+fm, fh = info('gacom-latest.apk') if has_full else (0, '')
 has_arm = os.path.exists(os.path.join('release_out', 'gacom-latest-arm64.apk'))
 am, ah = info('gacom-latest-arm64.apk') if has_arm else (0, '')
 m = {
     'version': version, 'build': build, 'min_build': 1,
     'notes': [n.strip() for n in notes.split('|') if n.strip()],
-    'full_url': base + '/gacom-latest.apk', 'full_mb': fm, 'full_sha256': fh,
+    'full_url': (base + '/gacom-latest.apk') if has_full else (base + '/gacom-latest-arm64.apk'), 'full_mb': fm if has_full else am, 'full_sha256': fh if has_full else ah,
     'arm64_url': (base + '/gacom-latest-arm64.apk') if has_arm else '', 'arm64_mb': am, 'arm64_sha256': ah,
 }
 json.dump(m, open('release_out/latest.json', 'w'), indent=2)
@@ -75,7 +80,7 @@ if [ -n "$SUPABASE_SERVICE_KEY" ]; then
     echo "uploaded $1"
   }
   # files first, manifest last, so nobody is told about a build that is not there yet
-  up gacom-latest.apk application/vnd.android.package-archive
+  if [ -f "$OUT/gacom-latest.apk" ]; then up gacom-latest.apk application/vnd.android.package-archive; fi
   if [ -f "$OUT/gacom-latest-arm64.apk" ]; then up gacom-latest-arm64.apk application/vnd.android.package-archive; fi
   up latest.json application/json
   echo "Done. People will be offered build $BUILD the next time they open the app."
