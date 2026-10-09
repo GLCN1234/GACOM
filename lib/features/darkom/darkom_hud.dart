@@ -18,15 +18,16 @@ const Color _hudGold = Color(0xFFFFD54F);
 /// joystick except the SWAP card.
 Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
   final DarkomLogic g = logic as DarkomLogic;
-  final double sw = MediaQuery.of(context).size.width;
+  final Size sz = MediaQuery.of(context).size;
+  final bool compact = sz.height < 440;
   final DToast? toast = g.toasts.isEmpty ? null : g.toasts.first;
-  final double toastW = min(300.0, max(170.0, sw - 210));
+  final double toastW = min(300.0, max(170.0, sz.width - (compact ? 330 : 210)));
   return Positioned.fill(
     child: Stack(children: <Widget>[
-      Positioned(left: 10, top: 132, child: IgnorePointer(child: _playerBlock(g))),
-      Positioned(right: 10, top: 132, child: IgnorePointer(child: _miniMap(g))),
-      if (toast != null) Positioned(left: 10, bottom: 24, child: IgnorePointer(child: _toastCard(toast, toastW))),
-      Positioned(right: 96, bottom: 22, child: _swapCard(g, refresh)),
+      Positioned(left: 10, top: compact ? 44 : 132, child: IgnorePointer(child: _playerBlock(g))),
+      Positioned(right: 10, top: compact ? 54 : 132, child: IgnorePointer(child: _miniMap(g, compact))),
+      if (toast != null) Positioned(left: 10, bottom: compact ? 10 : 24, child: IgnorePointer(child: _toastCard(toast, toastW))),
+      Positioned(right: compact ? 144 : 96, bottom: compact ? 8 : 22, child: _swapCard(g, refresh, compact)),
     ]),
   );
 }
@@ -105,14 +106,16 @@ Widget _playerBlock(DarkomLogic g) {
   ]);
 }
 
-Widget _miniMap(DarkomLogic g) {
+Widget _miniMap(DarkomLogic g, bool compact) {
+  final double w = compact ? 84 : 112;
+  final double h = compact ? 63 : 84;
   return Container(
-    width: 112,
-    height: 84,
+    width: w,
+    height: h,
     decoration: BoxDecoration(color: const Color(0xAA05060A), borderRadius: BorderRadius.circular(8), border: Border.all(color: g.theme.neonA.withValues(alpha: 0.7), width: 1.5)),
     child: ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: CustomPaint(size: const Size(112, 84), painter: DarkomMiniPainter(g)),
+      child: CustomPaint(size: Size(w, h), painter: DarkomMiniPainter(g)),
     ),
   );
 }
@@ -143,7 +146,8 @@ Widget _toastCard(DToast t, double w) {
   );
 }
 
-Widget _swapCard(DarkomLogic g, VoidCallback refresh) {
+Widget _swapCard(DarkomLogic g, VoidCallback refresh, bool compact) {
+  final double art = compact ? 44 : 72;
   final String wk = g.weapon;
   final DarkomWeaponDef d = darkomWeapon(wk);
   return GestureDetector(
@@ -153,17 +157,17 @@ Widget _swapCard(DarkomLogic g, VoidCallback refresh) {
       refresh();
     },
     child: Container(
-      width: 96,
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 6),
+      width: compact ? 62 : 96,
+      padding: EdgeInsets.fromLTRB(4, 4, 4, compact ? 4 : 6),
       decoration: BoxDecoration(color: const Color(0xAA000000), borderRadius: BorderRadius.circular(16), border: Border.all(color: (g.armory.glowFor(wk) ?? const Color(0xFF8A96AD)).withValues(alpha: 0.8), width: 1.5)),
       child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
         SizedBox(
-          width: 72,
-          height: 72,
-          child: WeaponArt(key: ValueKey<String>('dk_$wk${g.armory.skinNameFor(wk)}'), asset: g.armory.assetFor(wk), size: 72, rarity: g.armory.rarityFor(wk)),
+          width: art,
+          height: art,
+          child: WeaponArt(key: ValueKey<String>('dk_$wk${g.armory.skinNameFor(wk)}'), asset: g.armory.assetFor(wk), size: art, rarity: g.armory.rarityFor(wk)),
         ),
-        Text(d.name.toUpperCase(), maxLines: 1, style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 1)),
-        Text(g.armory.skinNameFor(wk), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 9)),
+        Text(d.name.toUpperCase(), maxLines: 1, style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: compact ? 10 : 12, letterSpacing: 1)),
+        if (!compact) Text(g.armory.skinNameFor(wk), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 9)),
         const SizedBox(height: 2),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
           for (int i = 0; i < darkomWeaponKinds.length; i++)

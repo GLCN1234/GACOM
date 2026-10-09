@@ -450,6 +450,10 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
       final Widget built = widget.hud!(context, l, () => setState(() {}));
       gameHud = built is Positioned ? built : Positioned(left: 0, top: 0, child: built);
     }
+    // A phone held sideways is only about 360 logical pixels tall. Everything below
+    // is laid out for a tall screen, so in a short window it is made smaller and
+    // moved into the corners instead of stacking on top of itself.
+    final bool compact = MediaQuery.of(context).size.height < 440;
     return Stack(fit: StackFit.expand, children: <Widget>[
       Positioned(
         left: 12,
@@ -477,39 +481,57 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
         ]),
       ),
       Positioned(
-        left: 12,
-        right: 12,
-        top: 50,
+        left: compact ? 104 : 12,
+        right: compact ? 112 : 12,
+        top: compact ? 10 : 50,
         child: Wrap(spacing: 6, runSpacing: 4, children: <Widget>[
           for (final RealmChip c in chips) _pill(c.text, c.icon, c.color),
           if (_inDuel) _pill('${(widget.duelSeconds - l.time).clamp(0.0, 9999.0).ceil()}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
       if (gameHud != null) gameHud,
-      if (!l.modal && !_ended && !_intro) ..._objectiveLayer(l),
-      if (widget.actions.isNotEmpty && !l.modal)
+      if (!l.modal && !_ended && !_intro) ..._objectiveLayer(l, compact),
+      if (widget.actions.isNotEmpty && !l.modal && !compact)
         Positioned(
           right: 18,
           bottom: 26,
           child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            for (final RealmAction a in widget.actions) _actionButton(l, a),
+            for (final RealmAction a in widget.actions) _actionButton(l, a, false),
           ]),
+        ),
+      // Sideways phone: a small two-by-two pad in the bottom right corner, with the
+      // main button (the first one) at the bottom right under the thumb.
+      if (widget.actions.isNotEmpty && !l.modal && compact)
+        Positioned(
+          right: 10,
+          bottom: 8,
+          child: SizedBox(
+            width: 2 * 62.0 + 4,
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 4,
+              runSpacing: 4,
+              children: <Widget>[
+                for (final RealmAction a in widget.actions.reversed) _actionButton(l, a, true),
+              ],
+            ),
+          ),
         ),
     ]);
   }
 
   /// The objective bar and the pointing arrow, drawn for any game that
   /// reports an objective.
-  List<Widget> _objectiveLayer(RealmLogic l) {
+  List<Widget> _objectiveLayer(RealmLogic l, bool compact) {
     final String? text = l.objectiveText;
     if (text == null || text.isEmpty) return const <Widget>[];
     final Offset? delta = l.objectiveDelta;
     final String? dist = l.objectiveDistance;
     final List<Widget> out = <Widget>[
       Positioned(
-        left: 12,
-        right: 12,
-        top: 84,
+        left: compact ? 205 : 12,
+        right: compact ? 110 : 12,
+        top: compact ? 44 : 84,
         child: IgnorePointer(
           child: Align(
             alignment: Alignment.topCenter,
@@ -545,28 +567,30 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     return out;
   }
 
-  Widget _actionButton(RealmLogic l, RealmAction a) {
+  Widget _actionButton(RealmLogic l, RealmAction a, bool compact) {
     final double ready = l.actionReady(a.id).clamp(0.0, 1.0);
+    final double outer = compact ? 58 : 70;
+    final double inner = compact ? 44 : 54;
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: EdgeInsets.only(top: compact ? 0 : 10),
       child: GestureDetector(
         onTapDown: (_) => l.onAction(a.id),
         child: SizedBox(
-          width: 70,
-          height: 70,
+          width: outer,
+          height: outer,
           child: Stack(alignment: Alignment.center, children: <Widget>[
             SizedBox(
-              width: 70,
-              height: 70,
-              child: CircularProgressIndicator(value: ready, strokeWidth: 5, color: ready >= 1 ? const Color(0xFF69F0AE) : Colors.white54, backgroundColor: Colors.white12),
+              width: outer,
+              height: outer,
+              child: CircularProgressIndicator(value: ready, strokeWidth: compact ? 4 : 5, color: ready >= 1 ? const Color(0xFF69F0AE) : Colors.white54, backgroundColor: Colors.white12),
             ),
             Container(
-              width: 54,
-              height: 54,
+              width: inner,
+              height: inner,
               decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5), border: Border.all(color: Colors.white54)),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-                Icon(a.icon, color: Colors.white, size: 22),
-                Text(a.label, style: const TextStyle(color: Colors.white70, fontSize: 8.5, fontWeight: FontWeight.w700)),
+                Icon(a.icon, color: Colors.white, size: compact ? 18 : 22),
+                Text(a.label, style: TextStyle(color: Colors.white70, fontSize: compact ? 7 : 8.5, fontWeight: FontWeight.w700)),
               ]),
             ),
           ]),
@@ -632,8 +656,8 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
   Widget _pauseOverlay() => Positioned.fill(
         child: Container(
           color: Colors.black.withValues(alpha: 0.7),
-          child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          child: SafeArea(child: Center(
+            child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
               const Text('PAUSED', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 30, color: Colors.white, letterSpacing: 2)),
               const SizedBox(height: 8),
               Padding(
@@ -653,8 +677,8 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
               _bigButton('LEAVE', () async {
                 if (await _confirmLeave() && mounted) _exit();
               }, secondary: true),
-            ]),
-          ),
+            ])),
+          )),
         ),
       );
 
