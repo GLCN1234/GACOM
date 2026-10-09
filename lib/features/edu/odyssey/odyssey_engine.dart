@@ -222,6 +222,9 @@ class OdysseyEngine {
   String _pendingRegion = '';
   double _pendingT = 0;
 
+  /// Half the screen height in world units, so answer orbs always fit on screen.
+  double viewHalfH = 300;
+
   double _askTimer = 4.0;
   double _enemyTimer = 14;
   double _starTimer = 18;
@@ -852,7 +855,7 @@ class OdysseyEngine {
     final List<OdyOrb> orbs = <OdyOrb>[];
     for (int i = 0; i < n; i++) {
       final double ang = base + i * 2 * pi / n;
-      final double r = 190 + rng.nextDouble() * 50;
+      final double r = min(190 + rng.nextDouble() * 50, max(120.0, viewHalfH * 0.78));
       orbs.add(OdyOrb(px + cos(ang) * r, py + sin(ang) * r, rng.nextDouble() * 6.28, i, q.options[i], ang: ang, rad: r));
     }
     active = OdyActive(q, total, orbs, redo: isRedo);

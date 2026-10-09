@@ -1,3 +1,4 @@
+import '../../shared/widgets/landscape_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -333,14 +334,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             final RealmGameInfo? info = RealmRegistry.byId(s.pathParameters['id']!);
             if (info == null) return const RealmHubScreen();
             final RealmConfig cfg = s.extra is RealmConfig ? s.extra as RealmConfig : const RealmConfig();
-            return DuelEntry(gameKey: info.id, child: info.build(cfg));
+            return DuelEntry(gameKey: info.id, child: LandscapeScope(child: info.build(cfg)));
           }),
-          GoRoute(path: '/darkom/hub', builder: (_, __) => HowToGate(gameKey: 'darkomhub', child: const DarkomHubScreen())),
-          GoRoute(path: '/darkom/arena', builder: (_, s) => s.extra is DarkomArenaArgs ? DarkomArenaScreen(args: s.extra as DarkomArenaArgs) : const DarkomHubScreen()),
-          GoRoute(path: '/darkom', builder: (_, __) => HowToGate(gameKey: 'darkom', child: PcControlsGate(gameKey: 'darkom', child: const DarkomScreen()))),
+          GoRoute(path: '/darkom/hub', builder: (_, __) => HowToGate(gameKey: 'darkomhub', child: const LandscapeScope(child: DarkomHubScreen()))),
+          GoRoute(path: '/darkom/arena', builder: (_, s) => s.extra is DarkomArenaArgs ? LandscapeScope(child: DarkomArenaScreen(args: s.extra as DarkomArenaArgs)) : const LandscapeScope(child: DarkomHubScreen())),
+          GoRoute(path: '/darkom', builder: (_, __) => HowToGate(gameKey: 'darkom', child: PcControlsGate(gameKey: 'darkom', child: const LandscapeScope(child: DarkomScreen())))),
           GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),
-          GoRoute(path: '/edu/odyssey/play', builder: (_, s) => HowToGate(gameKey: 'odyssey', child: PcControlsGate(gameKey: 'odyssey', child: OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig())))),
+          GoRoute(path: '/edu/odyssey/play', builder: (_, s) => HowToGate(gameKey: 'odyssey', child: PcControlsGate(gameKey: 'odyssey', child: LandscapeScope(child: OdysseyScreen(config: s.extra is OdysseyConfig ? s.extra as OdysseyConfig : const OdysseyConfig()))))),
           GoRoute(path: '/edu/quest/:id', builder: (_, s) => QuestPlayScreen(questId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/paywall',  builder: (_, s) => EduPaywallScreen(lockedSubject: s.extra as String?)),
           GoRoute(path: '/edu/subject/:id', builder: (_, s) => EduSubjectScreen(subjectId: s.pathParameters['id']!)),

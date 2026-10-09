@@ -514,6 +514,9 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   }
 
   Widget _hud(OdysseyEngine e) {
+    final Size sz = MediaQuery.of(context).size;
+    final bool land = sz.width > sz.height;
+    e.viewHalfH = sz.height / 2;
     final String region = e.subjectAt(e.px, e.py);
     final OdySubject rs = _subjects[region] ?? odySubjectById(region);
     final OdyActive? a = e.active;
@@ -566,8 +569,9 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       if (a != null)
         Positioned(
           left: 10,
-          right: 10,
-          top: 88,
+          right: land ? null : 10,
+          width: land ? min(sz.width * 0.5, 440.0) : null,
+          top: land ? 62 : 88,
           child: _questionCard(a, _subjects[a.q.subject] ?? odySubjectById(a.q.subject)),
         )
       else
@@ -579,9 +583,9 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         ),
       // toasts
       Positioned(
-        left: 0,
-        right: 0,
-        top: a != null ? 232 : 128,
+        left: land && a != null ? sz.width * 0.56 : 0,
+        right: land && a != null ? 70 : 0,
+        top: land ? (a != null ? 96 : 100) : (a != null ? 232 : 128),
         child: Column(children: e.toasts.map((OdyToast t) => Opacity(
               opacity: t.life.clamp(0.0, 1.0),
               child: Container(
@@ -613,7 +617,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         Positioned(
           left: 0,
           right: 0,
-          top: 190,
+          top: MediaQuery.of(context).size.width > MediaQuery.of(context).size.height ? 110 : 190,
           child: IgnorePointer(
             child: Center(
               child: Opacity(
