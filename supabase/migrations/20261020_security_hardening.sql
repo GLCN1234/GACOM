@@ -723,14 +723,15 @@ create trigger aa_lqp_sec before insert or update on public.life_quest_progress
 -- -----------------------------------------------------------------------------
 -- 8. Legacy RPCs with a user-id parameter (IDOR)  [SEC-15 .. SEC-17]
 -- -----------------------------------------------------------------------------
-create or replace function public.get_user_id_by_email(email text)
-returns text language plpgsql security definer set search_path = public, pg_temp as $$
+drop function if exists public.get_user_id_by_email(text);
+create function public.get_user_id_by_email(email text)
+returns uuid language plpgsql security definer set search_path = public, pg_temp as $$
 declare result_id uuid;
 begin
   if not public.sec_is_admin() then raise exception 'Admins only' using errcode = '42501'; end if;
   perform public.sec_rl('uid_by_email', 30, 60);
   select u.id into result_id from auth.users u where lower(u.email) = lower(get_user_id_by_email.email) limit 1;
-  return result_id::text;
+  return result_id;
 end $$;
 
 create or replace function public.increment_posts_count(user_id uuid)
