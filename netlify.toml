@@ -76,6 +76,14 @@ frame-ancestors 'self'"""
   to = "/download/index.html"
   status = 200
 
+# Branded APK links: gamicom.net/get/<file> serves the release files (APK and
+# latest.json) from the storage bucket without showing the storage address.
+[[redirects]]
+  from = "/get/:file"
+  to = "https://rxccipqvyrcfpsadgpzp.supabase.co/storage/v1/object/public/app-releases/:file"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

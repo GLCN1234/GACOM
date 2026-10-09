@@ -157,6 +157,9 @@
     return Promise.resolve(false);
   }
 
+  // always download through our own address, whatever host the manifest names
+  function brand(u) { return '/get/' + String(u).split('?')[0].split('/').pop(); }
+
   function withName(u) { return u + (u.indexOf('?') < 0 ? '?' : '&') + 'download=Gacom.apk'; }
 
   var dl = document.getElementById('dl');
@@ -168,7 +171,7 @@
     var has64 = !!info.arm64_url;
     var good = (use64 && has64) ? 'arm64' : 'full';
     function setup(kind) {
-      var url = kind === 'arm64' ? info.arm64_url : info.full_url;
+      var url = brand(kind === 'arm64' ? info.arm64_url : info.full_url);
       var mb = kind === 'arm64' ? info.arm64_mb : info.full_mb;
       var sha = kind === 'arm64' ? info.arm64_sha256 : info.full_sha256;
       dl.href = withName(url);
@@ -192,7 +195,7 @@
 
   var info = FALLBACK;
   Promise.all([
-    fetch(BASE + 'latest.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    fetch('/get/latest.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
     wants64()
   ]).then(function (res) {
     var m = res[0];
