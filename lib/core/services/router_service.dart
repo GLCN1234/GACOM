@@ -57,7 +57,10 @@ import '../../features/edu/odyssey/odyssey_hub_screen.dart';
 import '../../features/edu/edu_more_games_screen.dart';
 import '../../shared/tutorial/how_to_gate.dart';
 import '../../shared/widgets/pc_controls_gate.dart';
+import '../../features/darkom/arena/darkom_arena_args.dart';
+import '../../features/darkom/arena/darkom_arena_screen.dart';
 import '../../features/darkom/darkom_screen.dart';
+import '../../features/darkom/hub/darkom_hub_screen.dart';
 import '../../features/edu/realms/realm_hub_screen.dart';
 import '../../features/edu/realms/realm_kit.dart';
 import '../../features/edu/realms/realm_registry.dart';
@@ -271,6 +274,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             final RealmConfig cfg = s.extra is RealmConfig ? s.extra as RealmConfig : const RealmConfig();
             return DuelEntry(gameKey: info.id, child: info.build(cfg));
           }),
+          GoRoute(path: '/darkom/hub', builder: (_, __) => HowToGate(gameKey: 'darkomhub', child: const DarkomHubScreen())),
+          GoRoute(path: '/darkom/arena', builder: (_, s) => s.extra is DarkomArenaArgs ? DarkomArenaScreen(args: s.extra as DarkomArenaArgs) : const DarkomHubScreen()),
           GoRoute(path: '/darkom', builder: (_, __) => HowToGate(gameKey: 'darkom', child: PcControlsGate(gameKey: 'darkom', child: const DarkomScreen()))),
           GoRoute(path: '/edu/more-games', builder: (_, __) => const EduMoreGamesScreen()),
           GoRoute(path: '/edu/odyssey',  builder: (_, __) => const OdysseyHubScreen()),

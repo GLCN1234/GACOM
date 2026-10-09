@@ -231,7 +231,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
     );
   }
   Widget _darkomBanner() => GestureDetector(
-    onTap: () => context.push('/darkom'),
+    onTap: () => context.push('/darkom/hub'),
     child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -245,7 +245,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen> with SingleTickerProv
         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('DARKOM CITY', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white, letterSpacing: 1.2)),
           SizedBox(height: 2),
-          Text('Fight through the blackout, defeat your own Echo. Your weapon skins live here.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.3)),
+          Text('Meet players, join your house squad, duel, or fight through the story and your own Echo.', style: TextStyle(color: GacomColors.textSecondary, fontSize: 12, height: 1.3)),
         ])),
         const Icon(Icons.chevron_right_rounded, color: Colors.white54),
       ]),

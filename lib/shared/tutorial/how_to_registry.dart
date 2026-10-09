@@ -3,6 +3,8 @@ import 'how_to_arena_b.dart';
 import 'how_to_arena_c.dart';
 import 'how_to_model.dart';
 import 'how_to_darkom.dart';
+import 'how_to_darkomarena.dart';
+import 'how_to_darkomhub.dart';
 import 'how_to_ember.dart';
 import 'how_to_realms.dart';
 import 'how_to_signal.dart';
@@ -20,6 +22,8 @@ class HowToRegistry {
       ...howToArenaC,
       ...howToRealms,
       ...howToDarkom,
+      ...howToDarkomArena,
+      ...howToDarkomHub,
       ...howToEmber,
       ...howToSignal,
       ...howToSkyroot,
