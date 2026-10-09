@@ -39,6 +39,14 @@ android {
         }
     }
 
+    // Compress the native libraries inside the APK (voice and video libraries are the
+    // bulk of the file). The download shrinks a lot; Android unpacks them on install.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")

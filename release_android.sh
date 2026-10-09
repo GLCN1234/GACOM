@@ -21,7 +21,7 @@ echo "Building GACOM $VERSION (build $BUILD)"
 
 # Keys are already built into the app as defaults (lib/core/constants/app_constants.dart),
 # so nothing has to be typed. Only values that are actually set are passed on.
-DEFINES="--dart-define=APP_BUILD=$BUILD"
+DEFINES="--split-debug-info=build/symbols --dart-define=APP_BUILD=$BUILD"
 for K in SUPABASE_URL SUPABASE_ANON_KEY PAYSTACK_PUBLIC_KEY LIVEKIT_URL; do
   if [ -n "${!K}" ]; then DEFINES="$DEFINES --dart-define=$K=${!K}"; fi
 done
@@ -67,6 +67,8 @@ m = {
     'arm64_url': (base + '/gacom-latest-arm64.apk') if has_arm else '', 'arm64_mb': am, 'arm64_sha256': ah,
 }
 json.dump(m, open('release_out/latest.json', 'w'), indent=2)
+big = max(fm, am)
+print('\nLargest file: %.1f MB %s' % (big, '(fits the 50 MB Supabase limit)' if big < 49 else '(over 50 MB: upload_release.sh will use the GitHub route)'))
 print(json.dumps(m, indent=2))
 PY
 
