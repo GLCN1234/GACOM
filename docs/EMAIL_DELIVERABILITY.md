@@ -100,14 +100,17 @@ The Free plan has a daily send cap (about 200 per day, 6,000 per month) and show
 a Mailjet footer. A busy launch day can pass that, and sign-ups then silently
 stop getting mail. Watch Mailjet > Statistics, and upgrade before a push.
 
-## Known limit
+## Branded links (done in the templates and the app)
 
-The confirm and reset buttons still point at your Supabase address
-(`...supabase.co/auth/v1/verify`) before sending people on to gamicom.net.
-Some filters notice that a link domain differs from the sender domain. It is
-usually fine once SPF/DKIM/DMARC pass. The full fix is a Supabase custom domain
-(for example `auth.gamicom.net`), which is a paid add-on. If spam placement
-continues after Steps 1 to 4, that is the next thing to do.
+The templates now link to `https://gamicom.net/#/auth/confirm?token_hash=...&type=...`
+instead of the Supabase address. The app route `/auth/confirm`
+(`auth_confirm_screen.dart`) swaps the token for a session with `verifyOTP`. You
+must deploy the app (Netlify) before pasting the new templates, otherwise the
+links open a page that does not exist yet. Also set Authentication > URL
+Configuration > Site URL to `https://gamicom.net`.
+
+Run in this order: push and let Netlify finish, paste the templates in Supabase,
+then send a fresh test. Links in emails sent before that keep the old format.
 
 ## What to tell users meanwhile
 

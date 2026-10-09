@@ -10,6 +10,7 @@ import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
+import '../../features/auth/screens/auth_confirm_screen.dart';
 import '../../features/home/screens/main_shell.dart';
 import '../../features/feed/screens/feed_screen.dart';
 import '../../features/feed/screens/create_post_screen.dart';
@@ -195,7 +196,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         final role = await _RoleGuard.role();
         if (role != 'admin' && role != 'super_admin' && role != 'moderator' && role != 'exco') return AppConstants.homeRoute;
       }
-      if (loc == '/reset-password') return null;
+      if (loc == '/reset-password' || loc == '/auth/confirm') return null;
       final isAuthRoute = loc == AppConstants.loginRoute ||
           loc == AppConstants.registerRoute ||
           loc == AppConstants.onboardingRoute ||
@@ -219,6 +220,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: AppConstants.loginRoute, builder: (_, __) => const LoginScreen()),
       GoRoute(path: AppConstants.registerRoute, builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/reset-password', builder: (_, __) => const ResetPasswordScreen()),
+      GoRoute(path: '/auth/confirm', builder: (_, s) => AuthConfirmScreen(tokenHash: s.uri.queryParameters['token_hash'], type: s.uri.queryParameters['type'])),
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
         routes: [
