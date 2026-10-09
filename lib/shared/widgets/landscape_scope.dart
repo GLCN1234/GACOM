@@ -51,10 +51,14 @@ class _LandscapeScopeState extends State<LandscapeScope> {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (BuildContext context, BoxConstraints bc) {
       final bool tall = bc.maxHeight > bc.maxWidth * 1.05;
+      // Games are laid out to fixed sizes: a phone set to a large font or display
+      // size must not blow up their buttons and captions.
+      final MediaQueryData base = MediaQuery.of(context);
+      final MediaQueryData calm = base.copyWith(textScaler: base.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.1));
       final bool turn = tall && !_manualPortrait;
       if (!turn) {
         return Stack(children: <Widget>[
-          Positioned.fill(child: widget.child),
+          Positioned.fill(child: MediaQuery(data: calm, child: widget.child)),
           if (tall)
             Positioned(
               left: 8,
@@ -63,7 +67,7 @@ class _LandscapeScopeState extends State<LandscapeScope> {
             ),
         ]);
       }
-      final MediaQueryData mq = MediaQuery.of(context);
+      final MediaQueryData mq = calm;
       final MediaQueryData swapped = mq.copyWith(
         size: Size(mq.size.height, mq.size.width),
         padding: EdgeInsets.zero,

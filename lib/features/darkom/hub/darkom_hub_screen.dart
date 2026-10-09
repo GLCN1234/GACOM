@@ -740,9 +740,15 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
 
   // ------------------------------------------------------------------- UI
 
+  /// Short windows (a phone held sideways) get smaller buttons and no captions,
+  /// so the controls never take over the screen.
+  bool get _compact => _viewSize.height < 440;
+
   Widget _hudBtn(IconData icon, String label, Color color, VoidCallback onTap, {int badge = 0, bool active = false}) {
+    final bool cp = _compact;
+    final double box = cp ? 38 : 52;
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: EdgeInsets.only(top: cp ? 6 : 10),
       child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
         Stack(clipBehavior: Clip.none, children: <Widget>[
           Material(
@@ -751,7 +757,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: onTap,
-              child: SizedBox(width: 52, height: 52, child: Icon(icon, color: active ? Colors.black : color, size: 26)),
+              child: SizedBox(width: box, height: box, child: Icon(icon, color: active ? Colors.black : color, size: cp ? 20 : 26)),
             ),
           ),
           if (badge > 0)
@@ -765,8 +771,8 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
               ),
             ),
         ]),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, shadows: <Shadow>[Shadow(color: Colors.black, blurRadius: 3)])),
+        if (!cp) const SizedBox(height: 2),
+        if (!cp) Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, shadows: <Shadow>[Shadow(color: Colors.black, blurRadius: 3)])),
       ]),
     );
   }
@@ -775,21 +781,22 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
     final DarkomHubNet? net = _net;
     final bool live = net != null && net.status.value == 'live';
     final int online = net?.online.value ?? 1;
+    final double tb = _compact ? 34 : 42;
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(8, inset + 6, 8, 0),
+        padding: EdgeInsets.fromLTRB(8, inset + (_compact ? 4 : 6), 8, 0),
         child: Row(children: <Widget>[
           Material(
             color: const Color(0xE60B0F1C),
             shape: const CircleBorder(side: BorderSide(color: kHubCyan, width: 1.5)),
-            child: InkWell(customBorder: const CircleBorder(), onTap: _leave, child: const SizedBox(width: 42, height: 42, child: Icon(Icons.arrow_back_rounded, color: kHubCyan))),
+            child: InkWell(customBorder: const CircleBorder(), onTap: _leave, child: SizedBox(width: tb, height: tb, child: Icon(Icons.arrow_back_rounded, size: _compact ? 18 : 24, color: kHubCyan))),
           ),
           const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: _compact ? 5 : 8),
             decoration: BoxDecoration(color: const Color(0xE60B0F1C), borderRadius: BorderRadius.circular(20), border: Border.all(color: kHubMagenta.withOpacity(0.7))),
             child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
               const Text('NEON PLAZA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 13)),
@@ -803,7 +810,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
           Material(
             color: const Color(0xE60B0F1C),
             shape: const CircleBorder(side: BorderSide(color: kHubViolet, width: 1.5)),
-            child: InkWell(customBorder: const CircleBorder(), onTap: () => context.push('/character'), child: const SizedBox(width: 42, height: 42, child: Icon(Icons.threed_rotation_rounded, color: kHubViolet))),
+            child: InkWell(customBorder: const CircleBorder(), onTap: () => context.push('/character'), child: SizedBox(width: tb, height: tb, child: Icon(Icons.threed_rotation_rounded, size: _compact ? 18 : 24, color: kHubViolet))),
           ),
         ]),
       ),
@@ -836,7 +843,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
             _topBar(mq.padding.top),
             // challenge and info banner
             Positioned(
-              top: mq.padding.top + 58,
+              top: mq.padding.top + (_compact ? 46 : 58),
               left: 124,
               right: 12,
               child: ValueListenableBuilder<String?>(
@@ -870,7 +877,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
             ),
             // emote wheel
             Positioned(
-              right: 74,
+              right: _compact ? 60 : 74,
               bottom: mq.padding.bottom + 12,
               child: ValueListenableBuilder<bool>(
                 valueListenable: _emoteOpen,
