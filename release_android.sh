@@ -19,7 +19,12 @@ VERSION="${VERSION_LINE%%+*}"
 BUILD="${VERSION_LINE##*+}"
 echo "Building GACOM $VERSION (build $BUILD)"
 
-DEFINES="--dart-define=APP_BUILD=$BUILD --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=PAYSTACK_PUBLIC_KEY=$PAYSTACK_PUBLIC_KEY --dart-define=LIVEKIT_URL=$LIVEKIT_URL"
+# Keys are already built into the app as defaults (lib/core/constants/app_constants.dart),
+# so nothing has to be typed. Only values that are actually set are passed on.
+DEFINES="--dart-define=APP_BUILD=$BUILD"
+for K in SUPABASE_URL SUPABASE_ANON_KEY PAYSTACK_PUBLIC_KEY LIVEKIT_URL; do
+  if [ -n "${!K}" ]; then DEFINES="$DEFINES --dart-define=$K=${!K}"; fi
+done
 
 flutter pub get
 
