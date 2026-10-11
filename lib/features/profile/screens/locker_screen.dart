@@ -6,6 +6,7 @@ import '../../edu/edu_subscription_service.dart';
 import '../../../shared/widgets/cosmetic_visuals.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/rarity.dart';
+import 'shop_extras.dart';
 
 const Map<String, String> _lockerTabs = {
   'hero_outfit': 'Outfits',
@@ -14,6 +15,9 @@ const Map<String, String> _lockerTabs = {
   'trail': 'Trails',
   'weapon_skin': 'Weapons',
   'title': 'Titles',
+  'emote': 'Emotes',
+  'spray': 'Sprays',
+  'finisher': 'Finishers',
   'badge': 'Badges',
   'name_color': 'Name colours',
 };
@@ -35,6 +39,7 @@ class _LockerScreenState extends State<LockerScreen> {
   Map<String, dynamic>? _equipped;
   Map<String, dynamic>? _stats;
   List<Map<String, dynamic>> _sets = [];
+  List<Map<String, dynamic>> _evolutions = [];
   final Map<String, Map<String, dynamic>> _sel = {};
   String _tab = 'hero_outfit';
   String? _busyId;
@@ -63,6 +68,7 @@ class _LockerScreenState extends State<LockerScreen> {
       _loadProfile(uid),
       CosmeticsService.collectionStats(),
       CosmeticsService.mySets(),
+      CosmeticsService.myEvolutions(),
     ]);
     if (!mounted) return;
     final prof = results[3] as Map<String, dynamic>?;
@@ -73,6 +79,7 @@ class _LockerScreenState extends State<LockerScreen> {
       _equipped = results[2] as Map<String, dynamic>?;
       _stats = results[4] as Map<String, dynamic>?;
       _sets = results[5] as List<Map<String, dynamic>>;
+      _evolutions = results[6] as List<Map<String, dynamic>>;
       _displayName = (prof?['display_name'] as String?) ?? '';
       _avatarUrl = prof?['avatar_url'] as String?;
       _loading = false;
@@ -94,9 +101,11 @@ class _LockerScreenState extends State<LockerScreen> {
       CosmeticsService.collectionStats(),
       CosmeticsService.mySets(),
       CosmeticsService.equipped(uid),
+      CosmeticsService.myEvolutions(),
     ]);
     if (!mounted) return;
     setState(() {
+      _evolutions = r[4] as List<Map<String, dynamic>>;
       _owned = r[0] as Set<String>;
       _stats = r[1] as Map<String, dynamic>?;
       _sets = r[2] as List<Map<String, dynamic>>;
@@ -260,6 +269,7 @@ class _LockerScreenState extends State<LockerScreen> {
         SliverToBoxAdapter(child: LoadoutStage(items: _previewMap, name: _displayName, avatarUrl: _avatarUrl)),
         SliverToBoxAdapter(child: _actionRow()),
         SliverToBoxAdapter(child: _collectionPanel()),
+        SliverToBoxAdapter(child: EvolutionPanel(chains: _evolutions)),
         if (_sets.isNotEmpty) SliverToBoxAdapter(child: _setsSection()),
         SliverToBoxAdapter(child: _tabBar()),
         if (tabItems.isEmpty)

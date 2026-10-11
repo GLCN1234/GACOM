@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/cosmetic_art.dart';
 
 /// Colours offered when founding or editing a house.
 const List<String> kHouseColors = ['#E84B00', '#00E5FF', '#8B5CF6', '#34D399', '#FFD700', '#E85B8A', '#3B82F6', '#EF4444'];
@@ -68,7 +69,12 @@ class HouseEmblem extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(color: c.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: c.withOpacity(0.7), width: 1.5)),
-      child: Icon(houseEmblemIcon(emblem), color: c, size: size * 0.52),
+      child: (emblem != null && emblem!.startsWith('draw:'))
+          ? Padding(
+              padding: EdgeInsets.all(size * 0.2),
+              child: CustomPaint(painter: DrawnEmblemPainter(emblem!.substring(5), c)),
+            )
+          : Icon(houseEmblemIcon(emblem), color: c, size: size * 0.52),
     );
   }
 }

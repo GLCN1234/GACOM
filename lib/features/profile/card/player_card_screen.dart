@@ -4,7 +4,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/services/cosmetics_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/save_image.dart';
 import '../../../shared/widgets/rarity.dart';
 import 'player_card_service.dart';
 import 'player_card_widget.dart';
@@ -21,6 +23,7 @@ class PlayerCardScreen extends StatefulWidget {
 class _PlayerCardScreenState extends State<PlayerCardScreen> {
   final GlobalKey _boundary = GlobalKey();
   PlayerCardData? _d;
+  Map<String, dynamic>? _look;
   bool _loading = true;
   bool _busy = false;
 
@@ -33,10 +36,15 @@ class _PlayerCardScreenState extends State<PlayerCardScreen> {
   }
 
   Future<void> _load() async {
-    final PlayerCardData? d = await PlayerCardService.load(widget.userId);
+    final r = await Future.wait<dynamic>(<Future<dynamic>>[
+      PlayerCardService.load(widget.userId),
+      CosmeticsService.equipped(widget.userId),
+    ]);
+    final PlayerCardData? d = r[0] as PlayerCardData?;
     if (!mounted) return;
     setState(() {
       _d = d;
+      _look = r[1] as Map<String, dynamic>?;
       _loading = false;
     });
   }
@@ -89,6 +97,19 @@ class _PlayerCardScreenState extends State<PlayerCardScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _save() async {
+    if (_d == null || _busy) return;
+    setState(() => _busy = true);
+    final Uint8List? bytes = await _png();
+    if (bytes == null) {
+      _toast('Could not make the picture. Try again.', error: true);
+    } else {
+      final SaveImageResult r = await saveImage(bytes, 'gacom-player-card-${_d!.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')}.png');
+      _toast(r.message, error: !r.ok);
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: _link));
     _toast('Profile link copied');
@@ -123,7 +144,7 @@ class _PlayerCardScreenState extends State<PlayerCardScreen> {
       child: Column(children: <Widget>[
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: RepaintBoundary(key: _boundary, child: PlayerCardWidget(d: d)),
+          child: RepaintBoundary(key: _boundary, child: PlayerCardWidget(d: d, look: _look)),
         ),
         const SizedBox(height: 18),
         ConstrainedBox(
@@ -141,10 +162,19 @@ class _PlayerCardScreenState extends State<PlayerCardScreen> {
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy ? null : _save,
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('SAVE IMAGE'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
               child: OutlinedButton.icon(onPressed: _copy, icon: const Icon(Icons.link_rounded, size: 18), label: const Text('COPY PROFILE LINK')),
             ),
             const SizedBox(height: 10),
-            Text('Share it to WhatsApp, X or anywhere your phone lets you. The picture is made on your device.', textAlign: TextAlign.center, style: Tac.body(size: 12, color: Tac.textDim)),
+            Text('SAVE IMAGE puts the card in your gallery on the phone app, or downloads it on the web. SHARE CARD sends it to WhatsApp, X and more.', textAlign: TextAlign.center, style: Tac.body(size: 12, color: Tac.textDim)),
           ]),
         ),
       ]),

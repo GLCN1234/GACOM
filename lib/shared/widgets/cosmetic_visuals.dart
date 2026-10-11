@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/cosmetics_service.dart';
 import '../../features/edu/realms/realm_kit.dart' show RealmDraw;
+import 'cosmetic_art.dart';
 import 'cosmetic_avatar.dart';
 import 'rarity.dart';
 import 'weapon_art.dart';
@@ -46,6 +47,10 @@ class CosmeticItemVisual extends StatelessWidget {
         );
       case 'weapon_skin':
         return WeaponArt(asset: asset, size: 84 * k, rarity: rarity);
+      case 'emote':
+      case 'spray':
+      case 'finisher':
+        return cosmeticArtThumb(cat!, asset, scale: k);
       case 'title':
         final String t = (item['value']?.toString() ?? item['name']?.toString() ?? '').toUpperCase();
         return Padding(
@@ -121,6 +126,8 @@ class LoadoutStage extends StatefulWidget {
 
 class _LoadoutStageState extends State<LoadoutStage> with SingleTickerProviderStateMixin {
   late final AnimationController _ctl;
+  int _play = 0; // bumped on tap to replay the emote and finisher
+  bool _playing = false;
 
   @override
   void initState() {
@@ -148,7 +155,13 @@ class _LoadoutStageState extends State<LoadoutStage> with SingleTickerProviderSt
     final Rarity? frameRarity = cosmeticFrameRarity(equipped: widget.items);
     final Color line = (frameRarity != null && frameRarity != Rarity.common) ? frameRarity.color : Tac.gold;
     const ChamferedBorder clipShape = ChamferedBorder(cut: 18, tl: true, tr: false, br: true, bl: false);
-    return Container(
+    final Map<String, dynamic>? emoteArt = CosmeticsService.artOf(widget.items, 'emote');
+    final Map<String, dynamic>? sprayArt = CosmeticsService.artOf(widget.items, 'spray');
+    final Map<String, dynamic>? finArt = CosmeticsService.artOf(widget.items, 'finisher');
+    final bool canPlay = emoteArt != null || finArt != null;
+    return GestureDetector(
+      onTap: canPlay ? () => setState(() { _play++; _playing = true; }) : null,
+      child: Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
       height: widget.height,
       foregroundDecoration: ShapeDecoration(shape: ChamferedBorder(cut: 18, side: BorderSide(color: line.withValues(alpha: 0.75), width: 1.2))),
@@ -199,8 +212,38 @@ class _LoadoutStageState extends State<LoadoutStage> with SingleTickerProviderSt
               ),
             ]),
           ),
+          if (sprayArt != null)
+            Positioned(right: 6, top: 2, child: Opacity(opacity: 0.85, child: SprayArt(kind: sprayArt['kind']?.toString() ?? 'star', color: artColor(sprayArt), size: 44))),
+          if (_playing && finArt != null)
+            Positioned.fill(
+              child: FinisherOverlay(
+                key: ValueKey<String>('fin$_play'),
+                kind: finArt['kind']?.toString() ?? 'shockwave',
+                color: artColor(finArt),
+                color2: artColor2(finArt, Colors.white),
+                onDone: () { if (mounted) setState(() => _playing = false); },
+              ),
+            ),
+          if (_playing && emoteArt != null)
+            Positioned(
+              right: 70,
+              top: 8,
+              child: EmoteBurst(
+                key: ValueKey<String>('emo$_play'),
+                kind: emoteArt['kind']?.toString() ?? 'gg',
+                color: artColor(emoteArt),
+                size: 56,
+                onDone: () { if (mounted && finArt == null) setState(() => _playing = false); },
+              ),
+            ),
+          if (canPlay && !_playing)
+            Positioned(
+              left: 10,
+              bottom: 4,
+              child: Text('Tap to preview', style: Tac.body(size: 10, color: Colors.white54)),
+            ),
         ]),
       ),
-    );
+    ));
   }
 }

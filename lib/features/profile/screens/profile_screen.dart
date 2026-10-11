@@ -406,6 +406,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Player card',
+                      child: GestureDetector(
+                        onTap: () => context.push('/card/${widget.userId}'),
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(50), border: Border.all(color: Colors.white.withOpacity(0.14), width: 1.2)),
+                          child: const Icon(Icons.badge_outlined, size: 17, color: GacomColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     GacomButton(
                       label: _isFollowing ? 'FOLLOWING' : 'FOLLOW',
                       width: 100, height: 38,

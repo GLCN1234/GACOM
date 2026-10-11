@@ -1,3 +1,4 @@
+import '../../core/services/cosmetics_service.dart';
 import 'package:flutter/material.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart';
@@ -31,6 +32,7 @@ class _DarkomScreenState extends State<DarkomScreen> {
   @override
   void initState() {
     super.initState();
+    CosmeticsService.ensureLoaded();
     _load();
   }
 

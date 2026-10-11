@@ -1,5 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../core/services/cosmetics_service.dart';
+import '../../../shared/widgets/cosmetic_art.dart';
+import '../../../shared/widgets/cosmetic_avatar.dart';
 import '../../../shared/widgets/rarity.dart';
 import 'player_card_service.dart';
 
@@ -20,11 +23,15 @@ const double playerCardH = 450;
 
 class PlayerCardWidget extends StatelessWidget {
   final PlayerCardData d;
-  const PlayerCardWidget({super.key, required this.d});
+  /// Equipped cosmetics row (see CosmeticsService.equipped): frame, banner,
+  /// spray. Optional; the card still works without it.
+  final Map<String, dynamic>? look;
+  const PlayerCardWidget({super.key, required this.d, this.look});
 
   @override
   Widget build(BuildContext context) {
     final Color rc = rankColors[d.rankIndex.clamp(0, rankColors.length - 1)];
+    final Map<String, dynamic>? sprayArt = CosmeticsService.artOf(look, 'spray');
     return SizedBox(
       width: playerCardW,
       height: playerCardH,
@@ -38,6 +45,14 @@ class PlayerCardWidget extends StatelessWidget {
           ),
           border: Border.all(color: rc.withValues(alpha: 0.7), width: 1.5),
         ),
+        child: Stack(fit: StackFit.expand, children: <Widget>[
+          if (sprayArt != null)
+            Positioned(
+              right: -12,
+              bottom: 46,
+              child: Opacity(opacity: 0.22, child: SprayArt(kind: sprayArt['kind']?.toString() ?? 'star', color: artColor(sprayArt), size: 230)),
+            ),
+          Padding(
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
           Row(children: <Widget>[
@@ -45,6 +60,13 @@ class PlayerCardWidget extends StatelessWidget {
             const Spacer(),
             if (d.passName != null) _chip('${d.passName!.toUpperCase()}  LV ${d.passLevel}', d.passPremium ? Tac.gold : Tac.textDim),
           ]),
+          if (ProfileBanner.colorsFor(equipped: look) != null) ...<Widget>[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: ProfileBanner(equipped: look, height: 30, fallback: const SizedBox.shrink()),
+            ),
+          ],
           const SizedBox(height: 10),
           Row(children: <Widget>[
             _avatar(rc),
@@ -127,12 +149,20 @@ class PlayerCardWidget extends StatelessWidget {
             const Spacer(),
             Text('gamicom.net', style: Tac.display(size: 12, color: Tac.gold, letter: 1)),
           ]),
+        ])),
         ]),
       ),
     );
   }
 
   Widget _avatar(Color rc) {
+    if (look != null && look!['avatar_frame'] is Map) {
+      return SizedBox(
+        width: 66,
+        height: 66,
+        child: Center(child: CosmeticAvatar(radius: 28, avatarUrl: d.avatarUrl, name: d.name, equipped: look)),
+      );
+    }
     final String initial = d.name.isEmpty ? '?' : d.name.characters.first.toUpperCase();
     final Widget fallback = Container(
       color: const Color(0xFF1B2A44),

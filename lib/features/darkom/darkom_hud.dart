@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/services/cosmetics_service.dart';
+import '../../shared/widgets/cosmetic_art.dart';
 import '../../shared/widgets/cosmetic_avatar.dart';
 import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
@@ -30,6 +31,8 @@ Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
       Positioned(right: 10, top: compact ? 54 : 132, child: IgnorePointer(child: _miniMap(g, compact))),
       if (toast != null) Positioned(left: 10, bottom: compact ? 10 : 24, child: IgnorePointer(child: _toastCard(toast, toastW))),
       Positioned(right: compact ? 144 : 96, bottom: compact ? 8 : 22, child: _swapCard(g, refresh, compact)),
+      if (g.mission != null && g.phase == 5 && g.missionDone)
+        Positioned.fill(child: _MissionFx(key: ValueKey<String>('${g.mission!.id}:${g.missionStart}'), compact: compact)),
       if (g.mission != null && g.phase == 5 && g.missionDone)
         Positioned(left: 0, right: 0, top: compact ? 86 : 150, child: Center(child: _flowCard(context, g, refresh, compact))),
     ]),
@@ -314,5 +317,66 @@ class DarkomMiniPainter extends CustomPainter {
     final double hy = g.hy * sy;
     canvas.drawCircle(Offset(hx, hy), 3.4, p..color = Colors.white);
     canvas.drawLine(Offset(hx, hy), Offset(hx + cos(g.hFace) * 7, hy + sin(g.hFace) * 7), s..color = Colors.white..strokeWidth = 1.4);
+  }
+}
+
+
+/// The equipped finisher plays once when a mission is cleared, and an equipped
+/// emote can be played from a small button. Cosmetic only.
+class _MissionFx extends StatefulWidget {
+  final bool compact;
+  const _MissionFx({super.key, required this.compact});
+
+  @override
+  State<_MissionFx> createState() => _MissionFxState();
+}
+
+class _MissionFxState extends State<_MissionFx> {
+  bool _fin = true;
+  int _emote = 0;
+  bool _emoting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Map<String, dynamic>? loadout = CosmeticsService.myLoadout.value;
+    final Map<String, dynamic>? fin = CosmeticsService.artOf(loadout, 'finisher');
+    final Map<String, dynamic>? emo = CosmeticsService.artOf(loadout, 'emote');
+    return Stack(children: <Widget>[
+      if (fin != null && _fin)
+        Positioned.fill(
+          child: FinisherOverlay(
+            kind: fin['kind']?.toString() ?? 'shockwave',
+            color: artColor(fin),
+            color2: artColor2(fin, Colors.white),
+            onDone: () { if (mounted) setState(() => _fin = false); },
+          ),
+        ),
+      if (emo != null)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: widget.compact ? 10 : 36,
+          child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+            if (_emoting)
+              EmoteBurst(
+                key: ValueKey<int>(_emote),
+                kind: emo['kind']?.toString() ?? 'gg',
+                color: artColor(emo),
+                size: widget.compact ? 54 : 72,
+                onDone: () { if (mounted) setState(() => _emoting = false); },
+              ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: () => setState(() { _emote++; _emoting = true; }),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black54, border: Border.all(color: artColor(emo), width: 1.6)),
+                child: Padding(padding: const EdgeInsets.all(5), child: CustomPaint(painter: EmotePainter(kind: emo['kind']?.toString() ?? 'gg', color: artColor(emo), t: 0.25))),
+              ),
+            ),
+          ]),
+        ),
+    ]);
   }
 }

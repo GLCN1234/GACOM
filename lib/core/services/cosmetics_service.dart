@@ -13,7 +13,7 @@ class CosmeticResult {
 }
 
 class CosmeticsService {
-  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title', 'weapon_skin'];
+  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title', 'weapon_skin', 'emote', 'spray', 'finisher'];
 
   static const String _equippedSelect = '*, '
       'name_color:cosmetic_items!equipped_name_color(id,name,value,asset,rarity), '
@@ -23,7 +23,10 @@ class CosmeticsService {
       'trail:cosmetic_items!equipped_trail(id,name,value,asset,rarity), '
       'profile_banner:cosmetic_items!equipped_profile_banner(id,name,value,asset,rarity), '
       'title:cosmetic_items!equipped_title(id,name,value,asset,rarity), '
-      'weapon:cosmetic_items!equipped_weapon(id,name,value,asset,rarity)';
+      'weapon:cosmetic_items!equipped_weapon(id,name,value,asset,rarity), '
+      'emote:cosmetic_items!equipped_emote(id,name,value,asset,rarity), '
+      'spray:cosmetic_items!equipped_spray(id,name,value,asset,rarity), '
+      'finisher:cosmetic_items!equipped_finisher(id,name,value,asset,rarity)';
 
   /// Key of a category inside an equipped row (and the suffix of its
   /// `equipped_` column). Weapon skins live in the 'weapon' slot.
@@ -137,6 +140,71 @@ class CosmeticsService {
     return const CosmeticResult(success: false, error: 'Something went wrong');
   }
 
+
+  // --- starter pack, first purchase bonus, gifting, evolving skins ---
+
+  /// One-time starter pack for this player, or null when there is none.
+  static Future<Map<String, dynamic>?> starterOffer() async {
+    try {
+      final r = await SupabaseService.client.rpc('starter_offer');
+      if (r is Map) return Map<String, dynamic>.from(r);
+      return null;
+    } catch (_) { return null; }
+  }
+
+  static Future<CosmeticResult> purchaseStarter() async {
+    try {
+      return _parse(await SupabaseService.client.rpc('purchase_starter'));
+    } catch (_) {
+      return const CosmeticResult(success: false, error: 'Could not reach the shop. Check your connection.');
+    }
+  }
+
+  /// {claimed: bool, items: [...]} for the first purchase bonus banner.
+  static Future<Map<String, dynamic>?> firstPurchaseState() async {
+    try {
+      final r = await SupabaseService.client.rpc('first_purchase_state');
+      if (r is Map) return Map<String, dynamic>.from(r);
+      return null;
+    } catch (_) { return null; }
+  }
+
+  /// Players whose name starts with [query], for the gift picker.
+  static Future<List<Map<String, dynamic>>> searchGiftTargets(String query) async {
+    try {
+      return _mapList(await SupabaseService.client.rpc('search_gift_target', params: {'p_query': query}));
+    } catch (_) { return <Map<String, dynamic>>[]; }
+  }
+
+  static Future<CosmeticResult> gift({required String itemId, required String toUser, String? message}) async {
+    try {
+      final r = await SupabaseService.client.rpc('gift_cosmetic', params: {'p_item': itemId, 'p_to': toUser, 'p_message': message});
+      return _parse(r);
+    } catch (e) {
+      final m = e.toString();
+      if (m.contains('Too many requests')) {
+        return const CosmeticResult(success: false, error: 'You are sending gifts too fast. Try again in a little while.');
+      }
+      return const CosmeticResult(success: false, error: 'Could not send the gift. Check your connection.');
+    }
+  }
+
+  /// Evolving skin chains the player has started, with progress.
+  static Future<List<Map<String, dynamic>>> myEvolutions() async {
+    try {
+      return _mapList(await SupabaseService.client.rpc('my_evolutions'));
+    } catch (_) { return <Map<String, dynamic>>[]; }
+  }
+
+  /// Asset json of an equipped emote, spray or finisher with its kind and
+  /// colours, or null when nothing is equipped.
+  static Map<String, dynamic>? artOf(Map<String, dynamic>? equipped, String key) {
+    final v = equipped?[key];
+    if (v is! Map) return null;
+    final a = v['asset'];
+    if (a is! Map) return null;
+    return Map<String, dynamic>.from(a);
+  }
 
   // --- identity layer: shop rotation, bundles, sets, collection, trophies ---
 

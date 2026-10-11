@@ -7,6 +7,7 @@ import '../../edu/edu_subscription_service.dart';
 import '../../../shared/widgets/cosmetic_visuals.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/rarity.dart';
+import 'shop_extras.dart';
 
 /// Chip order of the shop. 'featured' and 'bundles' are sections; the rest
 /// are cosmetic categories.
@@ -18,6 +19,9 @@ const Map<String, String> _chipLabels = {
   'trail': 'Trails',
   'weapon_skin': 'Weapons',
   'title': 'Titles',
+  'emote': 'Emotes',
+  'spray': 'Sprays',
+  'finisher': 'Finishers',
   'badge': 'Badges',
   'name_color': 'Name colours',
   'bundles': 'Bundles',
@@ -43,6 +47,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   String _displayName = '';
   String? _avatarUrl;
   String _tab = 'featured';
+  Map<String, dynamic>? _starter; // starter_offer
+  Map<String, dynamic>? _firstPurchase; // first_purchase_state
 
   @override
   void initState() {
@@ -65,6 +71,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
       CosmeticsService.equipped(uid),
       _loadProfile(uid),
       CosmeticsService.shopState(),
+      CosmeticsService.starterOffer(),
+      CosmeticsService.firstPurchaseState(),
     ]);
     if (!mounted) return;
     final prof = results[3] as Map<String, dynamic>?;
@@ -74,6 +82,8 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
       _owned = results[1] as Set<String>;
       _equipped = results[2] as Map<String, dynamic>?;
       _shop = results[4] as Map<String, dynamic>?;
+      _starter = results[5] as Map<String, dynamic>?;
+      _firstPurchase = results[6] as Map<String, dynamic>?;
       _balance = (prof?['wallet_balance'] as num?)?.toDouble();
       _displayName = (prof?['display_name'] as String?) ?? '';
       _avatarUrl = prof?['avatar_url'] as String?;
@@ -228,12 +238,20 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   }
 
   Future<void> _reloadOwnership() async {
-    final r = await Future.wait<dynamic>([CosmeticsService.ownedIds(), CosmeticsService.shopState()]);
+    final r = await Future.wait<dynamic>([
+      CosmeticsService.ownedIds(),
+      CosmeticsService.shopState(),
+      CosmeticsService.starterOffer(),
+      CosmeticsService.firstPurchaseState(),
+    ]);
     if (!mounted) return;
     setState(() {
       _owned = r[0] as Set<String>;
       final s = r[1] as Map<String, dynamic>?;
       if (s != null) _shop = s;
+      _starter = r[2] as Map<String, dynamic>?;
+      final fp = r[3] as Map<String, dynamic>?;
+      if (fp != null) _firstPurchase = fp;
     });
   }
 
@@ -290,6 +308,52 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
       _busyId = null;
     });
     GacomSnackbar.show(context, '${b['name']} unlocked', isSuccess: true);
+    await _reloadOwnership();
+  }
+
+  Future<void> _buyStarter() async {
+    final o = _starter;
+    if (o == null) return;
+    final ok = await _confirmPurchase(
+      title: 'Buy the Starter Pack?',
+      rarity: Rarity.legendary,
+      description: o['description'] as String?,
+      price: Tac.intOf(o['price']),
+      busyKey: 'starter',
+    );
+    if (!ok || !mounted) return;
+    setState(() => _busyId = 'starter');
+    final res = await CosmeticsService.purchaseStarter();
+    if (!mounted) return;
+    setState(() {
+      _busyId = null;
+      if (res.success && res.balance != null) _balance = res.balance;
+    });
+    if (!res.success) {
+      GacomSnackbar.show(context, res.error ?? 'Purchase failed', isError: true);
+      return;
+    }
+    GacomSnackbar.show(context, 'Starter Pack unlocked', isSuccess: true);
+    await _reloadOwnership();
+  }
+
+  bool _giftable(Map<String, dynamic> it) {
+    if (_isOwned(it)) return false;
+    if (_lockLabel(it) != null) return false;
+    if (_source(it) != 'shop' || _premium(it)) return false;
+    return _pay(it) > 0;
+  }
+
+  Future<void> _gift(Map<String, dynamic> it) async {
+    if (_busyId != null) return;
+    setState(() => _busyId = 'gift_${it['id']}');
+    final fresh = await CosmeticsService.walletBalance();
+    if (!mounted) return;
+    setState(() { _busyId = null; if (fresh != null) _balance = fresh; });
+    final res = await showGiftDialog(context, item: it, price: _pay(it), balance: fresh ?? _balance ?? 0.0);
+    if (!mounted || res == null) return;
+    setState(() { if (res.balance != null) _balance = res.balance; });
+    GacomSnackbar.show(context, 'Gift sent', isSuccess: true);
     await _reloadOwnership();
   }
 
@@ -441,12 +505,20 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
     final deals = _deals;
     final bundles = _bundles;
     final earn = _earn;
-    if (feat == null && deals.isEmpty && bundles.isEmpty && earn.isEmpty) {
+    if (feat == null && deals.isEmpty && bundles.isEmpty && earn.isEmpty && _starter == null) {
       return _message(Icons.storefront_rounded, 'Today\'s picks are not available right now. Browse a category above.', _load);
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
       children: [
+        if (_starter != null) ...[
+          const SizedBox(height: 12),
+          StarterPackCard(offer: _starter!, busy: _busyId == 'starter', onBuy: _buyStarter),
+        ],
+        if (_firstPurchase != null && _firstPurchase!['claimed'] != true) ...[
+          SizedBox(height: _starter != null ? 10 : 12),
+          FirstPurchaseBanner(state: _firstPurchase!),
+        ],
         if (feat != null) ...[
           _sectionHeader('FEATURED'),
           _featuredCard(feat),
@@ -526,6 +598,10 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
           Expanded(child: TacButton(label: 'PREVIEW', filled: false, color: Tac.cyan, onPressed: () => _select(it))),
           const SizedBox(width: 8),
           Expanded(child: _primary(it)),
+          if (_giftable(it)) ...[
+            const SizedBox(width: 8),
+            SizedBox(width: 110, child: TacButton(label: 'GIFT', icon: Icons.card_giftcard_rounded, filled: false, color: Tac.cyan, onPressed: _busyId != null ? null : () => _gift(it))),
+          ],
         ]),
       ]),
     );
@@ -835,7 +911,28 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
         const SizedBox(height: 2),
         _priceLine(it, size: compact ? 12 : 13),
         const SizedBox(height: 6),
-        _primary(it, height: compact ? 30 : 32, compact: compact),
+        Row(children: [
+          Expanded(child: _primary(it, height: compact ? 30 : 32, compact: compact)),
+          if (_giftable(it)) ...[
+            const SizedBox(width: 6),
+            SizedBox(
+              width: compact ? 30 : 32,
+              height: compact ? 30 : 32,
+              child: Tooltip(
+                message: 'Gift this',
+                child: Material(
+                  color: Colors.transparent,
+                  shape: ChamferedBorder(cut: 6, side: BorderSide(color: Tac.cyan.withValues(alpha: 0.8), width: 1.2)),
+                  child: InkWell(
+                    customBorder: ChamferedBorder(cut: 6, side: BorderSide(color: Tac.cyan.withValues(alpha: 0.8), width: 1.2)),
+                    onTap: _busyId != null ? null : () => _gift(it),
+                    child: const Icon(Icons.card_giftcard_rounded, size: 16, color: Tac.cyan),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ]),
       ]),
     );
   }
