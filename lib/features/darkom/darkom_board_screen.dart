@@ -167,6 +167,8 @@ class _DarkomBoardScreenState extends State<DarkomBoardScreen> {
         _pill(Icons.flag_rounded, '${_stats.cleared}/$total', const Color(0xFF40C4FF)),
         const SizedBox(width: 8),
         _pill(Icons.stars_rounded, '${_stats.points} pts', _gold),
+        const SizedBox(width: 8),
+        GestureDetector(onTap: () => context.push<void>('/pass'), child: _pill(Icons.workspace_premium_rounded, 'PASS', const Color(0xFFF6B93B))),
       ]),
     );
   }

@@ -493,6 +493,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     height: 40,
                     onPressed: () => context.push('/locker').then((_) { if (mounted) _reloadCosmetics(); }),
                   ),
+                  const SizedBox(height: 8),
+                  TacButton(
+                    label: 'SEASON PASS',
+                    icon: Icons.workspace_premium_rounded,
+                    filled: false,
+                    height: 40,
+                    onPressed: () => context.push('/pass'),
+                  ),
                 ],
                 const SizedBox(height: 16),
 
