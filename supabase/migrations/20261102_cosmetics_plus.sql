@@ -120,7 +120,7 @@ from (values
   -- finishers
   ('finisher','Shockwave','shockwave','{"kind":"shockwave","color":"#35E0FF","color2":"#FFFFFF"}'::jsonb,800,'rare',false,'user','Rings of force on every win.',500,'shop',''),
   ('finisher','Embers','embers','{"kind":"embers","color":"#FF6A00","color2":"#FFE08A"}'::jsonb,800,'rare',false,'user','Rising sparks.',501,'shop',''),
-  ('finisher','Chain Lightning','lightning','{"kind":"lightning","color":"#7DF9FF","color2":"#FFFFFF"}'::jsonb,1200,'epic',false,'user','Forked bolts from the centre.',502,'shop',''),
+  ('finisher','Chain Lightning','lightning','{"kind":"lightning","color":"#7DF9FF","color2":"#FFFFFF"}'::jsonb,1200,'epic',false,'user','Forked bolts that fan out.',502,'shop',''),
   ('finisher','Blade Storm','slash','{"kind":"slash","color":"#FF4F66","color2":"#FFFFFF"}'::jsonb,1200,'epic',false,'user','Three clean cuts.',503,'shop',''),
   ('finisher','Supernova','nova','{"kind":"nova","color":"#B060FF","color2":"#FFD1FF"}'::jsonb,2000,'legendary',false,'user','A star goes off.',504,'shop',''),
   ('finisher','Fireworks','fireworks','{"kind":"fireworks","color":"#FFC53D","color2":"#FF4F7B"}'::jsonb,2000,'legendary',false,'user','Celebrate in style.',505,'shop',''),
@@ -138,7 +138,7 @@ from (values
   ('house_emblem','Star','draw:star','{}'::jsonb,600,'rare',false,'house','A drawn star crest.',43,'shop',''),
   ('house_emblem','Heart','draw:heart','{}'::jsonb,600,'rare',false,'house','A drawn heart crest.',44,'shop',''),
   ('house_emblem','Cup','draw:trophy','{}'::jsonb,1400,'legendary',false,'house','A drawn trophy crest.',45,'shop',''),
-  ('house_banner','Crimson Dawn','','{"from":"#B71C1C","to":"#FF8A65"}'::jsonb,700,'rare',false,'house','Red into peach.',40,'shop',''),
+  ('house_banner','Crimson Dawn','','{"from":"#B71C1C","to":"#FF8A65"}'::jsonb,700,'rare',false,'house','Red fading to peach.',40,'shop',''),
   ('house_banner','Emerald Vault','','{"from":"#004D40","to":"#00E676"}'::jsonb,900,'epic',false,'house','Deep green.',41,'shop',''),
   ('house_banner','Royal Violet','','{"from":"#311B92","to":"#E040FB"}'::jsonb,900,'epic',false,'house','Violet royalty.',42,'shop',''),
   ('house_banner','Arctic','','{"from":"#01579B","to":"#E1F5FE"}'::jsonb,900,'epic',false,'house','Ice blue.',43,'shop',''),
