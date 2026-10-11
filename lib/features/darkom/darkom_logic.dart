@@ -22,6 +22,27 @@ class DarkomBoot {
   /// Set when a mission from the board is being played instead of the story.
   DarkomMission? mission;
   DarkomBoot(this.progress, this.armory, this.ghost, {this.mission});
+
+  /// Mission ids this player has cleared (for choosing the next one).
+  final Set<String> cleared = <String>{};
+
+  /// Called when the next mission is in another district and the screen must
+  /// fade and rebuild the world.
+  void Function(DarkomMission next)? onSwitch;
+
+  /// The next open mission after [cur], preferring ones not yet cleared.
+  DarkomMission? nextAfter(DarkomMission cur) {
+    final int i = darkomMissions.indexWhere((DarkomMission m) => m.id == cur.id);
+    final int n = darkomMissions.length;
+    DarkomMission? firstOpen;
+    for (int k = 1; k < n; k++) {
+      final DarkomMission m = darkomMissions[(i + k) % n];
+      if (!m.isOpen(progress.chapter)) continue;
+      firstOpen ??= m;
+      if (!cleared.contains(m.id)) return m;
+    }
+    return firstOpen;
+  }
 }
 
 const int darkomMaxEnemies = 24;
@@ -36,9 +57,9 @@ class DarkomLogic extends RealmLogic {
   final int chapterNo;
 
   /// The board mission being played, or null for the story and free roam.
-  final DarkomMission? mission;
+  DarkomMission? mission;
   final bool roam;
-  final DarkomChapterDef ch;
+  DarkomChapterDef ch;
   final DarkomTheme theme;
   final DarkomWorld world;
   final DarkomArmory armory;
@@ -166,6 +187,13 @@ class DarkomLogic extends RealmLogic {
   final List<Offset> chipPts = <Offset>[];
   bool missionDone = false;
   bool missionFailed = false;
+  DarkomMission? nextM;
+  double nextT = 0;
+  double retryT = 0;
+  double missionStart = 0;
+  int missionKills0 = 0;
+  Offset missionOrigin = Offset.zero;
+  bool switching = false;
   DarkomMissionResult? missionRes;
   bool echoDefeated = false;
   int kills = 0;
@@ -213,6 +241,8 @@ class DarkomLogic extends RealmLogic {
       lives = ms.lives;
       queue = <int>[0];
       preDone = 0;
+      missionOrigin = Offset(hx, hy);
+      missionStart = 0;
       startContract();
       return;
     }
@@ -312,7 +342,7 @@ class DarkomLogic extends RealmLogic {
       final DarkomMission m = mission!;
       out.add(RealmChip(m.tierName, Icons.assignment_rounded, m.tierColor));
       if (m.limit > 0 && phase == 0) {
-        final int left = max(0, m.limit - time.floor());
+        final int left = max(0, m.limit - (time - missionStart).floor());
         out.add(RealmChip('${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')}', Icons.timer_rounded, left <= 15 ? const Color(0xFFFF5252) : const Color(0xFFFFD54F)));
       }
     } else if (phase >= 1) {
@@ -514,6 +544,8 @@ class DarkomLogic extends RealmLogic {
       }
       case 3:
         return 'Echo defeated. Reach the extraction gate.';
+      case 5:
+        return missionFailed ? 'Time is up. Restarting the mission...' : 'Mission complete. Move freely until the next one starts.';
       default:
         return 'Chapter complete.';
     }
@@ -629,6 +661,7 @@ class DarkomLogic extends RealmLogic {
     _updatePicks(dt);
     _updateFx(dt);
     _updateContract(dt);
+    _updateMissionFlow(dt);
     if (phase == 0 || phase == 1 || phase == 3) {
       if (!roam) _updateSpawns(dt);
     }
@@ -827,6 +860,12 @@ class DarkomLogic extends RealmLogic {
 
   void _afterDeath() {
     if (lives <= 0) {
+      if (mission != null) {
+        // Missions never end on a menu: straight back to the start of the mission.
+        say(ch.fixer, 'Breathe. Again.', ch.fixerColor, dur: 2.5);
+        restartMission();
+        return;
+      }
       over = true;
       return;
     }
@@ -1080,8 +1119,7 @@ class DarkomLogic extends RealmLogic {
     chipPts.clear();
     qi++;
     if (mission != null) {
-      missionDone = true;
-      finishChapter();
+      _onMissionDone();
       return;
     }
     if (qi >= queue.length) {
@@ -1177,13 +1215,14 @@ class DarkomLogic extends RealmLogic {
   void _updateContract(double dt) {
     if (heroDead || phase == 4) return;
     final DarkomMission? ms = mission;
-    if (ms != null && ms.limit > 0 && phase == 0 && time > ms.limit) {
+    if (ms != null && ms.limit > 0 && phase == 0 && (time - missionStart) > ms.limit) {
       missionFailed = true;
-      phase = 4;
-      endT = 2.4;
+      phase = 5;
+      retryT = 2.4;
       invuln = 99;
       cues.add('bad');
       showBanner('TIME UP', const Color(0xFFFF5252), dur: 2.4);
+      say(ch.fixer, 'Too slow. Again from the start.', ch.fixerColor, dur: 3);
       return;
     }
     if (roam) {
@@ -1325,26 +1364,133 @@ class DarkomLogic extends RealmLogic {
     showBanner('WAVE $wave', theme.neonA, dur: 1.8);
   }
 
+  // ---- mission flow (board missions chain without menus) -------------------
+
+  void _onMissionDone() {
+    final DarkomMission ms = mission!;
+    missionDone = true;
+    phase = 5;
+    invuln = 99;
+    for (final DEnemy e in enemies) {
+      spark(e.x, e.y, const Color(0xFF9C6BFF), n: 5);
+    }
+    enemies.clear();
+    projs.clear();
+    axes.clear();
+    cues.add('win');
+    showBanner('MISSION COMPLETE', const Color(0xFF69F0AE), dur: 2.6);
+    final int dur = max(1, (time - missionStart).round());
+    final int k = kills - missionKills0;
+    final int score = k * 10 + 150 + max(0, 300 - dur);
+    boot.cleared.add(ms.id);
+    nextM = boot.nextAfter(ms);
+    nextT = 9.0;
+    _reportMissionNow(ms, k, score, dur);
+  }
+
+  Future<void> _reportMissionNow(DarkomMission ms, int k, int score, int dur) async {
+    DarkomMissionResult? r;
+    try {
+      r = await DarkomService.reportMission(missionId: ms.id, kills: k, score: score, durationSec: dur);
+    } catch (_) {
+      r = null;
+    }
+    if (mission != null && mission!.id == ms.id) missionRes = r;
+  }
+
+  void _updateMissionFlow(double dt) {
+    if (mission == null || phase != 5) return;
+    if (missionFailed) {
+      retryT -= dt;
+      if (retryT <= 0) restartMission();
+      return;
+    }
+    if (missionDone && nextM != null) {
+      nextT -= dt;
+      if (nextT <= 0) advanceMission();
+    }
+  }
+
+  /// Starts the next mission now (the countdown ran out, or the player tapped Skip).
+  void advanceMission() {
+    final DarkomMission? n = nextM;
+    final DarkomMission? cur = mission;
+    if (n == null || cur == null || switching) return;
+    if (n.district == cur.district) {
+      missionOrigin = Offset(hx, hy);
+      beginMission(n);
+    } else {
+      final void Function(DarkomMission)? cb = boot.onSwitch;
+      if (cb == null) {
+        nextM = null;
+        return;
+      }
+      switching = true;
+      boot.mission = n;
+      cb(n);
+    }
+  }
+
+  /// Starts [m] in this same district without leaving the map.
+  void beginMission(DarkomMission m) {
+    mission = m;
+    ch = m.asChapter();
+    queue = <int>[0];
+    qi = 0;
+    preDone = 0;
+    contractsDone = 0;
+    collected = 0;
+    chipPts.clear();
+    missionDone = false;
+    missionFailed = false;
+    missionRes = null;
+    nextM = null;
+    nextT = 0;
+    retryT = 0;
+    switching = false;
+    phase = 0;
+    lives = m.lives;
+    hp = maxHp;
+    mana = maxMana;
+    invuln = 2.0;
+    heroDead = false;
+    kvx = 0;
+    kvy = 0;
+    enemies.clear();
+    projs.clear();
+    axes.clear();
+    picks.clear();
+    later.clear();
+    courier = null;
+    echo = null;
+    hunted = null;
+    huntDone = false;
+    carrying = false;
+    shard = null;
+    gate = null;
+    zone = null;
+    missionStart = time;
+    missionKills0 = kills;
+    startContract();
+  }
+
+  /// Back to the start of the current mission, no menu.
+  void restartMission() {
+    final DarkomMission? m = mission;
+    if (m == null) return;
+    hx = missionOrigin.dx;
+    hy = missionOrigin.dy;
+    beginMission(m);
+  }
+
   // ---- run end ------------------------------------------------------------
 
   @override
   Future<void> onRunEnd() async {
     if (reported) return;
     reported = true;
-    final DarkomMission? ms = mission;
-    if (ms != null) {
-      DarkomMissionResult? mr;
-      if (missionDone) {
-        try {
-          mr = await DarkomService.reportMission(missionId: ms.id, kills: kills, score: finalScore, durationSec: time.round());
-        } catch (_) {
-          mr = null;
-        }
-      }
-      missionRes = mr;
-      if (mr != null) {
-        result = DarkomRunResult(accepted: mr.accepted, xp: mr.xp, chapter: boot.progress.chapter, chapterAdvanced: false, newContracts: const <String>[], unlocks: const <String>[]);
-      }
+    if (mission != null) {
+      // Missions are reported one by one as they finish (see _onMissionDone).
       reportDone = true;
       return;
     }

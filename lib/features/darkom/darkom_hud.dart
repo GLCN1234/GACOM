@@ -6,6 +6,8 @@ import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
 import 'darkom_entities.dart';
 import 'darkom_logic.dart';
+import 'darkom_missions.dart';
+import 'darkom_service.dart';
 import 'darkom_story.dart';
 import 'darkom_world.dart';
 
@@ -28,6 +30,77 @@ Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
       Positioned(right: 10, top: compact ? 54 : 132, child: IgnorePointer(child: _miniMap(g, compact))),
       if (toast != null) Positioned(left: 10, bottom: compact ? 10 : 24, child: IgnorePointer(child: _toastCard(toast, toastW))),
       Positioned(right: compact ? 144 : 96, bottom: compact ? 8 : 22, child: _swapCard(g, refresh, compact)),
+      if (g.mission != null && g.phase == 5 && g.missionDone)
+        Positioned(left: 0, right: 0, top: compact ? 86 : 150, child: Center(child: _flowCard(context, g, refresh, compact))),
+    ]),
+  );
+}
+
+/// Shown after a board mission: points, the next mission and a countdown.
+/// The player keeps control and can move around until it starts.
+Widget _flowCard(BuildContext context, DarkomLogic g, VoidCallback refresh, bool compact) {
+  final DarkomMissionResult? r = g.missionRes;
+  final DarkomMission? nx = g.nextM;
+  final String pts = r == null ? 'saving...' : (r.accepted ? '+${r.points + r.dailyBonus} pts' : 'not counted');
+  final double w = min(330.0, MediaQuery.of(context).size.width - (compact ? 330 : 40));
+  return Container(
+    width: max(220.0, w),
+    padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+    decoration: BoxDecoration(
+      color: const Color(0xDD0B0D18),
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: const Color(0xFF69F0AE).withValues(alpha: 0.6)),
+    ),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Row(children: <Widget>[
+        const Icon(Icons.check_circle_rounded, color: Color(0xFF69F0AE), size: 16),
+        const SizedBox(width: 6),
+        const Expanded(child: Text('MISSION COMPLETE', style: TextStyle(color: Color(0xFF69F0AE), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1))),
+        Text(pts, style: const TextStyle(color: _hudGold, fontSize: 12, fontWeight: FontWeight.w900)),
+      ]),
+      const SizedBox(height: 6),
+      if (nx != null)
+        Row(children: <Widget>[
+          SizedBox(
+            width: 30,
+            height: 30,
+            child: Stack(alignment: Alignment.center, children: <Widget>[
+              CircularProgressIndicator(value: (g.nextT / 9.0).clamp(0.0, 1.0).toDouble(), strokeWidth: 3, color: nx.tierColor, backgroundColor: Colors.white12),
+              Text('${max(0, g.nextT.ceil())}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+            ]),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text('NEXT: ${nx.title}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800)),
+              Text(nx.kindLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            ]),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () {
+              g.advanceMission();
+              refresh();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(color: nx.tierColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10), border: Border.all(color: nx.tierColor)),
+              child: const Text('SKIP', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ])
+      else
+        Row(children: <Widget>[
+          const Expanded(child: Text('No other mission is open right now.', style: TextStyle(color: Colors.white70, fontSize: 11.5))),
+          GestureDetector(
+            onTap: () => Navigator.of(context).maybePop(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(10)),
+              child: const Text('BOARD', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ]),
     ]),
   );
 }

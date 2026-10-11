@@ -70,6 +70,12 @@ class RealmShell extends StatefulWidget {
   /// Text of the exit button on the result screen.
   final String exitLabel;
 
+  /// Buttons added to the pause menu (each also resumes the game).
+  final List<RealmResultAction> Function(RealmLogic l)? pauseActions;
+
+  /// Start playing at once instead of showing the intro card.
+  final bool skipIntro;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -90,6 +96,8 @@ class RealmShell extends StatefulWidget {
     this.learning = true,
     this.resultActions,
     this.exitLabel = 'EXIT',
+    this.pauseActions,
+    this.skipIntro = false,
   });
 
   @override
@@ -141,7 +149,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     if (!mounted) return;
     _content = c;
     _inDuel = c.inDuel;
-    _intro = !c.inDuel;
+    _intro = !c.inDuel && !widget.skipIntro;
     _newRun();
     setState(() => _loading = false);
   }
@@ -688,6 +696,17 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                 const SizedBox(height: 10),
                 _bigButton('HOW TO PLAY', _showHowTo, secondary: true),
               ],
+              if (widget.pauseActions != null && _logic != null)
+                for (final RealmResultAction a in widget.pauseActions!(_logic!)) ...<Widget>[
+                  const SizedBox(height: 10),
+                  _bigButton(a.label, () {
+                    a.onTap();
+                    setState(() {
+                      _paused = false;
+                      _last = null;
+                    });
+                  }, secondary: true),
+                ],
               const SizedBox(height: 10),
               _bigButton('LEAVE', () async {
                 if (await _confirmLeave() && mounted) _exit();

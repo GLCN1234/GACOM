@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart';
 import 'darkom_armory.dart';
@@ -49,29 +48,45 @@ class _DarkomScreenState extends State<DarkomScreen> {
       ghost = await DarkomGhost.load();
     } catch (_) {}
     if (!mounted) return;
-    setState(() => _boot = DarkomBoot(progress, armory, ghost, mission: widget.mission));
-  }
-
-  /// The next open mission after this one, in board order.
-  DarkomMission? _nextMission(DarkomMission cur, int chapter) {
-    final int i = darkomMissions.indexWhere((DarkomMission m) => m.id == cur.id);
-    for (int k = i + 1; k < darkomMissions.length; k++) {
-      if (darkomMissions[k].isOpen(chapter)) return darkomMissions[k];
+    final DarkomBoot boot = DarkomBoot(progress, armory, ghost, mission: widget.mission);
+    if (widget.mission != null) {
+      try {
+        final DarkomMissionStats st = await DarkomService.loadMissionStats().timeout(const Duration(seconds: 5), onTimeout: () => DarkomMissionStats.empty);
+        boot.cleared.addAll(st.done.keys);
+      } catch (_) {}
+      boot.onSwitch = _switchTo;
     }
-    return null;
+    if (!mounted) return;
+    setState(() {
+      _mission = widget.mission;
+      _boot = boot;
+    });
   }
 
-  List<RealmResultAction> _resultActions(RealmLogic l) {
-    final DarkomMission? ms = widget.mission;
-    final DarkomBoot? b = _boot;
-    if (ms == null || b == null || l is! DarkomLogic || !l.missionDone) return const <RealmResultAction>[];
-    final DarkomMission? nx = _nextMission(ms, b.progress.chapter);
-    if (nx == null) return const <RealmResultAction>[];
-    return <RealmResultAction>[
-      RealmResultAction('NEXT MISSION', () {
-        if (mounted) context.pushReplacement('/darkom/play', extra: nx);
-      }),
-    ];
+  DarkomMission? _mission;
+  bool _fade = false;
+  bool _skipIntro = false;
+  int _gen = 0;
+  String _toName = '';
+
+  /// The next mission is in another district: fade out, rebuild the world, fade in.
+  void _switchTo(DarkomMission m) {
+    if (!mounted) return;
+    setState(() {
+      _fade = true;
+      _toName = m.theme.name;
+    });
+    Future<void>.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() {
+        _mission = m;
+        _skipIntro = true;
+        _gen++;
+      });
+      Future<void>.delayed(const Duration(milliseconds: 1100), () {
+        if (mounted) setState(() => _fade = false);
+      });
+    });
   }
 
   @override
@@ -89,10 +104,11 @@ class _DarkomScreenState extends State<DarkomScreen> {
         ),
       );
     }
-    final DarkomMission? ms = widget.mission;
+    final DarkomMission? ms = _mission;
     final bool roam = ms == null && b.progress.chapter >= 6;
     final DarkomChapterDef ch = ms != null ? ms.asChapter() : darkomChapter(roam ? 5 : b.progress.chapter);
-    return RealmShell(
+    final Widget shell = RealmShell(
+      key: ValueKey<int>(_gen),
       gameName: 'Darkom City',
       gameId: 'darkom',
       title: ms != null ? ms.title : (roam ? 'Darkom City: Free Roam' : 'Chapter ${ch.n}: ${ch.name}'),
@@ -113,8 +129,27 @@ class _DarkomScreenState extends State<DarkomScreen> {
       joystick: true,
       background: const Color(0xFF05060A),
       learning: false,
-      resultActions: _resultActions,
-      exitLabel: ms != null ? 'MISSION BOARD' : 'EXIT',
+      skipIntro: _skipIntro,
+      pauseActions: (RealmLogic l) => ms != null && l is DarkomLogic
+          ? <RealmResultAction>[RealmResultAction('RESTART MISSION', l.restartMission)]
+          : const <RealmResultAction>[],
     );
+    if (ms == null) return shell;
+    return Stack(children: <Widget>[
+      Positioned.fill(child: shell),
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: _fade ? 1 : 0,
+            duration: const Duration(milliseconds: 450),
+            child: Container(
+              color: Colors.black,
+              alignment: Alignment.center,
+              child: Text(_toName.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 3, decoration: TextDecoration.none)),
+            ),
+          ),
+        ),
+      ),
+    ]);
   }
 }
