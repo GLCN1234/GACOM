@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../ads/widgets/sponsored.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
@@ -403,19 +404,26 @@ class _PostListState extends ConsumerState<_PostList> {
     ]));
     return RefreshIndicator(color: GacomColors.deepOrange, backgroundColor: GacomColors.cardDark,
       onRefresh: () async { setState(() { _posts = []; _page = 0; _loading = true; }); await _loadContext(); await _load(); },
-      child: ListView.builder(padding: const EdgeInsets.fromLTRB(0, 8, 0, 120), itemCount: _posts.length + (_hasMore ? 1 : 0),
+      child: ListView.builder(padding: const EdgeInsets.fromLTRB(0, 8, 0, 120), itemCount: _posts.length + _adSlots + (_hasMore ? 1 : 0),
         itemBuilder: (_, i) {
-          if (i == _posts.length) { _load(); return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange, strokeWidth: 2))); }
+          final feedItems = _posts.length + _adSlots;
+          if (i == feedItems) { _load(); return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: GacomColors.deepOrange, strokeWidth: 2))); }
+          // Every 7th row is a sponsored slot (after each run of 6 posts).
+          if ((i + 1) % 7 == 0) return SponsoredFeedSlot(key: ValueKey('ad_slot_${(i + 1) ~/ 7}'));
+          final pi = i - (i + 1) ~/ 7;
           return _PostCard(
-            post: _posts[i],
-            isDiscovery: _posts[i]['_is_discovery'] == true,
+            post: _posts[pi],
+            isDiscovery: _posts[pi]['_is_discovery'] == true,
             onDeleted: () {
-              if (mounted) setState(() => _posts.removeWhere((p) => p['id'] == _posts[i]['id']));
+              if (mounted) setState(() => _posts.removeWhere((p) => p['id'] == _posts[pi]['id']));
             },
           )
               .animate(delay: Duration(milliseconds: math.min(i * 60, 240))).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
         }));
   }
+
+  /// Sponsored rows between posts: one after every 6 posts that are followed by another post.
+  int get _adSlots => _posts.isEmpty ? 0 : (_posts.length - 1) ~/ 6;
 }
 
 // ── Post Card ─────────────────────────────────────────────────────────────────

@@ -131,6 +131,7 @@ class _Sidebar extends StatelessWidget {
       })),
       const Divider(color: GacomColors.border, height: 1),
       ListTile(dense: true, leading: const Icon(Icons.flag_rounded, color: GacomColors.textMuted, size: 20), title: const Text('Missions', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/missions')),
+      ListTile(dense: true, leading: const Icon(Icons.campaign_rounded, color: GacomColors.textMuted, size: 20), title: const Text('Ad Review', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/ads')),
       ListTile(dense: true, leading: const Icon(Icons.storefront_rounded, color: GacomColors.textMuted, size: 20), title: const Text('Store Admin', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/store')),
       ListTile(dense: true, leading: const Icon(Icons.bug_report_outlined, color: GacomColors.textMuted, size: 20), title: const Text('Error Logs', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/errors')),
       ListTile(dense: true, leading: const Icon(Icons.shield_outlined, color: GacomColors.textMuted, size: 20), title: const Text('Security Center', style: TextStyle(fontFamily: 'Rajdhani', color: GacomColors.textMuted, fontSize: 14)), onTap: () => context.push('/admin/security')),

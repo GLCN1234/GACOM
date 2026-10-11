@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../hosting/screens/host_screens.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -348,12 +349,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontWeight: FontWeight.w700,
                   fontSize: 15)),
           const Text(
-              'Verified users can create sub-communities',
+              'Blue tick and competition hosting. \u20A62,000 a month from your wallet',
               style: TextStyle(
                   color: GacomColors.textMuted, fontSize: 12)),
         ])),
-        if (status == 'unverified')
-          GestureDetector(
+        GestureDetector(
             onTap: () => _requestVerification(context),
             child: Container(
               padding: const EdgeInsets.symmetric(
@@ -361,7 +361,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                   gradient: GacomColors.orangeGradient,
                   borderRadius: BorderRadius.circular(10)),
-              child: const Text('APPLY',
+              child: Text(status == 'verified' ? 'RENEW' : 'SUBSCRIBE',
                   style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Rajdhani',
@@ -685,54 +685,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _requestVerification(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: GacomColors.cardDark,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.verified_rounded,
-              color: GacomColors.deepOrange, size: 48),
-          const SizedBox(height: 12),
-          const Text('Get Verified',
-              style: TextStyle(
-                  fontFamily: 'Rajdhani',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: GacomColors.textPrimary)),
-          const SizedBox(height: 8),
-          const Text(
-              'Verification costs ₦2,000. Verified users can create sub-communities and get a verified badge.',
-              style: TextStyle(
-                  color: GacomColors.textMuted, fontSize: 13, height: 1.5),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 24),
-          GacomButton(
-            label: 'APPLY FOR ₦2,000',
-            onPressed: () async {
-              await SupabaseService.client
-                  .from('verification_requests')
-                  .insert({
-                'user_id': SupabaseService.currentUserId,
-                'status': 'pending',
-              });
-              await SupabaseService.client.from('profiles').update(
-                  {'verification_status': 'pending'}).eq(
-                  'id', SupabaseService.currentUserId!);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                GacomSnackbar.show(context, 'Verification request sent',
-                    isSuccess: true);
-                await _loadProfile();
-              }
-            },
-          ),
-        ]),
-      ),
-    );
+  Future<void> _requestVerification(BuildContext context) async {
+    final ok = await showVerificationSheet(context);
+    if (ok && mounted) await _loadProfile();
   }
 
   void _showLanguagePicker(BuildContext context) {
@@ -928,7 +883,7 @@ class _HelpCenterScreen extends StatelessWidget {
       ),
       (
         'How do I get verified?',
-        'Go to Settings → Verification → Apply. A ₦2,000 fee applies. The admin team reviews within 48 hours. Verified users get a badge and can create sub-communities.'
+        'Go to Settings → Verification and subscribe. It is ₦2,000 a month from your wallet and the blue tick appears straight away. Verified members can also host their own competitions.'
       ),
       (
         'How do withdrawals work?',

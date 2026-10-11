@@ -9,6 +9,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/edu_mode_provider.dart';
 import '../../../core/services/app_update_service.dart';
+import '../../ads/widgets/sponsored.dart';
 
 final userRoleProvider = FutureProvider<String>((ref) async {
   final uid = SupabaseService.currentUserId;
@@ -58,6 +59,7 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
     _glowAnim = CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppUpdateService.maybePrompt(context);
+      Future.delayed(const Duration(seconds: 6), () { if (mounted) maybeShowFullscreenAd(context); });
       IosPurchaseService.instance.start();
     });
   }
@@ -76,7 +78,9 @@ class _MainShellState extends ConsumerState<MainShell> with SingleTickerProvider
 
     return Scaffold(
       extendBody: false,
-      body: widget.child,
+      body: location == AppConstants.homeRoute
+          ? Column(children: [const SponsoredBanner(), Expanded(child: widget.child)])
+          : widget.child,
       bottomNavigationBar: isEduRoute
           ? _buildEduNav(context)
           : _buildNav(context, isPrivileged, isExco, role),

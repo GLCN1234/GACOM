@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/hosting_service.dart';
+import '../../hosting/screens/host_screens.dart';
 import '../../../shared/widgets/gacom_button.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/gacom_text_field.dart';
@@ -25,6 +27,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
   bool _loading = true;
   String _selectedFilter = 'all';
   bool _canCreate = false;
+  bool _isAdminRole = false;
 
   @override
   void initState() {
@@ -32,6 +35,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
     _tabController = TabController(length: 3, vsync: this);
     _loadCompetitions();
     _checkCreatePermission();
+    HostingService.sweep();
   }
 
   Future<void> _checkCreatePermission() async {
@@ -44,6 +48,7 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
           .eq('id', userId)
           .single();
       final role = profile['role'] as String? ?? 'user';
+      _isAdminRole = ['admin', 'super_admin'].contains(role);
       bool hasPermission =
           ['admin', 'super_admin', 'moderator'].contains(role);
       if (!hasPermission) {
@@ -96,13 +101,17 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
       appBar: AppBar(
         title: const Text('COMPETITIONS'),
         actions: [
-          if (_canCreate)
-            IconButton(
-              icon: const Icon(Icons.add_circle_rounded,
-                  color: GacomColors.deepOrange),
-              tooltip: 'Create Competition',
-              onPressed: () => _showCreateSheet(context),
-            ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events_outlined),
+            tooltip: 'My hosted competitions',
+            onPressed: () => context.push('/host'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_rounded,
+                color: GacomColors.deepOrange),
+            tooltip: 'Host a competition',
+            onPressed: () => _create(context),
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list_rounded),
             onPressed: _showFilterSheet,
@@ -152,11 +161,11 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
                               style: const TextStyle(
                                   color: GacomColors.textMuted,
                                   fontSize: 16)),
-                          if (_canCreate) ...[
+                          ...[
                             const SizedBox(height: 24),
                             GacomButton(
-                              label: 'CREATE FIRST',
-                              onPressed: () => _showCreateSheet(context),
+                              label: 'HOST ONE',
+                              onPressed: () => _create(context),
                             ),
                           ]
                         ]))
@@ -212,6 +221,17 @@ class _CompetitionsScreenState extends ConsumerState<CompetitionsScreen>
         ]),
       ),
     );
+  }
+
+  /// Admins create official competitions with the staff form. Everyone else
+  /// hosts through the verified-host flow (or is offered the subscription).
+  Future<void> _create(BuildContext context) async {
+    if (_isAdminRole) {
+      _showCreateSheet(context);
+      return;
+    }
+    await openHostEntry(context);
+    if (mounted) _loadCompetitions();
   }
 
   void _showCreateSheet(BuildContext context) {

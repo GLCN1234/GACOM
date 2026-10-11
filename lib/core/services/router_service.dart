@@ -47,6 +47,8 @@ import '../../features/admin/screens/store_admin_screen.dart';
 import '../../features/home/screens/notifications_screen.dart';
 import '../../features/home/screens/search_screen.dart';
 import '../../features/ads/screens/ads_screen.dart';
+import '../../features/admin/screens/ads_admin_screen.dart';
+import '../../features/hosting/screens/host_screens.dart';
 import '../../features/admin/screens/security_center_screen.dart';
 import '../../features/support/desk/support_admin_screen.dart';
 import '../../features/support/desk/support_desk_screen.dart';
@@ -481,6 +483,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/houses/:id', builder: (_, s) => HouseDetailScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/houses/:id/manage', builder: (_, s) => HouseManageScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
+      GoRoute(path: '/host', builder: (_, __) => const HostDashboardScreen()),
+      GoRoute(path: '/host/new', builder: (_, __) => const HostCreateScreen()),
+      GoRoute(path: '/admin/ads', builder: (_, __) => const AdsAdminScreen()),
       GoRoute(path: '/admin/missions', builder: (_, __) => const MissionAdminScreen()),
     ],
   );
