@@ -71,6 +71,7 @@ import '../../features/character3d/character_studio_screen.dart';
 import '../../features/darkom/darkom_screen.dart';
 import '../../features/darkom/darkom_board_screen.dart';
 import '../../features/pass/season_pass_screen.dart';
+import '../../features/profile/card/player_card_screen.dart';
 import '../../features/darkom/darkom_missions.dart';
 import '../../features/darkom/hub/darkom_hub_screen.dart';
 import '../../features/edu/realms/realm_hub_screen.dart';
@@ -345,6 +346,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/character', builder: (_, __) => const CharacterStudioScreen()),
           GoRoute(path: '/darkom/hub', builder: (_, __) => HowToGate(gameKey: 'darkomhub', child: const LandscapeScope(child: DarkomHubScreen()))),
           GoRoute(path: '/darkom/arena', builder: (_, s) => s.extra is DarkomArenaArgs ? LandscapeScope(child: DarkomArenaScreen(args: s.extra as DarkomArenaArgs)) : const LandscapeScope(child: DarkomHubScreen())),
+          GoRoute(path: '/card/:id', builder: (_, s) => PlayerCardScreen(userId: s.pathParameters['id'] ?? '')),
           GoRoute(path: '/pass', builder: (_, __) => const SeasonPassScreen()),
           GoRoute(path: '/darkom/missions', builder: (_, __) => const LandscapeScope(child: DarkomBoardScreen())),
           GoRoute(path: '/darkom/play', builder: (_, s) {

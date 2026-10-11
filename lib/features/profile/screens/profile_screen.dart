@@ -501,6 +501,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     height: 40,
                     onPressed: () => context.push('/pass'),
                   ),
+                  const SizedBox(height: 8),
+                  TacButton(
+                    label: 'PLAYER CARD',
+                    icon: Icons.badge_rounded,
+                    filled: false,
+                    height: 40,
+                    onPressed: () => context.push('/card/${widget.userId}'),
+                  ),
                 ],
                 const SizedBox(height: 16),
 
