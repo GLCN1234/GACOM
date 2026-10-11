@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -35,7 +36,17 @@ final _demoProfile = {
   'global_rank': 142,
 };
 
-const String _publicCols = 'id, username, display_name, bio, avatar_url, banner_url, role, verification_status, '
+String _tierLabel(String? t) {
+  switch (t) {
+    case 'plus': return 'PLUS';
+    case 'pro': return 'PRO';
+    case 'elite': return 'ELITE';
+    case 'legend': return 'LEGEND';
+    default: return 'VERIFIED';
+  }
+}
+
+const String _publicCols = 'id, username, display_name, bio, avatar_url, banner_url, role, verification_status, verification_tier, '
     'gamer_tag, favorite_games, location, website, twitter_handle, discord_handle, competitions_won, '
     'competitions_entered, followers_count, following_count, posts_count, is_online, is_private, country, created_at';
 
@@ -459,10 +470,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4)),
                       ),
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.verified_rounded, size: 10, color: GacomColors.deepOrange),
-                        SizedBox(width: 3),
-                        Text('VERIFIED', style: TextStyle(fontFamily: 'Rajdhani', fontSize: 9, fontWeight: FontWeight.w800, color: GacomColors.deepOrange, letterSpacing: 0.5)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        VerifiedTick(tier: p['verification_tier'] as String?, size: 11),
+                        const SizedBox(width: 3),
+                        Text(_tierLabel(p['verification_tier'] as String?), style: TextStyle(fontFamily: 'Rajdhani', fontSize: 9, fontWeight: FontWeight.w800, color: VerifiedTick.colorOf(p['verification_tier'] as String?), letterSpacing: 0.5)),
                       ]),
                     ),
                 ]),

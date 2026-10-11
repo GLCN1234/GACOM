@@ -101,8 +101,12 @@ on conflict do nothing;
 create table if not exists public.ad_settings (
   id boolean primary key default true check (id),
   review_first_campaign boolean not null default true,
-  max_live_per_advertiser integer not null default 10
+  max_live_per_advertiser integer not null default 10,
+  min_daily_budget integer not null default 1000,
+  max_daily_budget integer not null default 500000
 );
+alter table public.ad_settings add column if not exists min_daily_budget integer not null default 1000;
+alter table public.ad_settings add column if not exists max_daily_budget integer not null default 500000;
 insert into public.ad_settings (id) values (true) on conflict do nothing;
 alter table public.ad_settings enable row level security;
 revoke all on public.ad_settings from anon, authenticated;
@@ -175,11 +179,18 @@ returns numeric language sql immutable as $$
   select case when p_audience < 300 then 1.60 when p_audience < 1500 then 1.30 when p_audience < 5000 then 1.10 else 1.00 end;
 $$;
 
+-- Percent off ad prices for verified members. 20261105_verification_tiers.sql replaces this with the real lookup.
+create or replace function public.verification_ad_discount(p_user uuid)
+returns integer language sql stable security definer set search_path = public as $$ select 0 $$;
+
 create or replace function public.ad_platform_stats()
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'active_30d', (select count(*) from public.profiles where coalesce(is_banned, false) = false and last_seen > now() - interval '30 days'),
-    'total', (select count(*) from public.profiles where coalesce(is_banned, false) = false));
+    'total', (select count(*) from public.profiles where coalesce(is_banned, false) = false),
+    'min_daily', (select min_daily_budget from public.ad_settings limit 1),
+    'max_daily', (select max_daily_budget from public.ad_settings limit 1),
+    'discount', public.verification_ad_discount(auth.uid()));
 $$;
 grant execute on function public.ad_platform_stats() to authenticated;
 
@@ -206,11 +217,13 @@ declare
   mult numeric;
   avg_cpm numeric; avg_cpc numeric;
   imp_day numeric; reach_day numeric; clicks_day numeric;
+  disc integer;
 begin
   if uid is null then return null; end if;
   perform public.sec_rl('ad_estimate', 60, 60);
   aud := public.ad_audience_size(countries, interests, uid);
-  mult := public.ad_price_mult(aud);
+  disc := coalesce(public.verification_ad_discount(uid), 0);
+  mult := round(public.ad_price_mult(aud) * (100 - disc) / 100.0, 2);
   select coalesce(avg(cpm), 1500), coalesce(avg(cpc), 100) into avg_cpm, avg_cpc
     from public.ad_rates where placement = any(places);
   avg_cpm := avg_cpm * mult; avg_cpc := avg_cpc * mult;
@@ -223,7 +236,7 @@ begin
   end if;
   reach_day := least(aud, imp_day / 1.4);
   return jsonb_build_object(
-    'audience', aud, 'price_mult', mult,
+    'audience', aud, 'price_mult', mult, 'discount', disc,
     'cpm', round(avg_cpm), 'cpc', round(avg_cpc),
     'total_budget', daily * days,
     'reach_low', floor(reach_day * 0.7), 'reach_high', ceil(reach_day * 1.3),
@@ -318,6 +331,9 @@ declare
   v_had_approved boolean;
   v_status text;
   v_max_live integer;
+  v_min_daily integer;
+  v_max_daily integer;
+  v_disc integer;
   v_r jsonb;
   v_ref text;
   v_bal numeric;
@@ -354,7 +370,12 @@ begin
     if v_p not in ('feed', 'banner', 'fullscreen') then return jsonb_build_object('success', false, 'error', 'Unknown placement'); end if;
   end loop;
   if cardinality(v_countries) > 20 or cardinality(v_interests) > 7 then return jsonb_build_object('success', false, 'error', 'Too many targeting options'); end if;
-  if v_daily is null or v_daily < 1000 or v_daily > 500000 then return jsonb_build_object('success', false, 'error', 'Daily budget is between N1,000 and N500,000'); end if;
+  select s.min_daily_budget, s.max_daily_budget into v_min_daily, v_max_daily from public.ad_settings s limit 1;
+  v_min_daily := coalesce(v_min_daily, 1000);
+  v_max_daily := coalesce(v_max_daily, 500000);
+  if v_daily is null or v_daily < v_min_daily or v_daily > v_max_daily then
+    return jsonb_build_object('success', false, 'error', 'Daily budget is between N' || v_min_daily || ' and N' || v_max_daily);
+  end if;
   if v_days is null or v_days < 1 or v_days > 30 then return jsonb_build_object('success', false, 'error', 'Run it for 1 to 30 days'); end if;
   if v_start < now() - interval '5 minutes' or v_start > now() + interval '30 days' then
     return jsonb_build_object('success', false, 'error', 'Start within the next 30 days');
@@ -368,7 +389,8 @@ begin
 
   v_total := v_daily * v_days;
   v_aud := public.ad_audience_size(v_countries, v_interests, uid);
-  v_mult := public.ad_price_mult(v_aud);
+  v_disc := coalesce(public.verification_ad_discount(uid), 0);
+  v_mult := round(public.ad_price_mult(v_aud) * (100 - v_disc) / 100.0, 2);
   v_flags := public.ad_flagged_terms(v_title || ' ' || v_headline || ' ' || v_body);
   select exists (select 1 from public.ad_campaigns ac where ac.advertiser_id = uid and ac.approved_at is not null) into v_had_approved;
   v_status := case when v_flags is not null or (coalesce(v_review_first, true) and not v_had_approved) then 'pending_review' else 'active' end;

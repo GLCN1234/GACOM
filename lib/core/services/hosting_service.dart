@@ -26,9 +26,35 @@ class HostingService {
     }
   }
 
-  static Future<HostResult> subscribe(int months) async {
+  /// The state plus every level with its limits and assets (for the verification screen).
+  static Future<Map<String, dynamic>> overview() async {
     try {
-      return _res(await SupabaseService.client.rpc('verification_subscribe', params: {'p_months': months}));
+      return _map(await SupabaseService.client.rpc('verification_overview'));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> idState() async {
+    try {
+      return _map(await SupabaseService.client.rpc('id_check_state'));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Future<HostResult> idSubmit({required String docType, required String fullName, required String docPath, required String selfiePath}) async {
+    try {
+      return _res(await SupabaseService.client.rpc('id_check_submit',
+          params: {'p_doc_type': docType, 'p_full_name': fullName, 'p_doc_path': docPath, 'p_selfie_path': selfiePath}));
+    } catch (_) {
+      return const HostResult(false, error: 'Could not send your ID. Try again.');
+    }
+  }
+
+  static Future<HostResult> subscribe(String tier, int months) async {
+    try {
+      return _res(await SupabaseService.client.rpc('verification_subscribe', params: {'p_tier': tier, 'p_months': months}));
     } catch (_) {
       return const HostResult(false, error: 'Could not reach the server. You were not charged.');
     }

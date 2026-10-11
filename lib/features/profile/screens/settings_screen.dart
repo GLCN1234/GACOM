@@ -339,7 +339,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
           Text(
               status == 'verified'
-                  ? 'Account Verified'
+                  ? 'Verified${_profile?['verification_tier'] == null ? '' : ' (${_profile!['verification_tier']})'}'
                   : status == 'pending'
                       ? 'Verification Pending'
                       : 'Get Verified',
@@ -349,7 +349,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontWeight: FontWeight.w700,
                   fontSize: 15)),
           const Text(
-              'Blue tick and competition hosting. \u20A62,000 a month from your wallet',
+              'Choose a level: tick colour, hosting limits, cheaper ads and exclusive assets',
               style: TextStyle(
                   color: GacomColors.textMuted, fontSize: 12)),
         ])),
@@ -361,7 +361,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(
                   gradient: GacomColors.orangeGradient,
                   borderRadius: BorderRadius.circular(10)),
-              child: Text(status == 'verified' ? 'RENEW' : 'SUBSCRIBE',
+              child: Text(status == 'verified' ? 'MANAGE' : 'VIEW LEVELS',
                   style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Rajdhani',
@@ -686,8 +686,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _requestVerification(BuildContext context) async {
-    final ok = await showVerificationSheet(context);
-    if (ok && mounted) await _loadProfile();
+    await showVerificationSheet(context);
+    if (mounted) await _loadProfile();
   }
 
   void _showLanguagePicker(BuildContext context) {

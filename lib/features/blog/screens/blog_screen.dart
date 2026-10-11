@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -65,7 +66,7 @@ class _BlogScreenState extends ConsumerState<BlogScreen> with SingleTickerProvid
       // Build filter chain first — ilike() must come before order()/limit()
       var baseQuery = SupabaseService.client
           .from('blog_posts')
-          .select('*, author:profiles!author_id(username, display_name, avatar_url, verification_status)')
+          .select('*, author:profiles!author_id(username, display_name, avatar_url, verification_status, verification_tier)')
           .eq('is_published', true);
 
       if (_selectedCategory != null) {
@@ -412,7 +413,7 @@ class _ArticleCard extends StatelessWidget {
                   CircleAvatar(radius: 10, backgroundColor: GacomColors.border, backgroundImage: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? CachedNetworkImageProvider(author['avatar_url']) : null, onBackgroundImageError: (author['avatar_url'] != null && (author['avatar_url'] as String).isNotEmpty) ? (exception, stackTrace) {} : null, child: (author['avatar_url'] == null || (author['avatar_url'] as String).isEmpty) ? const Icon(Icons.person, size: 10, color: Colors.white) : null),
                   const SizedBox(width: 5),
                   Flexible(child: Text(author['display_name'] ?? '', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11), overflow: TextOverflow.ellipsis)),
-                  if (isVerified) ...[const SizedBox(width: 2), const Icon(Icons.verified_rounded, size: 10, color: GacomColors.deepOrange)],
+                  if (isVerified) ...[const SizedBox(width: 2), VerifiedTick(tier: author['verification_tier'] as String?, size: 10)],
                   const Spacer(),
                   const Icon(Icons.schedule_rounded, size: 11, color: GacomColors.textMuted),
                   const SizedBox(width: 3),

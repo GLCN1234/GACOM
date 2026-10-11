@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,7 +33,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
     try {
       final data = await SupabaseService.client
           .from('posts')
-          .select('*, author:profiles!author_id(id, username, display_name, avatar_url, verification_status), is_liked:post_likes(user_id)')
+          .select('*, author:profiles!author_id(id, username, display_name, avatar_url, verification_status, verification_tier), is_liked:post_likes(user_id)')
           .eq('is_deleted', false)
           .inFilter('post_type', ['image', 'video', 'clip'])
           .order('likes_count', ascending: false)
@@ -42,7 +43,7 @@ class _ReelsScreenState extends ConsumerState<ReelsScreen> {
       if (posts.length < 5) {
         final textPosts = await SupabaseService.client
             .from('posts')
-            .select('*, author:profiles!author_id(id, username, display_name, avatar_url, verification_status), is_liked:post_likes(user_id)')
+            .select('*, author:profiles!author_id(id, username, display_name, avatar_url, verification_status, verification_tier), is_liked:post_likes(user_id)')
             .eq('is_deleted', false)
             .order('likes_count', ascending: false)
             .limit(20);
@@ -317,7 +318,7 @@ class _ReelItemState extends State<_ReelItem> with SingleTickerProviderStateMixi
               onTap: () => context.go('/profile/${author['id']}'),
               child: Row(children: [
                 Text('@${author['username'] ?? ''}', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 16)),
-                if (isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 14, color: GacomColors.deepOrange)],
+                if (isVerified) ...[const SizedBox(width: 4), VerifiedTick(tier: author['verification_tier'] as String?, size: 14)],
               ]),
             ),
             if (caption.isNotEmpty) ...[

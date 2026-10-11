@@ -173,7 +173,7 @@ class _Overview extends StatelessWidget {
             )),
       const SizedBox(height: 6),
       const Text(
-          'Small audiences cost a little more because fewer people compete for the same views. The exact price for your setup is shown before you pay. Minimum is ₦1,000 a day.',
+          'Small audiences cost a little more because fewer people compete for the same views. The exact price for your setup is shown before you pay.',
           style: TextStyle(color: GacomColors.textMuted, fontSize: 11, height: 1.5)),
       const SizedBox(height: 24),
       GacomButton(label: 'LAUNCH YOUR FIRST CAMPAIGN', onPressed: onLaunch),
@@ -352,6 +352,8 @@ class _CampaignBuilderState extends State<CampaignBuilder> {
   final Set<String> _countries = {'Nigeria'};
   final Set<String> _interests = {};
   double _daily = 2000;
+  double _minDaily = 1000;
+  double _maxDaily = 100000;
   double _days = 3;
   DateTime? _startAt; // null = start now
   Map<String, dynamic>? _est;
@@ -388,6 +390,13 @@ class _CampaignBuilderState extends State<CampaignBuilder> {
       c.addListener(() => setState(() {}));
     }
     _loadBalance();
+    AdsService.platformStats().then((st) {
+      if (!mounted) return;
+      final mn = (st['min_daily'] as num?)?.toDouble() ?? 1000;
+      final mx = ((st['max_daily'] as num?)?.toDouble() ?? 100000).clamp(mn + 1000, 100000000).toDouble();
+      setState(() { _minDaily = mn; _maxDaily = mx; _daily = _daily.clamp(mn, mx).toDouble(); });
+      _refreshEstimate();
+    });
     _refreshEstimate();
   }
 
@@ -822,12 +831,12 @@ class _CampaignBuilderState extends State<CampaignBuilder> {
         const Text('  per day', style: TextStyle(color: GacomColors.textMuted)),
       ]),
       Slider(
-        value: _daily.clamp(1000, 100000).toDouble(),
-        min: 1000,
-        max: 100000,
-        divisions: 99,
+        value: _daily.clamp(_minDaily, _maxDaily).toDouble(),
+        min: _minDaily,
+        max: _maxDaily,
+        divisions: ((_maxDaily - _minDaily) / 1000).round().clamp(1, 400),
         activeColor: GacomColors.deepOrange,
-        onChanged: (v) => setState(() => _daily = (v / 1000).round() * 1000.0),
+        onChanged: (v) => setState(() => _daily = (v / 100).round() * 100.0),
         onChangeEnd: (_) => _refreshEstimate(),
       ),
       const SizedBox(height: 8),
@@ -867,6 +876,7 @@ class _CampaignBuilderState extends State<CampaignBuilder> {
           _Row('Views per day', range('impressions_low', 'impressions_high')),
           _Row('Clicks per day', range('clicks_low', 'clicks_high')),
           const Divider(color: GacomColors.border, height: 22),
+          if (((e?['discount'] as num?) ?? 0) > 0) _Row('Your verification discount', '${e!['discount']}% off'),
           _Row(_objective == 'traffic' ? 'Price per click' : 'Price per 1,000 views',
               e == null ? '...' : _naira((_objective == 'traffic' ? e['cpc'] : e['cpm']) as num)),
           _Row('Total budget', _naira(_total), bold: true),

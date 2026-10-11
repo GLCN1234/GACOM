@@ -34,79 +34,10 @@ Future<void> openHostEntry(BuildContext context) async {
   }
 }
 
-/// Monthly verification subscription sheet. Returns true when the subscription went through.
+/// Opens the verification levels screen. Returns true when the member subscribed during the visit.
 Future<bool> showVerificationSheet(BuildContext context, [Map<String, dynamic>? state]) async {
-  state ??= await HostingService.verificationState();
-  if (!context.mounted) return false;
-  final price = (state['price'] as num?)?.toInt() ?? 2000;
-  final active = state['active'] == true;
-  final daysLeft = (state['days_left'] as num?)?.toInt() ?? 0;
-  bool busy = false;
-  final done = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: GacomColors.cardDark,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setM) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.verified_rounded, color: GacomColors.deepOrange, size: 48),
-          const SizedBox(height: 10),
-          Text(active ? 'Verified' : 'Get verified', style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 22, fontWeight: FontWeight.w700, color: GacomColors.textPrimary)),
-          const SizedBox(height: 6),
-          Text(
-              active
-                  ? 'Your blue tick is active for $daysLeft more days. Renew now to add another month on top.'
-                  : '${_naira(price)} a month from your wallet. You get the blue tick next to your name and you can host your own competitions.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: GacomColors.textMuted, fontSize: 13, height: 1.5)),
-          const SizedBox(height: 14),
-          for (final line in const [
-            'Create competitions: name, game, rules, banner, entry fee, prize pool, dates and who can join',
-            'Players pay entry fees into the competition; you receive them after you settle it, minus the platform fee',
-            'Prize pools are held safely and paid straight to the winners you pick',
-          ])
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Icon(Icons.check_rounded, color: GacomColors.success, size: 18),
-                const SizedBox(width: 8),
-                Expanded(child: Text(line, style: const TextStyle(color: GacomColors.textPrimary, fontSize: 12, height: 1.4))),
-              ]),
-            ),
-          const SizedBox(height: 18),
-          GacomButton(
-            label: busy ? 'PLEASE WAIT...' : (active ? 'RENEW FOR ${_naira(price)}' : 'SUBSCRIBE FOR ${_naira(price)} / MONTH'),
-            onPressed: busy
-                ? null
-                : () async {
-                    setM(() => busy = true);
-                    final r = await HostingService.subscribe(1);
-                    if (!ctx.mounted) return;
-                    setM(() => busy = false);
-                    if (!r.success) {
-                      GacomSnackbar.show(ctx, r.error ?? 'Could not subscribe', isError: true);
-                      if ((r.error ?? '').toLowerCase().contains('balance')) {
-                        Navigator.pop(ctx, false);
-                        if (context.mounted) context.go('/wallet');
-                      }
-                      return;
-                    }
-                    Navigator.pop(ctx, true);
-                  },
-          ),
-          const SizedBox(height: 6),
-          const Text('Paid from your GACOM wallet. It does not renew by itself: when it ends, hosting pauses and your blue tick goes until you renew.',
-              textAlign: TextAlign.center, style: TextStyle(color: GacomColors.textMuted, fontSize: 11, height: 1.4)),
-        ]),
-      ),
-    ),
-  );
-  if (done == true && context.mounted) {
-    GacomSnackbar.show(context, 'You are verified', isSuccess: true);
-  }
-  return done == true;
+  final r = await context.push<bool>('/verification');
+  return r == true;
 }
 
 // =============================================================== dashboard
@@ -140,7 +71,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
 
   Future<void> _create() async {
     if (_st['host'] != true) {
-      if (await showVerificationSheet(context, _st)) _load();
+      await showVerificationSheet(context, _st);
+      _load();
       return;
     }
     await context.push('/host/new');
@@ -199,7 +131,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen> {
                         child: Text(
                             active ? 'Verified host. ${_st['days_left']} days left on your subscription.' : 'Hosting is for verified members.',
                             style: const TextStyle(color: GacomColors.textPrimary, fontSize: 13))),
-                    TextButton(onPressed: () async { if (await showVerificationSheet(context, _st)) _load(); }, child: Text(active ? 'RENEW' : 'SUBSCRIBE')),
+                    TextButton(onPressed: () async { await showVerificationSheet(context, _st); _load(); }, child: Text(active ? 'MANAGE' : 'SUBSCRIBE')),
                   ]),
                 ),
                 const SizedBox(height: 16),
@@ -483,6 +415,11 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
     super.dispose();
   }
 
+  Map<String, dynamic> get _lim => (_st['limits'] as Map?)?.cast<String, dynamic>() ?? const {};
+  int get _maxPrizeL => (_lim['max_prize'] as num?)?.toInt() ?? 500000;
+  int get _maxPlayersL => (_lim['max_players'] as num?)?.toInt() ?? 1000;
+  int get _feePct => (_lim['fee_percent'] as num?)?.toInt() ?? 10;
+  bool get _idOk => _st['id_status'] == 'approved';
   int get _feeV => int.tryParse(_fee.text.trim()) ?? 0;
   int get _prizeV => int.tryParse(_prize.text.trim()) ?? 0;
   int get _maxV => int.tryParse(_max.text.trim()) ?? 0;
@@ -511,8 +448,9 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
     if (_title.text.trim().length < 4) return 'Give the competition a name (at least 4 letters)';
     if (_game.text.trim().length < 2) return 'Enter the game';
     if (_feeV != 0 && (_feeV < 100 || _feeV > 50000)) return 'Entry fee is free, or between ₦100 and ₦50,000';
-    if (_prizeV > 500000) return 'The prize pool can be at most ₦500,000';
-    if (_maxV < 2 || _maxV > 1000) return 'Players must be between 2 and 1,000';
+    if (_feeV > 0 && !_idOk) return 'Competitions with an entry fee need a verified ID. Tap the note under the fee to complete the ID check.';
+    if (_prizeV > _maxPrizeL) return 'Your level allows a prize pool of up to ${_naira(_maxPrizeL)}';
+    if (_maxV < 2 || _maxV > _maxPlayersL) return 'Your level allows 2 to $_maxPlayersL players';
     if (_starts == null) return 'Pick when it starts';
     if (_ends == null) return 'Pick when it ends';
     if (!_starts!.isAfter(DateTime.now().add(const Duration(hours: 1)))) return 'Start at least 1 hour from now';
@@ -592,9 +530,9 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
             GacomButton(
                 label: 'GET VERIFIED',
                 onPressed: () async {
-                  if (await showVerificationSheet(context, _st) && mounted) {
-                    setState(() { _allowed = true; });
-                  }
+                  await showVerificationSheet(context, _st);
+                  final fresh = await HostingService.verificationState();
+                  if (mounted) setState(() { _st = fresh; _allowed = fresh['host'] == true; });
                 }),
           ]),
         ),
@@ -602,7 +540,7 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
     }
 
     final pool = _feeV * _maxV;
-    final cut = (pool * 0.10).floor();
+    final cut = (pool * _feePct / 100).floor();
     const style = TextStyle(color: GacomColors.textPrimary);
     String d(DateTime? t) => t == null ? 'Pick' : '${t.day}/${t.month}/${t.year} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
@@ -670,10 +608,18 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
         Row(children: [
           Expanded(child: TextField(controller: _fee, keyboardType: TextInputType.number, style: style, decoration: _dec('Entry fee (₦)', '0 = free'))),
           const SizedBox(width: 10),
-          Expanded(child: TextField(controller: _prize, keyboardType: TextInputType.number, style: style, decoration: _dec('Prize pool (₦)', 'You fund this'))),
+          Expanded(child: TextField(controller: _prize, keyboardType: TextInputType.number, style: style, decoration: _dec('Prize pool (₦)', 'Up to ${_naira(_maxPrizeL)}'))),
         ]),
+        if (!_idOk)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: GestureDetector(
+              onTap: () async { await context.push('/verification/id'); final f = await HostingService.verificationState(); if (mounted) setState(() => _st = f); },
+              child: const Text('Entry fees need a verified ID. Tap to complete the ID check.', style: TextStyle(color: GacomColors.warning, fontSize: 12)),
+            ),
+          ),
         const SizedBox(height: 12),
-        TextField(controller: _max, keyboardType: TextInputType.number, style: style, decoration: _dec('Maximum players', '2 to 1,000')),
+        TextField(controller: _max, keyboardType: TextInputType.number, style: style, decoration: _dec('Maximum players', '2 to $_maxPlayersL')),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(14),
@@ -682,7 +628,7 @@ class _HostCreateScreenState extends State<HostCreateScreen> {
             _L('Taken from your wallet now (prize pool)', _naira(_prizeV)),
             if (_feeV > 0) ...[
               _L('Entry fees if full', _naira(pool)),
-              _L('Platform fee (10%)', '- ${_naira(cut)}'),
+              _L('Platform fee ($_feePct%)', '- ${_naira(cut)}'),
               _L('You receive after you settle', _naira(pool - cut), bold: true),
             ],
             const Padding(

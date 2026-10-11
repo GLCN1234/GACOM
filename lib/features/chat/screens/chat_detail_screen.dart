@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,7 +68,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
           try {
             otherUser = await SupabaseService.client
                 .from('profiles')
-                .select('id, display_name, username, avatar_url, is_online, verification_status')
+                .select('id, display_name, username, avatar_url, is_online, verification_status, verification_tier')
                 .eq('id', otherId)
                 .single();
           } catch (_) {}
@@ -331,8 +332,7 @@ class _ChatDetailScreenState extends ConsumerState<ChatDetailScreen> {
                         color: GacomColors.textPrimary)),
                 if (isVerified) ...[
                   const SizedBox(width: 4),
-                  const Icon(Icons.verified_rounded,
-                      size: 13, color: GacomColors.deepOrange),
+                  VerifiedTick(tier: _otherUser?['verification_tier'] as String?, size: 13),
                 ],
               ]),
               Text(

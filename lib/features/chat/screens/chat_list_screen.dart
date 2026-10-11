@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -83,7 +84,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> with SingleTick
       if (allOtherIds.isNotEmpty) {
         final profilesData = await SupabaseService.client
             .from('profiles')
-            .select('id, username, display_name, avatar_url, is_online, verification_status')
+            .select('id, username, display_name, avatar_url, is_online, verification_status, verification_tier')
             .inFilter('id', allOtherIds);
         for (final p in profilesData as List) {
           profilesById[p['id'] as String] = Map<String, dynamic>.from(p);
@@ -340,7 +341,7 @@ class _ChatTile extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Flexible(child: Text(name, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 16, color: GacomColors.textPrimary), overflow: TextOverflow.ellipsis)),
-            if (isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 14, color: GacomColors.deepOrange)],
+            if (isVerified) ...[const SizedBox(width: 4), VerifiedTick(tier: other?['verification_tier'] as String?, size: 14)],
           ]),
           const SizedBox(height: 3),
           Text(preview ?? 'Start a conversation', style: TextStyle(color: preview != null ? GacomColors.textSecondary : GacomColors.textMuted, fontSize: 13, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -390,7 +391,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
     try {
       final myId = SupabaseService.currentUserId;
       final data = await SupabaseService.client.from('profiles')
-          .select('id, username, display_name, avatar_url, verification_status, is_online')
+          .select('id, username, display_name, avatar_url, verification_status, verification_tier, verification_tier, is_online')
           .or('username.ilike.%${q.trim()}%,display_name.ilike.%${q.trim()}%')
           .neq('id', myId ?? '').limit(20);
       if (mounted) setState(() { _users = List<Map<String, dynamic>>.from(data); _searching = false; });
@@ -437,7 +438,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                         ]),
                         title: Row(children: [
                           Text(u['display_name'] ?? '', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: GacomColors.textPrimary, fontSize: 16)),
-                          if (u['verification_status'] == 'verified') ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 14, color: GacomColors.deepOrange)],
+                          if (u['verification_status'] == 'verified') ...[const SizedBox(width: 4), VerifiedTick(tier: u['verification_tier'] as String?, size: 14)],
                         ]),
                         subtitle: Text('@${u['username'] ?? ''}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 12)),
                         trailing: isOnline ? Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: GacomColors.success.withOpacity(0.15), borderRadius: BorderRadius.circular(50)), child: const Text('Online', style: TextStyle(color: GacomColors.success, fontSize: 11, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600))) : null,

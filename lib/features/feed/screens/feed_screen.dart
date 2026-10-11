@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../ads/widgets/sponsored.dart';
+import '../../../shared/widgets/verified_tick.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_button.dart';
@@ -362,7 +363,7 @@ class _PostListState extends ConsumerState<_PostList> {
       final likedPosts = await SupabaseService.client.from('post_likes').select('post:posts!post_id(author_id)').eq('user_id', uid).limit(200);
       _likedAuthorIds = (likedPosts as List).map((l) { final p = l['post'] as Map?; return p?['author_id'] as String? ?? ''; }).where((id) => id.isNotEmpty).toSet();
       if (!widget.isFollowing) {
-        final discovery = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status)').eq('is_deleted', false).order('likes_count', ascending: false).limit(20);
+        final discovery = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status, verification_tier)').eq('is_deleted', false).order('likes_count', ascending: false).limit(20);
         _discoveryPool = List<Map<String, dynamic>>.from(discovery);
       }
       final views = await SupabaseService.client.from('post_views').select('post_id,viewed_at').eq('user_id', uid).order('viewed_at', ascending: false).limit(300);
@@ -375,9 +376,9 @@ class _PostListState extends ConsumerState<_PostList> {
       late List rawPosts;
       if (widget.isFollowing) {
         if (_followedIds.isEmpty) { if (mounted) setState(() { _loading = false; _hasMore = false; }); return; }
-        rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status), is_liked:post_likes(user_id)').eq('is_deleted', false).inFilter('author_id', _followedIds.toList()).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize, (_page + 1) * AppConstants.feedPageSize - 1);
+        rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status, verification_tier), is_liked:post_likes(user_id)').eq('is_deleted', false).inFilter('author_id', _followedIds.toList()).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize, (_page + 1) * AppConstants.feedPageSize - 1);
       } else {
-        rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status), is_liked:post_likes(user_id)').eq('is_deleted', false).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize * 3, (_page + 1) * AppConstants.feedPageSize * 3 - 1);
+        rawPosts = await SupabaseService.client.from('posts').select('*, author:profiles!author_id(id,username,display_name,avatar_url,verification_status, verification_tier), is_liked:post_likes(user_id)').eq('is_deleted', false).order('created_at', ascending: false).range(_page * AppConstants.feedPageSize * 3, (_page + 1) * AppConstants.feedPageSize * 3 - 1);
       }
       final typed = List<Map<String, dynamic>>.from(rawPosts);
       final ranked = _AlgorithmEngine.rank(posts: typed, discoveryPool: _discoveryPool, followedIds: _followedIds, likedAuthorIds: _likedAuthorIds, sessionSeed: _sessionSeed, seenPosts: _seenPosts);
@@ -683,7 +684,7 @@ class _PostCardState extends ConsumerState<_PostCard> with SingleTickerProviderS
                   child: avatarUrl == null ? Text(displayName[0].toUpperCase(), style: const TextStyle(color: GacomColors.textPrimary, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700)) : null)))),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [Text(displayName, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)), if (isVerified) ...[const SizedBox(width: 4), const Icon(Icons.verified_rounded, size: 13, color: GacomColors.deepOrange)]]),
+            Row(children: [Text(displayName, style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 14, color: GacomColors.textPrimary)), if (isVerified) ...[const SizedBox(width: 4), VerifiedTick(tier: (widget.post['author'] as Map?)?['verification_tier'] as String?, size: 13)]]),
             Text('@$username · ${timeago.format(createdAt, locale: 'en_short')}', style: const TextStyle(color: GacomColors.textMuted, fontSize: 11, fontFamily: 'Rajdhani')),
           ])),
           IconButton(

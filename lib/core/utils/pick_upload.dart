@@ -26,3 +26,27 @@ Future<String?> pickAndUploadImage({required String bucket, int maxBytes = 5 * 1
   }
   return SupabaseService.client.storage.from(bucket).getPublicUrl(path);
 }
+
+/// Like [pickAndUploadImage] for private buckets: uploads and returns the storage path
+/// (no public URL exists). Throws a readable message on failure.
+Future<String?> pickAndUploadPath({required String bucket, ImageSource source = ImageSource.gallery, int maxBytes = 6 * 1024 * 1024}) async {
+  final uid = SupabaseService.currentUserId;
+  if (uid == null) throw 'Please sign in';
+  final x = await ImagePicker().pickImage(source: source, maxWidth: 2000, imageQuality: 88);
+  if (x == null) return null;
+  final bytes = await x.readAsBytes();
+  if (bytes.isEmpty) throw 'That file is empty';
+  if (bytes.length > maxBytes) throw 'That picture is too large. The limit is ${maxBytes ~/ (1024 * 1024)} MB.';
+  final name = x.name.toLowerCase();
+  final ext = name.endsWith('.png') ? 'png' : (name.endsWith('.webp') ? 'webp' : 'jpg');
+  final type = ext == 'png' ? 'image/png' : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
+  final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.$ext';
+  try {
+    await SupabaseService.client.storage
+        .from(bucket)
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: type, upsert: false));
+  } catch (_) {
+    throw 'Upload failed. Check your connection and try again.';
+  }
+  return path;
+}

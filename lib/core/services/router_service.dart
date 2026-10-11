@@ -18,6 +18,11 @@ import '../../features/feed/screens/reels_screen.dart';
 import '../../features/competitions/screens/competitions_screen.dart';
 import '../../features/competitions/screens/competition_detail_screen.dart';
 import '../../features/competitions/screens/tournament_manager_screen.dart';
+import '../../features/competitions/screens/manage_gate.dart';
+import '../../features/verification/screens/verification_screen.dart';
+import '../../features/verification/screens/id_check_screen.dart';
+import '../../features/admin/screens/pricing_admin_screen.dart';
+import '../../features/admin/screens/id_admin_screen.dart';
 import '../../features/community/screens/community_screen.dart';
 import '../../features/community/screens/community_detail_screen.dart';
 import '../../features/community/screens/gaming_teams_screen.dart';
@@ -191,7 +196,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && _RoleGuard.isAdminLocation(loc)) {
         final role = await _RoleGuard.role();
         final isStaffDesk = loc == '/admin/support' || loc.startsWith('/admin/support/');
-        final adminOnly = loc == '/admin/security' || loc.startsWith('/admin/security/') || isStaffDesk;
+        final adminOnly = loc == '/admin/security' || loc.startsWith('/admin/security/') || isStaffDesk ||
+            loc == '/admin/pricing' || loc == '/admin/ids' || loc == '/admin/ads';
         final allowed = role == 'admin' ||
             role == 'super_admin' ||
             (!adminOnly && role == 'moderator') ||
@@ -243,10 +249,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'manage',
-                    builder: (_, s) => TournamentManagerScreen(
-                      competitionId: s.pathParameters['id']!,
-                      isAdmin: true,
-                    ),
+                    builder: (_, s) => ManageGate(competitionId: s.pathParameters['id']!),
                   ),
                 ],
               ),
@@ -483,6 +486,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/houses/:id', builder: (_, s) => HouseDetailScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/houses/:id/manage', builder: (_, s) => HouseManageScreen(houseId: s.pathParameters['id'] ?? '')),
       GoRoute(path: '/admin/store', builder: (_, __) => const StoreAdminScreen()),
+      GoRoute(path: '/verification', builder: (_, __) => const VerificationScreen()),
+      GoRoute(path: '/verification/id', builder: (_, __) => const IdCheckScreen()),
+      GoRoute(path: '/admin/pricing', builder: (_, __) => const PricingAdminScreen()),
+      GoRoute(path: '/admin/ids', builder: (_, __) => const IdAdminScreen()),
       GoRoute(path: '/host', builder: (_, __) => const HostDashboardScreen()),
       GoRoute(path: '/host/new', builder: (_, __) => const HostCreateScreen()),
       GoRoute(path: '/admin/ads', builder: (_, __) => const AdsAdminScreen()),
