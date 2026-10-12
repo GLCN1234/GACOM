@@ -63,7 +63,7 @@ class _LandscapeScopeState extends State<LandscapeScope> {
             Positioned(
               left: 8,
               bottom: 8,
-              child: _chip(Icons.screen_rotation_rounded, 'Landscape', () => setState(() => _manualPortrait = false)),
+              child: _chip(Icons.screen_rotation_rounded, 'Hold for landscape', () => setState(() => _manualPortrait = false)),
             ),
         ]);
       }
@@ -87,7 +87,7 @@ class _LandscapeScopeState extends State<LandscapeScope> {
         Positioned(
           left: 8,
           bottom: 8,
-          child: _chip(Icons.stay_current_portrait_rounded, 'Portrait', () => setState(() => _manualPortrait = true)),
+          child: _chip(Icons.stay_current_portrait_rounded, 'Hold for portrait', () => setState(() => _manualPortrait = true)),
         ),
       ]);
     });
@@ -96,14 +96,17 @@ class _LandscapeScopeState extends State<LandscapeScope> {
   Widget _chip(IconData icon, String label, VoidCallback tap) => Material(
       type: MaterialType.transparency,
       child: GestureDetector(
-        onTap: tap,
+        // A long press, not a tap: in the turned view this chip sits where a game's action
+        // buttons are, and a stray touch must never switch the screen mid-play.
+        onLongPress: tap,
+        behavior: HitTestBehavior.opaque,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0x88000000), borderRadius: BorderRadius.circular(14)),
+          decoration: BoxDecoration(color: const Color(0x55000000), borderRadius: BorderRadius.circular(14)),
           child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            Icon(icon, color: Colors.white70, size: 14),
+            Icon(icon, color: Colors.white54, size: 12),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w700)),
+            Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w700)),
           ]),
         ),
       ));
