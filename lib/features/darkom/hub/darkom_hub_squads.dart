@@ -557,7 +557,7 @@ class _SquadBoardState extends State<_SquadBoard> {
         IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70)),
         const Expanded(child: Text('SQUAD BOARD', style: TextStyle(color: kHubAmber, fontWeight: FontWeight.w900, letterSpacing: 1))),
       ]),
-      const Text('Co-op results only. Solo points and rankings are separate and never change here.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 11, height: 1.3)),
+      const Text('Co-op results only. A team time counts once two teammates have reported it, and the server times the run, not the phones. Solo points and rankings never change here.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 11, height: 1.3)),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: <Widget>[
         _tab('Block Sweep', 'clear'),
@@ -598,7 +598,7 @@ class _SquadBoardState extends State<_SquadBoard> {
         const SizedBox(height: 10),
         Text('You: ${d.mine} cleared, ${d.kinds} of 4 kinds.', style: const TextStyle(color: Color(0xFFD5DCEC), fontSize: 12, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        const Text('Contract-only unlocks: Contract Crew title (1), Patrol Pulse trail (3), Squad Steel sword skin (6), Gridlock Gold trail (10), Bounty Brass sword skin (15), Four Corners trail (all 4 kinds).', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 10.5, height: 1.3)),
+        const Text('Contract-only unlocks: Contract Crew title (1), Patrol Pulse trail (3), Squad Steel skins for all six weapons (6), Gridlock Gold trail (10), Bounty Brass skins for all six weapons (15), Four Corners trail (all 4 kinds).', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 10.5, height: 1.3)),
       ],
     ]);
   }
