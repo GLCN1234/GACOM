@@ -47,6 +47,7 @@ extension DarkomCoopLogic on DarkomLogic {
     cp.onHostLost = () => this.coopHostLost();
     cp.onFx = (String from, Map<String, dynamic> p) => this.coopApplyFx(from, p);
     cp.onHostChanged = (bool nowHost) => this.coopHostChanged(nowHost);
+    cp.onRevive = (String from) => this.coopApplyRevive(from);
     cp.start();
   }
 
@@ -62,6 +63,7 @@ extension DarkomCoopLogic on DarkomLogic {
       sw = 0.05 + 0.95 * (fr < 0 ? 0.0 : (fr > 1 ? 1.0 : fr));
     }
     cp.tick(dt, hx, hy, hFace, hp, maxHp, heroDead, sw, false);
+    this.coopReviveTick(dt);
     if (cp.args.isHost) {
       for (final DAlly a in cp.allies.values) {
         if (a.alive) world.updateFlowSlot(a.slot, a.x, a.y);
@@ -87,6 +89,68 @@ extension DarkomCoopLogic on DarkomLogic {
         cp.send('snap', this.coopBuildSnap());
       }
     }
+  }
+
+  // ---- squad down: revive -------------------------------------------------------
+
+  /// Hold still next to a downed teammate for a moment and they get back up.
+  void coopReviveTick(double dt) {
+    final DarkomCoop? cp = coop;
+    if (cp == null) return;
+    if (heroDead) {
+      // nobody left to help: do not bleed out slowly
+      if (deathT > 3) {
+        bool any = false;
+        for (final DAlly a in cp.allies.values) {
+          if (a.alive) any = true;
+        }
+        if (!any) deathT = 3;
+      }
+      return;
+    }
+    for (final DAlly a in cp.allies.values) {
+      double v = coopRevive[a.id] ?? 0;
+      if (v < 0) {
+        coopRevive[a.id] = min(0.0, v + dt);
+        continue;
+      }
+      if (!a.downed) {
+        if (v != 0) coopRevive[a.id] = 0;
+        continue;
+      }
+      final double dx = a.x - hx;
+      final double dy = a.y - hy;
+      if (dx * dx + dy * dy < 64 * 64) {
+        v += dt;
+        if (v >= 2.5) {
+          cp.send('revive', <String, dynamic>{'to': a.id});
+          floatText(a.x, a.y - 30, 'REVIVED', const Color(0xFF69F0AE), size: 16);
+          ringFx(a.x, a.y, 70, const Color(0xFF69F0AE), life: 0.5);
+          v = -3;
+        }
+        coopRevive[a.id] = v;
+      } else if (v > 0) {
+        coopRevive[a.id] = max(0.0, v - dt * 2);
+      }
+    }
+  }
+
+  void coopApplyRevive(String from) {
+    final DarkomCoop? cp = coop;
+    final DAlly? a = cp?.allies[from];
+    if (cp == null || a == null || !a.alive || !heroDead || phase == 4) return;
+    final double dx = a.x - hx;
+    final double dy = a.y - hy;
+    if (dx * dx + dy * dy > 180 * 180) return;
+    heroDead = false;
+    hp = maxHp * 0.5;
+    invuln = 2.5;
+    deathT = 0;
+    kvx = 0;
+    kvy = 0;
+    cues.add('win');
+    ringFx(hx, hy, 110, const Color(0xFF69F0AE), life: 0.6);
+    showBanner('BACK ON YOUR FEET', const Color(0xFF69F0AE), dur: 1.6);
   }
 
   // ---- host handover ------------------------------------------------------------------

@@ -225,6 +225,40 @@ class DarkomService {
     }
   }
 
+  static Future<DarkomCoopBoard?> coopBoard(String contract) async {
+    try {
+      if (SupabaseService.currentUserId == null) return null;
+      final dynamic r = await SupabaseService.client.rpc('darkom_coop_board', params: <String, dynamic>{'p_contract': contract});
+      if (r is! Map) return null;
+      final Map<String, dynamic> j = _dkMap(r);
+      if (j['success'] != true) return null;
+      final List<DarkomCoopBoardRun> runs = <DarkomCoopBoardRun>[];
+      final dynamic rl = j['runs'];
+      if (rl is List) {
+        for (final dynamic x in rl) {
+          if (x is! Map) continue;
+          final dynamic nm = x['names'];
+          final dynamic sc = x['seconds'];
+          runs.add(DarkomCoopBoardRun(nm is List ? nm.map((dynamic n) => n.toString()).toList() : <String>[], sc is num ? sc.round() : 0));
+        }
+      }
+      final List<DarkomCoopBoardPlayer> players = <DarkomCoopBoardPlayer>[];
+      final dynamic pl = j['players'];
+      if (pl is List) {
+        for (final dynamic x in pl) {
+          if (x is! Map) continue;
+          final dynamic n = x['cleared'];
+          players.add(DarkomCoopBoardPlayer((x['name'] ?? 'Player').toString(), n is num ? n.round() : 0));
+        }
+      }
+      final dynamic mine = j['mine'];
+      final dynamic kinds = j['kinds'];
+      return DarkomCoopBoard(runs, players, mine is num ? mine.round() : 0, kinds is num ? kinds.round() : 0);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Squad Contracts: claim the team reward after a won co-op contract.
   /// Cosmetic progression only; the server decides and caps it.
   static Future<DarkomCoopReward> reportCoopContract({
@@ -244,7 +278,9 @@ class DarkomService {
       if (r is! Map) return const DarkomCoopReward(false, 0, 'Reward could not be checked');
       final Map<String, dynamic> j = _dkMap(r);
       final dynamic xp = j['xp'];
-      return DarkomCoopReward(j['accepted'] == true, xp is num ? xp.round() : 0, (j['note'] ?? j['error'] ?? '').toString());
+      final dynamic un = j['unlocked'];
+      return DarkomCoopReward(j['accepted'] == true, xp is num ? xp.round() : 0, (j['note'] ?? j['error'] ?? '').toString(),
+          un is List ? un.map((dynamic x) => x.toString()).toList() : <String>[]);
     } catch (_) {
       return const DarkomCoopReward(false, 0, 'Reward could not be checked');
     }
@@ -255,5 +291,27 @@ class DarkomCoopReward {
   final bool accepted;
   final int xp;
   final String note;
-  const DarkomCoopReward(this.accepted, this.xp, this.note);
+  final List<String> unlocked;
+  const DarkomCoopReward(this.accepted, this.xp, this.note, [this.unlocked = const <String>[]]);
+}
+
+/// The squad board: separate from every solo ranking.
+class DarkomCoopBoardRun {
+  final List<String> names;
+  final int seconds;
+  const DarkomCoopBoardRun(this.names, this.seconds);
+}
+
+class DarkomCoopBoardPlayer {
+  final String name;
+  final int cleared;
+  const DarkomCoopBoardPlayer(this.name, this.cleared);
+}
+
+class DarkomCoopBoard {
+  final List<DarkomCoopBoardRun> runs;
+  final List<DarkomCoopBoardPlayer> players;
+  final int mine;
+  final int kinds;
+  const DarkomCoopBoard(this.runs, this.players, this.mine, this.kinds);
 }

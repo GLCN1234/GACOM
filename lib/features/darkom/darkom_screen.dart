@@ -1,5 +1,6 @@
 import '../../core/services/cosmetics_service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart';
 import 'darkom_armory.dart';
@@ -68,12 +69,30 @@ class _DarkomScreenState extends State<DarkomScreen> {
         boot.cleared.addAll(st.done.keys);
       } catch (_) {}
       boot.onSwitch = _switchTo;
+    } else if (widget.coopArgs == null) {
+      // Open City: terminals offer board missions, so know which are cleared.
+      await _loadCleared(boot);
+      boot.onStartMission = (DarkomMission m) => _startFromTerminal(boot, m);
     }
     if (!mounted) return;
     setState(() {
       _mission = widget.mission;
       _boot = boot;
     });
+  }
+
+  Future<void> _loadCleared(DarkomBoot boot) async {
+    try {
+      final DarkomMissionStats st = await DarkomService.loadMissionStats().timeout(const Duration(seconds: 5), onTimeout: () => DarkomMissionStats.empty);
+      boot.cleared.addAll(st.done.keys);
+    } catch (_) {}
+  }
+
+  void _startFromTerminal(DarkomBoot boot, DarkomMission m) {
+    if (!mounted) return;
+    context.push<void>('/darkom/play', extra: m).then((_) {
+      if (mounted) _loadCleared(boot);
+    }, onError: (Object _) {});
   }
 
   DarkomMission? _mission;

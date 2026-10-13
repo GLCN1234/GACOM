@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../houses/house_service.dart';
+import '../darkom_service.dart';
 import 'darkom_hub_service.dart';
 import 'darkom_hub_world.dart';
 
@@ -269,6 +270,8 @@ class HubSquadPanel extends StatefulWidget {
 }
 
 class _HubSquadPanelState extends State<HubSquadPanel> {
+  bool _board = false;
+
   @override
   void initState() {
     super.initState();
@@ -341,6 +344,7 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
       Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
         _btn('SQUAD CHAT', Icons.chat_bubble_rounded, kHubCyan, widget.onSquadChat, filled: false),
         _btn('SQUAD VOICE', Icons.headset_mic_rounded, kHubViolet, widget.onSquadVoice, filled: false),
+        _btn('SQUAD BOARD', Icons.leaderboard_rounded, kHubAmber, () => setState(() => _board = true), filled: false),
       ]),
       const SizedBox(height: 10),
       Row(children: <Widget>[
@@ -453,7 +457,10 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
           ]),
         ),
       const SizedBox(height: 6),
-      _btn('CREATE SQUAD', Icons.add_rounded, kHubGreen, c.busy ? null : c.create),
+      Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
+        _btn('CREATE SQUAD', Icons.add_rounded, kHubGreen, c.busy ? null : c.create),
+        _btn('SQUAD BOARD', Icons.leaderboard_rounded, kHubAmber, () => setState(() => _board = true), filled: false),
+      ]),
     ]);
   }
 
@@ -463,6 +470,7 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
       animation: widget.squads,
       builder: (BuildContext ctx, Widget? w) {
         final HubSquadController c = widget.squads;
+        if (_board) return SingleChildScrollView(child: _SquadBoard(onBack: () => setState(() => _board = false)));
         Widget body;
         if (c.loading) {
           body = const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: kHubGreen)));
@@ -484,5 +492,114 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
         return SingleChildScrollView(child: body);
       },
     );
+  }
+}
+
+
+/// Squad Contracts board. Separate from every solo ranking: it only shows
+/// co-op results.
+class _SquadBoard extends StatefulWidget {
+  final VoidCallback onBack;
+  const _SquadBoard({required this.onBack});
+
+  @override
+  State<_SquadBoard> createState() => _SquadBoardState();
+}
+
+class _SquadBoardState extends State<_SquadBoard> {
+  String _contract = 'clear';
+  DarkomCoopBoard? _data;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final DarkomCoopBoard? d = await DarkomService.coopBoard(_contract);
+    if (!mounted) return;
+    setState(() {
+      _data = d;
+      _loading = false;
+    });
+  }
+
+  static String _t(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+
+  Widget _tab(String label, String id) {
+    final bool on = _contract == id;
+    return GestureDetector(
+      onTap: () {
+        if (_contract == id) return;
+        _contract = id;
+        _load();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: on ? kHubAmber.withOpacity(0.2) : const Color(0xFF121A2E),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: on ? kHubAmber : const Color(0xFF263050)),
+        ),
+        child: Text(label, style: TextStyle(color: on ? kHubAmber : Colors.white70, fontWeight: FontWeight.w800, fontSize: 11)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DarkomCoopBoard? d = _data;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Row(children: <Widget>[
+        IconButton(onPressed: widget.onBack, icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70)),
+        const Expanded(child: Text('SQUAD BOARD', style: TextStyle(color: kHubAmber, fontWeight: FontWeight.w900, letterSpacing: 1))),
+      ]),
+      const Text('Co-op results only. Solo points and rankings are separate and never change here.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 11, height: 1.3)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 6, runSpacing: 6, children: <Widget>[
+        _tab('Block Sweep', 'clear'),
+        _tab('Bounty Run', 'bounty'),
+        _tab('Data Run', 'data'),
+      ]),
+      const SizedBox(height: 10),
+      if (_loading)
+        const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: kHubAmber)))
+      else if (d == null)
+        const Text('The board could not be loaded right now.', style: TextStyle(color: Color(0xFFFFB74D)))
+      else ...<Widget>[
+        const Text('FASTEST TEAMS', style: TextStyle(color: kHubGreen, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+        const SizedBox(height: 4),
+        if (d.runs.isEmpty) const Text('No team has cleared this one yet. Be the first.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 12)),
+        for (int i = 0; i < d.runs.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: <Widget>[
+              SizedBox(width: 24, child: Text('${i + 1}', style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900))),
+              Expanded(child: Text(d.runs[i].names.join(', '), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700))),
+              Text(_t(d.runs[i].seconds), style: const TextStyle(color: kHubAmber, fontWeight: FontWeight.w900)),
+            ]),
+          ),
+        const SizedBox(height: 12),
+        const Text('MOST CONTRACTS CLEARED', style: TextStyle(color: kHubGreen, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1)),
+        const SizedBox(height: 4),
+        if (d.players.isEmpty) const Text('Nobody yet.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 12)),
+        for (int i = 0; i < d.players.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(children: <Widget>[
+              SizedBox(width: 24, child: Text('${i + 1}', style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.w900))),
+              Expanded(child: Text(d.players[i].name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700))),
+              Text('${d.players[i].cleared}', style: const TextStyle(color: kHubAmber, fontWeight: FontWeight.w900)),
+            ]),
+          ),
+        const SizedBox(height: 10),
+        Text('You: ${d.mine} cleared, ${d.kinds} of 4 kinds.', style: const TextStyle(color: Color(0xFFD5DCEC), fontSize: 12, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        const Text('Contract-only unlocks: Contract Crew title (1), Patrol Pulse trail (3), Squad Steel sword skin (6), Gridlock Gold trail (10), Bounty Brass sword skin (15), Four Corners trail (all 4 kinds).', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 10.5, height: 1.3)),
+      ],
+    ]);
   }
 }

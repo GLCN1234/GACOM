@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/cosmetics_service.dart';
 import '../edu/realms/realm_kit.dart';
 import 'darkom_coop.dart';
+import 'darkom_city.dart';
 import 'darkom_combat.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart' show MissionGhost;
@@ -95,6 +96,9 @@ class DarkomPainter extends CustomPainter {
     for (int i = 0; i < g.cpNodes.length; i++) {
       if (!g.cpTaken.contains(i) && _view.contains(g.cpNodes[i])) _drawNode(canvas, g.cpNodes[i]);
     }
+    for (int i = 0; i < g.world.pads.length; i++) {
+      if (_view.contains(g.world.pads[i])) _drawTerminal(canvas, i);
+    }
     for (final DEnemy e in g.enemies) {
       if (e.alive && _view.contains(Offset(e.x, e.y))) _drawTele(canvas, e);
     }
@@ -111,7 +115,7 @@ class DarkomPainter extends CustomPainter {
     final DarkomCoop? cp = g.coop;
     if (cp != null) {
       for (final DAlly a in cp.allies.values) {
-        if (a.alive && _view.contains(Offset(a.x, a.y))) items.add(_Item(a.y, 3, a));
+        if ((a.alive || a.downed) && _view.contains(Offset(a.x, a.y))) items.add(_Item(a.y, 3, a));
       }
     }
     items.sort((_Item a, _Item b) => a.y.compareTo(b.y));
@@ -660,7 +664,39 @@ class DarkomPainter extends CustomPainter {
     _text(c, 'DATA', Offset(o.dx, o.dy - 28), 11, const Color(0xFFFFD54F));
   }
 
+  void _drawTerminal(Canvas c, int i) {
+    final Offset o = g.world.pads[i];
+    final bool seen = g.padSeen.contains(i);
+    final Color col = seen ? const Color(0xFFFFD54F) : const Color(0xFF8A96AD);
+    final double pulse = 0.5 + 0.5 * sin(_t * 3 + i);
+    RealmDraw.glow(c, o, 46 + pulse * 6, col, alpha: seen ? 0.2 : 0.1);
+    c.drawOval(Rect.fromCenter(center: Offset(o.dx, o.dy + 12), width: 50, height: 16), Paint()..color = Colors.black.withValues(alpha: 0.3));
+    final RRect body = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(o.dx, o.dy - 8), width: 28, height: 36), const Radius.circular(6));
+    c.drawRRect(body, Paint()..color = const Color(0xFF10131F));
+    c.drawRRect(body, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = col);
+    c.drawRect(Rect.fromCenter(center: Offset(o.dx, o.dy - 12), width: 18, height: 10), Paint()..color = col.withValues(alpha: 0.35 + pulse * 0.4));
+    _text(c, seen ? darkomGiverNames[i % 4] : 'TERMINAL', Offset(o.dx, o.dy - 38), 11, col);
+  }
+
+  void _drawDowned(Canvas c, DAlly a) {
+    final Color col = darkomAllyColors[a.slot % darkomAllyColors.length];
+    c.drawOval(Rect.fromCenter(center: Offset(a.x, a.y + 8), width: 34, height: 12), Paint()..color = Colors.black.withValues(alpha: 0.35));
+    c.drawOval(Rect.fromCenter(center: Offset(a.x, a.y + 4), width: 28, height: 11), Paint()..color = col.withValues(alpha: 0.55));
+    final double v = (g.coopRevive[a.id] ?? 0).clamp(0.0, 2.5).toDouble() / 2.5;
+    final double pulse = 0.5 + 0.5 * sin(_t * 6);
+    c.drawCircle(Offset(a.x, a.y - 4), 26, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFFFF5252).withValues(alpha: 0.4 + pulse * 0.4));
+    if (v > 0) {
+      c.drawArc(Rect.fromCircle(center: Offset(a.x, a.y - 4), radius: 26), -pi / 2, 2 * pi * v, false, Paint()..style = PaintingStyle.stroke..strokeWidth = 4..strokeCap = StrokeCap.round..color = const Color(0xFF69F0AE));
+    }
+    _text(c, a.name, Offset(a.x, a.y - 40), 12, col);
+    _text(c, v > 0 ? 'REVIVING' : 'DOWN - STAND NEAR', Offset(a.x, a.y - 52), 10, const Color(0xFFFF8A80));
+  }
+
   void _drawAlly(Canvas c, DAlly a) {
+    if (a.downed) {
+      _drawDowned(c, a);
+      return;
+    }
     final Color col = darkomAllyColors[a.slot % darkomAllyColors.length];
     final double fs = cos(a.face) >= 0 ? 1.0 : -1.0;
     RealmDraw.glow(c, Offset(a.x, a.y + 6), 26, col, alpha: 0.14);

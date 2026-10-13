@@ -6,6 +6,7 @@ import '../../shared/widgets/cosmetic_avatar.dart';
 import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart' show realmActionPadWidth;
+import 'darkom_city.dart';
 import 'darkom_coop.dart';
 import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
@@ -33,6 +34,12 @@ Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
     child: Stack(children: <Widget>[
       Positioned(left: 10, top: compact ? 44 : 132, child: IgnorePointer(child: _playerBlock(g))),
       if (g.coop != null) Positioned(left: 10, top: compact ? 112 : 214, child: IgnorePointer(child: _squadCard(g, compact))),
+      if (g.coop != null && g.heroDead && !g.over)
+        Positioned(left: 0, right: 0, top: compact ? 70 : 120, child: IgnorePointer(child: Center(child: _downedCard(g)))),
+      if (g.padNear >= 0 && !g.heroDead && !g.over)
+        Positioned(left: 0, right: 0, top: compact ? 134 : 190, child: Center(child: _terminalCard(context, g, refresh, compact))),
+      if (g.travelMsgT > 0)
+        Positioned(left: 0, right: 0, bottom: compact ? 70 : 120, child: IgnorePointer(child: Center(child: _noteChip(g.travelMsg)))),
       Positioned(right: 10, top: compact ? 54 : 132, child: _MapBox(g: g, compact: compact, screenW: sz.width, screenH: sz.height)),
       if (!g.over && !g.missionDone && !g.heroDead)
         Positioned(
@@ -198,6 +205,93 @@ Widget _playerBlock(DarkomLogic g) {
 
 /// What the player is doing right now, with a progress bar when the goal can
 /// be counted: kills, chips, seconds held, the mission clock and lives.
+Widget _noteChip(String t) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    decoration: BoxDecoration(color: const Color(0xDD0B0D18), borderRadius: BorderRadius.circular(16), border: Border.all(color: _hudRed.withValues(alpha: 0.7))),
+    child: Text(t, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+  );
+}
+
+/// You are down in a squad run: a teammate can pick you up.
+Widget _downedCard(DarkomLogic g) {
+  final int left = max(0, g.deathT.ceil());
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(color: const Color(0xDD1A0B0B), borderRadius: BorderRadius.circular(12), border: Border.all(color: _hudRed.withValues(alpha: 0.8))),
+    child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+      const Text('YOU ARE DOWN', style: TextStyle(color: _hudRed, fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+      Text('A teammate can revive you. Back up in ${left}s anyway.', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+    ]),
+  );
+}
+
+/// Open City terminal: fast travel to terminals you have found, and (solo)
+/// the missions this district's giver offers.
+Widget _terminalCard(BuildContext context, DarkomLogic g, VoidCallback refresh, bool compact) {
+  final int q = g.padNear;
+  final List<DarkomMission> offers = g.coop == null ? g.cityMissionsFor(q) : const <DarkomMission>[];
+  final double w = min(380.0, MediaQuery.of(context).size.width - (compact ? 340 : 40));
+  Widget pill(String label, Color col, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(color: onTap == null ? const Color(0x33FFFFFF) : col.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16), border: Border.all(color: onTap == null ? Colors.white24 : col)),
+        child: Text(label, style: TextStyle(color: onTap == null ? Colors.white38 : col, fontSize: 11, fontWeight: FontWeight.w900)),
+      ),
+    );
+  }
+
+  return Container(
+    width: max(240.0, w),
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+    decoration: BoxDecoration(color: const Color(0xEE0B0D18), borderRadius: BorderRadius.circular(14), border: Border.all(color: _hudGold.withValues(alpha: 0.7))),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Row(children: <Widget>[
+        const Icon(Icons.terminal_rounded, color: _hudGold, size: 16),
+        const SizedBox(width: 6),
+        Expanded(child: Text('${darkomGiverNames[q % 4]}  -  ${g.cityQuarterName(q)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _hudGold, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5))),
+      ]),
+      const SizedBox(height: 6),
+      const Text('FAST TRAVEL', style: TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
+      const SizedBox(height: 4),
+      Wrap(spacing: 6, runSpacing: 6, children: <Widget>[
+        for (int i = 0; i < 4; i++)
+          if (i != q)
+            pill(g.padSeen.contains(i) ? g.cityQuarterName(i) : '${g.cityQuarterName(i)} (not found)', _hudCyan, g.padSeen.contains(i)
+                ? () {
+                    g.cityTravel(i);
+                    refresh();
+                  }
+                : null),
+      ]),
+      if (offers.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 8),
+        const Text('MISSIONS', style: TextStyle(color: Colors.white54, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
+        const SizedBox(height: 4),
+        for (final DarkomMission m in offers)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: GestureDetector(
+              onTap: () => g.boot.onStartMission?.call(m),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(color: m.tierColor.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10), border: Border.all(color: m.tierColor.withValues(alpha: 0.8))),
+                child: Row(children: <Widget>[
+                  Text(m.tierName.toUpperCase(), style: TextStyle(color: m.tierColor, fontSize: 9.5, fontWeight: FontWeight.w900)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
+                  const Text('GO', style: TextStyle(color: _hudGold, fontSize: 11, fontWeight: FontWeight.w900)),
+                ]),
+              ),
+            ),
+          ),
+      ],
+    ]),
+  );
+}
+
 /// City Patrol: everyone in the squad with their health and kills.
 Widget _squadCard(DarkomLogic g, bool compact) {
   final DarkomCoop cp = g.coop!;
@@ -381,7 +475,7 @@ class _MapBoxState extends State<_MapBox> {
         Text(_big ? 'Tap to shrink' : 'Tap for big map', style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.w600)),
         if (_big) ...<Widget>[
           const SizedBox(height: 2),
-          const Text('Gold flag: goal   Red: enemy   Green: ally', style: TextStyle(color: Colors.white54, fontSize: 9)),
+          const Text('Gold flag: goal   Gold ring: terminal   Red: enemy   Green: ally', style: TextStyle(color: Colors.white54, fontSize: 9)),
         ],
       ]),
     );
@@ -515,6 +609,15 @@ class DarkomMiniPainter extends CustomPainter {
         ..lineTo(fx, fy - 6)
         ..close();
       canvas.drawPath(flag, p..color = _hudGold);
+    }
+    for (int i = 0; i < g.world.pads.length; i++) {
+      final Offset pd = Offset(g.world.pads[i].dx * sx, g.world.pads[i].dy * sy);
+      if (g.padSeen.contains(i)) {
+        canvas.drawCircle(pd, 4.2, p..color = _hudGold);
+        canvas.drawCircle(pd, 1.6, p..color = const Color(0xFF05060A));
+      } else {
+        canvas.drawCircle(pd, 4.2, s..color = _hudGold.withValues(alpha: 0.8)..strokeWidth = 1.4);
+      }
     }
     for (int i = 0; i < g.cpNodes.length; i++) {
       if (g.cpTaken.contains(i)) continue;

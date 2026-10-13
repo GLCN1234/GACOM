@@ -86,6 +86,9 @@ class DAlly {
   DAlly(this.id, this.name, this.slot);
 
   bool get alive => seen && !gone && !dead;
+
+  /// Down but not out: a teammate can still pick them up.
+  bool get downed => seen && !gone && dead;
 }
 
 const List<Color> darkomAllyColors = <Color>[Color(0xFF00E5FF), Color(0xFFFFD54F), Color(0xFF69F0AE), Color(0xFFE040FB)];
@@ -111,6 +114,7 @@ class DarkomCoop {
   void Function()? onHostLost;
   void Function(String from, Map<String, dynamic> p)? onFx;
   void Function(bool nowHost)? onHostChanged;
+  void Function(String from)? onRevive;
 
   /// Former hosts that went silent. Never elected again.
   final Set<String> lostHosts = <String>{};
@@ -125,7 +129,7 @@ class DarkomCoop {
 
   double get now => _sw.elapsedMilliseconds / 1000.0;
 
-  static const List<String> _events = <String>['pos', 'snap', 'hit', 'hurt', 'kill', 'fx', 'host'];
+  static const List<String> _events = <String>['pos', 'snap', 'hit', 'hurt', 'kill', 'fx', 'host', 'revive'];
 
   Future<void> start() async {
     if (_disposed || _ch != null) return;
@@ -208,6 +212,9 @@ class DarkomCoop {
         break;
       case 'fx':
         onFx?.call(u, p);
+        break;
+      case 'revive':
+        if (_s(p['to']) == args.myId) onRevive?.call(u);
         break;
       case 'host':
         // Someone took over after the host went quiet.

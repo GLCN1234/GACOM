@@ -46,6 +46,9 @@ class DarkomWorld {
   /// order top left, top right, bottom left, bottom right.
   final List<String> quarters;
 
+  /// City only: one terminal spot per quarter.
+  List<Offset> pads = const <Offset>[];
+
   final String district;
   final List<int> cells;
   final List<DBlock> blocks;
@@ -724,7 +727,7 @@ class DarkomWorld {
     // The Echo arena sits in the spire quarter; the gate in the neon quarter.
     final Offset shift = Offset(0, sr * tile.toDouble());
     final DarkomWorld spire = subs[2];
-    return DarkomWorld._(
+    final DarkomWorld city = DarkomWorld._(
       'city',
       cells,
       blocks,
@@ -740,6 +743,22 @@ class DarkomWorld {
       rows: rows,
       quarters: keys,
     );
+    final List<Offset> pads = <Offset>[];
+    for (int k = 0; k < 4; k++) {
+      final Offset mid = Offset(((k % 2) * sc + sc / 2) * tile, ((k ~/ 2) * sr + sr / 2) * tile);
+      Offset best = clear.first;
+      double bd = double.infinity;
+      for (final Offset c in clear) {
+        final double d = (c - mid).distanceSquared;
+        if (d < bd) {
+          bd = d;
+          best = c;
+        }
+      }
+      pads.add(best);
+    }
+    city.pads = pads;
+    return city;
   }
 
   static void _scatter(Random r, bool Function(int, int, int, int, int) areaFree, void Function(int, int, int, int, int, {int sign, int code}) put, int x0, int y0, int w, int h, int count, int maxLen, int unused) {

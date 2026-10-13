@@ -4,6 +4,7 @@ import '../../core/services/supabase_service.dart';
 import '../edu/realms/realm_kit.dart';
 import 'darkom_ai.dart';
 import 'darkom_armory.dart';
+import 'darkom_city.dart';
 import 'darkom_combat.dart';
 import 'darkom_coop.dart';
 import 'darkom_coop_logic.dart';
@@ -25,6 +26,9 @@ class DarkomBoot {
   DarkomMission? mission;
   /// Set for City Patrol (co-op). Null for solo play.
   DarkomCoop? coop;
+
+  /// Open City: a terminal giver asked to start a board mission.
+  void Function(DarkomMission m)? onStartMission;
   DarkomBoot(this.progress, this.armory, this.ghost, {this.mission, this.coop});
 
   /// Mission ids this player has cleared (for choosing the next one).
@@ -117,6 +121,14 @@ class DarkomLogic extends RealmLogic {
   final Set<int> coopDead = <int>{};
   final Map<String, int> coopKills = <String, int>{};
   bool coopRemoteFx = false;
+  final Map<String, double> coopRevive = <String, double>{};
+
+  // ---- open city terminals -------------------------------------------------
+  final Set<int> padSeen = <int>{};
+  int padNear = -1;
+  double travelCd = 0;
+  String travelMsg = '';
+  double travelMsgT = 0;
   double coopFxBudget = 6;
 
   // Squad Contract state (host decides, guests mirror it from snapshots).
@@ -269,6 +281,7 @@ class DarkomLogic extends RealmLogic {
     checkpoint = Offset(hx, hy);
     camX = hx;
     camY = hy;
+    this.cityInit();
     for (final String k in darkomWeaponKinds) {
       weaponUse[k] = 0;
     }
@@ -722,6 +735,7 @@ class DarkomLogic extends RealmLogic {
     }
     _updateLater(dt);
     this.coopTick(dt);
+    this.cityTick(dt);
     if (!this.isGuest) world.updateFlow(hx, hy);
     this.updateEnemies(dt);
     this.updateCourier(dt);
@@ -905,7 +919,7 @@ class DarkomLogic extends RealmLogic {
     if (heroDead) return;
     if (coop == null) lives -= 1;
     heroDead = true;
-    deathT = coop != null ? 3.0 : 1.2;
+    deathT = coop != null ? 15.0 : 1.2;
     cues.add('lose');
     doShake(10);
     spark(hx, hy, const Color(0xFFFF5252), n: 14, spd: 220);
@@ -1619,7 +1633,8 @@ class DarkomLogic extends RealmLogic {
             seconds: cpClock.round(),
             kills: coopKills[cp.args.myId] ?? 0,
           );
-          cpRewardNote = r.accepted ? '+${r.xp} Season Pass XP' : r.note;
+          cpRewardNote = r.accepted ? (r.xp > 0 ? '+${r.xp} Season Pass XP' : r.note) : r.note;
+          if (r.unlocked.isNotEmpty) cpRewardNote = '$cpRewardNote. Unlocked: ${r.unlocked.join(', ')}';
         } else {
           cpRewardNote = 'No reward for a failed contract';
         }
