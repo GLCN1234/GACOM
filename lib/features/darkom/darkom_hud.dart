@@ -7,6 +7,7 @@ import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart' show realmActionPadWidth;
 import 'darkom_entities.dart';
+import 'darkom_ghost.dart' show MissionGhost;
 import 'darkom_logic.dart';
 import 'darkom_missions.dart';
 import 'darkom_service.dart';
@@ -69,6 +70,8 @@ Widget _flowCard(BuildContext context, DarkomLogic g, VoidCallback refresh, bool
         const Expanded(child: Text('MISSION COMPLETE', style: TextStyle(color: Color(0xFF69F0AE), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1))),
         Text(pts, style: const TextStyle(color: _hudGold, fontSize: 12, fontWeight: FontWeight.w900)),
       ]),
+      if (g.newBest)
+        const Padding(padding: EdgeInsets.only(top: 3), child: Text('NEW PERSONAL BEST - your ghost now runs this route', style: TextStyle(color: _hudCyan, fontSize: 10.5, fontWeight: FontWeight.w800))),
       const SizedBox(height: 6),
       if (nx != null)
         Row(children: <Widget>[
@@ -244,6 +247,7 @@ Widget _tracker(DarkomLogic g, bool compact) {
     }
   }
   final String? dist = g.objectiveDistance;
+  final MissionGhost? bestRun = g.mission == null ? null : g.bestRun;
   return Container(
     constraints: BoxConstraints(maxWidth: compact ? 260 : 330),
     padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
@@ -271,6 +275,12 @@ Widget _tracker(DarkomLogic g, bool compact) {
       if (g.mission != null) ...<Widget>[
         const SizedBox(height: 4),
         Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          if (bestRun != null) ...<Widget>[
+            const Icon(Icons.directions_run_rounded, color: _hudCyan, size: 12),
+            const SizedBox(width: 3),
+            Text('Best ${bestRun.seconds.round() ~/ 60}:${(bestRun.seconds.round() % 60).toString().padLeft(2, '0')}', style: const TextStyle(color: _hudCyan, fontSize: 10.5, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 10),
+          ],
           for (int i = 0; i < 3; i++)
             Padding(
               padding: const EdgeInsets.only(right: 3),

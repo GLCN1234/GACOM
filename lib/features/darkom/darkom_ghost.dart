@@ -177,3 +177,107 @@ class DarkomGhostRecorder {
     return DarkomGhost(weapon, List<int>.from(xs), List<int>.from(ys), List<int>.from(evT), List<int>.from(evK));
   }
 }
+
+
+/// The player's best run of one board mission, replayed as a see-through
+/// runner on later attempts so they can race their own best time.
+///
+/// Stored as: m1|seconds|x,y;x,y;... sampled at 5 Hz in world coordinates.
+class MissionGhost {
+  static const int maxSamples = 1500;
+  static const double step = 0.2;
+
+  final double seconds;
+  final List<int> xs;
+  final List<int> ys;
+  const MissionGhost(this.seconds, this.xs, this.ys);
+
+  /// Where the best run stood [t] seconds in. After it ended the ghost waits at the end.
+  Offset posAt(double t) {
+    if (xs.isEmpty) return Offset.zero;
+    final double f = t / step;
+    if (f <= 0) return Offset(xs.first.toDouble(), ys.first.toDouble());
+    final int i = f.floor();
+    if (i >= xs.length - 1) return Offset(xs.last.toDouble(), ys.last.toDouble());
+    final double u = f - i;
+    return Offset(xs[i] + (xs[i + 1] - xs[i]) * u, ys[i] + (ys[i + 1] - ys[i]) * u);
+  }
+
+  bool finishedAt(double t) => t / step >= xs.length - 1;
+
+  String encode() {
+    final StringBuffer b = StringBuffer('m1|${seconds.toStringAsFixed(1)}|');
+    for (int i = 0; i < xs.length; i++) {
+      if (i > 0) b.write(';');
+      b.write('${xs[i]},${ys[i]}');
+    }
+    return b.toString();
+  }
+
+  static MissionGhost? decode(String? s) {
+    if (s == null || s.length < 12 || s.length > 40000) return null;
+    try {
+      final List<String> parts = s.split('|');
+      if (parts.length != 3 || parts[0] != 'm1') return null;
+      final double? sec = double.tryParse(parts[1]);
+      if (sec == null || sec <= 0 || sec > 3600) return null;
+      final List<int> xs = <int>[];
+      final List<int> ys = <int>[];
+      for (final String p in parts[2].split(';')) {
+        if (xs.length >= maxSamples) break;
+        final List<String> xy = p.split(',');
+        if (xy.length != 2) return null;
+        final int? x = int.tryParse(xy[0]);
+        final int? y = int.tryParse(xy[1]);
+        if (x == null || y == null) return null;
+        xs.add(x < -200 ? -200 : (x > 3000 ? 3000 : x));
+        ys.add(y < -200 ? -200 : (y > 3000 ? 3000 : y));
+      }
+      if (xs.length < 10) return null;
+      return MissionGhost(sec, xs, ys);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _key(String missionId) => 'darkom_mg_$missionId';
+
+  static Future<MissionGhost?> load(String missionId) async {
+    try {
+      final SharedPreferences p = await SharedPreferences.getInstance();
+      return decode(p.getString(_key(missionId)));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> save(String missionId, MissionGhost g) async {
+    try {
+      final SharedPreferences p = await SharedPreferences.getInstance();
+      await p.setString(_key(missionId), g.encode());
+    } catch (_) {}
+  }
+}
+
+/// Records the hero's path during one mission attempt.
+class MissionGhostRecorder {
+  final List<int> xs = <int>[];
+  final List<int> ys = <int>[];
+  double _acc = 0;
+
+  void sample(double dt, double x, double y) {
+    _acc += dt;
+    while (_acc >= MissionGhost.step) {
+      _acc -= MissionGhost.step;
+      if (xs.length < MissionGhost.maxSamples) {
+        xs.add(x.round());
+        ys.add(y.round());
+      }
+    }
+  }
+
+  MissionGhost? build(double seconds) {
+    if (xs.length < 10 || xs.length >= MissionGhost.maxSamples) return null;
+    return MissionGhost(seconds, List<int>.from(xs), List<int>.from(ys));
+  }
+}

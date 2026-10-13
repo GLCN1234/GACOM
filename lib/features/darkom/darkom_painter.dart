@@ -6,6 +6,7 @@ import '../../core/services/cosmetics_service.dart';
 import '../edu/realms/realm_kit.dart';
 import 'darkom_combat.dart';
 import 'darkom_entities.dart';
+import 'darkom_ghost.dart' show MissionGhost;
 import 'darkom_logic.dart';
 import 'darkom_story.dart';
 import 'darkom_world.dart';
@@ -113,6 +114,7 @@ class DarkomPainter extends CustomPainter {
         _drawHero(canvas);
       }
     }
+    _drawBestRun(canvas);
     for (final DAxe a in g.axes) {
       _drawAxe(canvas, a);
     }
@@ -602,6 +604,26 @@ class DarkomPainter extends CustomPainter {
       _hl3Asset = asset;
     }
     return _hl3!;
+  }
+
+  /// A see-through runner that repeats the player's best run of this mission.
+  void _drawBestRun(Canvas c) {
+    final MissionGhost? bg = g.ghostNow;
+    if (bg == null) return;
+    final double t = g.missionClock;
+    final Offset o = bg.posAt(t);
+    if (!_view.inflate(40).contains(o)) return;
+    final bool done = bg.finishedAt(t);
+    final double a = done ? 0.25 : 0.5;
+    c.drawCircle(Offset(o.dx, o.dy + 14), 11, _p..color = Colors.black.withValues(alpha: 0.18));
+    c.drawCircle(Offset(o.dx, o.dy), 15, _p..color = _cyan.withValues(alpha: a * 0.35));
+    c.drawCircle(Offset(o.dx, o.dy), 10, _p..color = _cyan.withValues(alpha: a));
+    c.drawCircle(Offset(o.dx, o.dy - 12), 6, _p..color = Colors.white.withValues(alpha: a));
+    final TextPainter tp = TextPainter(
+      text: TextSpan(text: 'BEST', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(c, Offset(o.dx - tp.width / 2, o.dy - 34));
   }
 
   void _drawHero(Canvas c) {

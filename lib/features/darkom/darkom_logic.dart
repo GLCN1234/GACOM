@@ -243,6 +243,7 @@ class DarkomLogic extends RealmLogic {
       preDone = 0;
       missionOrigin = Offset(hx, hy);
       missionStart = 0;
+      _ghostBegin(ms);
       startContract();
       return;
     }
@@ -665,6 +666,7 @@ class DarkomLogic extends RealmLogic {
     if (phase == 0 || phase == 1 || phase == 3) {
       if (!roam) _updateSpawns(dt);
     }
+    if (mission != null && phase == 0 && !heroDead && !missionDone) mgRec?.sample(dt, hx, hy);
     if (phase == 2 && !heroDead) {
       duelT += dt;
       ghostRec?.sample(dt, hx - world.arena.dx, hy - world.arena.dy);
@@ -1364,6 +1366,39 @@ class DarkomLogic extends RealmLogic {
     showBanner('WAVE $wave', theme.neonA, dur: 1.8);
   }
 
+  // ---- best-run ghost for board missions -------------------------------------
+
+  /// The player's best run of the current mission, once loaded.
+  MissionGhost? bestRun;
+  MissionGhostRecorder? mgRec;
+  bool newBest = false;
+
+  void _ghostBegin(DarkomMission m) {
+    bestRun = null;
+    newBest = false;
+    mgRec = MissionGhostRecorder();
+    final String id = m.id;
+    MissionGhost.load(id).then((MissionGhost? g) {
+      if (mission != null && mission!.id == id) bestRun = g;
+    }, onError: (Object _) {});
+  }
+
+  /// Seconds into the current attempt.
+  double get missionClock => max(0.0, time - missionStart);
+
+  /// The ghost shown on screen: only while the mission is being played.
+  MissionGhost? get ghostNow => (mission != null && phase == 0 && !heroDead && !missionDone) ? bestRun : null;
+
+  void _ghostSave(DarkomMission ms, double seconds) {
+    final MissionGhost? old = bestRun;
+    final MissionGhost? mine = mgRec?.build(seconds);
+    if (mine == null) return;
+    if (old != null && old.seconds <= seconds) return;
+    newBest = true;
+    bestRun = mine;
+    MissionGhost.save(ms.id, mine);
+  }
+
   // ---- mission flow (board missions chain without menus) -------------------
 
   void _onMissionDone() {
@@ -1380,6 +1415,7 @@ class DarkomLogic extends RealmLogic {
     cues.add('win');
     showBanner('MISSION COMPLETE', const Color(0xFF69F0AE), dur: 2.6);
     final int dur = max(1, (time - missionStart).round());
+    _ghostSave(ms, time - missionStart);
     final int k = kills - missionKills0;
     final int score = k * 10 + 150 + max(0, 300 - dur);
     boot.cleared.add(ms.id);
@@ -1471,6 +1507,7 @@ class DarkomLogic extends RealmLogic {
     zone = null;
     missionStart = time;
     missionKills0 = kills;
+    _ghostBegin(m);
     startContract();
   }
 
