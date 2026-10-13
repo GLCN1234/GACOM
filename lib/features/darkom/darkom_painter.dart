@@ -222,7 +222,7 @@ class DarkomPainter extends CustomPainter {
     _s
       ..strokeWidth = 3
       ..color = th.neonA.withValues(alpha: 0.5);
-    c.drawRect(const Rect.fromLTWH(T, T, W - 2 * T, H - 2 * T), _s);
+    c.drawRect(Rect.fromLTWH(T, T, W - 2 * T, H - 2 * T), _s);
   }
 
   void _drawBlocks(Canvas c, DarkomTheme th, DarkomWorld w) {
