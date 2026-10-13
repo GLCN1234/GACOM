@@ -215,6 +215,7 @@ extension DarkomCombat on DarkomLogic {
   void fireBolt(double angle, double dmg, {double speed = 560, double life = 0.85}) {
     if (projs.length >= darkomMaxProjectiles) return;
     projs.add(DProj(hx + cos(angle) * 20, hy + sin(angle) * 20, cos(angle) * speed, sin(angle) * speed, dmg, 7, life, false, 1));
+    this.coopFxOut('b', hx + cos(angle) * 20, hy + sin(angle) * 20, cos(angle) * speed, sin(angle) * speed, 0, life);
   }
 
   // ---- buttons ------------------------------------------------------------
@@ -467,6 +468,7 @@ extension DarkomCombat on DarkomLogic {
         if (phase == 2) ghostRec?.event(2);
         ringFx(hx, hy, 170, c, life: 0.45);
         flashFx(hx, hy, 60, Colors.white, life: 0.2);
+        this.coopFxOut('nova', hx, hy, 0, 0, 0, 0.5);
         laterIn(0.1, () {
           aoeHit(hx, hy, 170, d.sdmg, kb: 270, stun: 0.3);
           doShake(5);

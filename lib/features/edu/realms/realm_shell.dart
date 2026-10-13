@@ -90,6 +90,9 @@ class RealmShell extends StatefulWidget {
   /// False for modes whose score must never reach a leaderboard (co-op).
   final bool saveScore;
 
+  /// False when a run cannot be repeated on its own (co-op).
+  final bool allowReplay;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -114,6 +117,7 @@ class RealmShell extends StatefulWidget {
     this.skipIntro = false,
     this.actionScale = 1.0,
     this.saveScore = true,
+    this.allowReplay = true,
   });
 
   @override
@@ -802,8 +806,8 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
                     _bigButton(a.label, a.onTap),
                     const SizedBox(height: 10),
                   ],
-                if (!_inDuel) _bigButton('PLAY AGAIN', () => setState(_newRun), secondary: widget.resultActions != null && widget.resultActions!(l).isNotEmpty),
-                if (!_inDuel) const SizedBox(height: 10),
+                if (!_inDuel && widget.allowReplay) _bigButton('PLAY AGAIN', () => setState(_newRun), secondary: widget.resultActions != null && widget.resultActions!(l).isNotEmpty),
+                if (!_inDuel && widget.allowReplay) const SizedBox(height: 10),
                 _bigButton(_inDuel ? 'SEND RESULT' : widget.exitLabel, _exit, secondary: !_inDuel),
               ]),
             ),

@@ -224,4 +224,36 @@ class DarkomService {
       return null;
     }
   }
+
+  /// Squad Contracts: claim the team reward after a won co-op contract.
+  /// Cosmetic progression only; the server decides and caps it.
+  static Future<DarkomCoopReward> reportCoopContract({
+    required String squadId,
+    required String contract,
+    required int seconds,
+    required int kills,
+  }) async {
+    try {
+      if (SupabaseService.currentUserId == null) return const DarkomCoopReward(false, 0, 'Sign in to claim rewards');
+      final dynamic r = await SupabaseService.client.rpc('darkom_report_coop_contract', params: <String, dynamic>{
+        'p_squad': squadId,
+        'p_contract': contract,
+        'p_seconds': seconds,
+        'p_kills': kills,
+      });
+      if (r is! Map) return const DarkomCoopReward(false, 0, 'Reward could not be checked');
+      final Map<String, dynamic> j = _dkMap(r);
+      final dynamic xp = j['xp'];
+      return DarkomCoopReward(j['accepted'] == true, xp is num ? xp.round() : 0, (j['note'] ?? j['error'] ?? '').toString());
+    } catch (_) {
+      return const DarkomCoopReward(false, 0, 'Reward could not be checked');
+    }
+  }
+}
+
+class DarkomCoopReward {
+  final bool accepted;
+  final int xp;
+  final String note;
+  const DarkomCoopReward(this.accepted, this.xp, this.note);
 }

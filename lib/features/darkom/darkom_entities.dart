@@ -88,6 +88,9 @@ class DProj {
 
   /// 0 spit, 1 hero bolt, 2 hostile magic, 3 reflected
   int kind;
+
+  /// A teammate's shot shown on this phone. It never hurts anything here.
+  bool visual = false;
   DProj(this.x, this.y, this.vx, this.vy, this.dmg, this.r, this.life, this.hostile, this.kind);
 }
 

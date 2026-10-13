@@ -637,7 +637,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
       _squads.afterMatch();
       return;
     }
-    if (s.mode == 'city') {
+    if (s.mode == 'city' || s.mode.startsWith('contract_')) {
       final List<String> names = <String>[];
       for (int i = 0; i < s.memberIds.length; i++) {
         names.add(i < s.memberNames.length ? s.memberNames[i] : 'Player');
@@ -645,7 +645,7 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
       _goto(
         context.push<void>(
           '/darkom/coop',
-          extra: DarkomCoopArgs(squadId: s.id, hostId: s.hostId, myId: _myId, playerIds: List<String>.from(s.memberIds), names: names),
+          extra: DarkomCoopArgs(squadId: s.id, hostId: s.hostId, myId: _myId, playerIds: List<String>.from(s.memberIds), names: names, contract: s.mode.startsWith('contract_') ? s.mode.substring(9) : ''),
         ),
         squad: true,
       );

@@ -7,6 +7,7 @@ import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart' show realmActionPadWidth;
 import 'darkom_coop.dart';
+import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart' show MissionGhost;
 import 'darkom_logic.dart';
@@ -239,10 +240,25 @@ Widget _tracker(DarkomLogic g, bool compact) {
   IconData icon = Icons.flag_rounded;
   Color color = _hudGold;
   if (g.roam) {
-    title = g.coop != null ? 'City Patrol' : 'Free roam';
-    right = 'Wave ${g.wave}';
-    icon = Icons.local_fire_department_rounded;
-    color = const Color(0xFFFF9100);
+    final String ct = g.coop?.args.contract ?? '';
+    if (ct.isNotEmpty) {
+      title = g.coopContractTitle(ct);
+      color = const Color(0xFF69F0AE);
+      icon = Icons.assignment_rounded;
+      if (g.cpTarget > 0) frac = ct == 'hold' ? g.cpClock / g.cpTarget : g.cpProgress / g.cpTarget;
+      if (ct == 'hold') {
+        right = '${max(0, g.cpTarget - g.cpClock.floor())} s';
+      } else if (ct == 'bounty') {
+        right = g.cpResult == 1 ? 'Down' : 'Find it';
+      } else {
+        right = '${g.cpProgress}/${g.cpTarget}';
+      }
+    } else {
+      title = g.coop != null ? 'City Patrol' : 'Free roam';
+      right = 'Wave ${g.wave}';
+      icon = Icons.local_fire_department_rounded;
+      color = const Color(0xFFFF9100);
+    }
   } else if (g.mission != null) {
     final DarkomMission m = g.mission!;
     title = m.title;
@@ -499,6 +515,10 @@ class DarkomMiniPainter extends CustomPainter {
         ..lineTo(fx, fy - 6)
         ..close();
       canvas.drawPath(flag, p..color = _hudGold);
+    }
+    for (int i = 0; i < g.cpNodes.length; i++) {
+      if (g.cpTaken.contains(i)) continue;
+      canvas.drawRect(Rect.fromCenter(center: Offset(g.cpNodes[i].dx * sx, g.cpNodes[i].dy * sy), width: 5, height: 5), p..color = _hudGold);
     }
     final DarkomCoop? cp = g.coop;
     if (cp != null) {

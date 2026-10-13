@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'darkom_combat.dart';
+import 'darkom_coop.dart';
 import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart';
@@ -54,7 +55,8 @@ extension DarkomAi on DarkomLogic {
       e.losOk = world.lineClear(e.x, e.y, tx, ty);
     }
     if (!e.losOk && !away) {
-      final Offset f = world.flowDir(e.x, e.y);
+      final DAlly? chased = aiAlly;
+      final Offset f = chased == null ? world.flowDir(e.x, e.y) : world.flowDirSlot(chased.slot, e.x, e.y);
       if (f.dx != 0 || f.dy != 0) {
         ux = f.dx;
         uy = f.dy;
@@ -616,7 +618,7 @@ extension DarkomAi on DarkomLogic {
             continue;
           }
         }
-      } else {
+      } else if (!p.visual) {
         bool gone = false;
         for (final DEnemy e in enemies) {
           if (!e.alive || e.spawnT > 0) continue;

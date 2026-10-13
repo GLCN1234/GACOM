@@ -357,33 +357,71 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
   Widget _modeRow(DarkomSquad s, bool host) {
     final HubSquadController c = widget.squads;
     final bool city = s.mode == 'city';
+    final bool contract = s.mode.startsWith('contract_');
+    final bool canEdit = host && !c.busy && s.status == 'open';
     Widget chip(String label, String sub, String mode, bool on) {
       return Expanded(
         child: GestureDetector(
-          onTap: (host && !c.busy && s.status == 'open') ? () => c.setMode(mode) : null,
+          onTap: canEdit ? () => c.setMode(mode) : null,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
             decoration: BoxDecoration(
               color: on ? kHubGreen.withOpacity(0.18) : const Color(0xFF121A2E),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: on ? kHubGreen : const Color(0xFF263050), width: on ? 1.6 : 1),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-              Text(label, style: TextStyle(color: on ? kHubGreen : Colors.white70, fontWeight: FontWeight.w900, fontSize: 13)),
+              Text(label, style: TextStyle(color: on ? kHubGreen : Colors.white70, fontWeight: FontWeight.w900, fontSize: 12)),
               const SizedBox(height: 2),
-              Text(sub, style: const TextStyle(color: Color(0xFF9AA6C2), fontSize: 11, height: 1.25)),
+              Text(sub, style: const TextStyle(color: Color(0xFF9AA6C2), fontSize: 10, height: 1.2)),
             ]),
           ),
         ),
       );
     }
 
+    Widget small(String label, String mode) {
+      final bool on = s.mode == mode;
+      return GestureDetector(
+        onTap: canEdit ? () => c.setMode(mode) : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: on ? kHubAmber.withOpacity(0.2) : const Color(0xFF121A2E),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: on ? kHubAmber : const Color(0xFF263050)),
+          ),
+          child: Text(label, style: TextStyle(color: on ? kHubAmber : Colors.white70, fontWeight: FontWeight.w800, fontSize: 11)),
+        ),
+      );
+    }
+
+    const Map<String, String> briefs = <String, String>{
+      'contract_clear': 'Block Sweep: clear a set number of hostiles before time runs out.',
+      'contract_hold': 'Hold the Line: survive four minutes as the waves grow.',
+      'contract_bounty': 'Bounty Run: hunt down one tough target together.',
+      'contract_data': 'Data Run: collect every data node across the city.',
+    };
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
       Row(children: <Widget>[
-        chip('ARENA', 'Free for all match', 'arena', !city),
-        const SizedBox(width: 8),
-        chip('CITY PATROL', 'Co-op. Same enemies, shared city', 'city', city),
+        chip('ARENA', 'Free for all', 'arena', !city && !contract),
+        const SizedBox(width: 6),
+        chip('PATROL', 'Co-op, shared city', 'city', city),
+        const SizedBox(width: 6),
+        chip('CONTRACT', 'Co-op mission', contract ? s.mode : 'contract_clear', contract),
       ]),
+      if (contract) ...<Widget>[
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: <Widget>[
+          small('Block Sweep', 'contract_clear'),
+          small('Hold the Line', 'contract_hold'),
+          small('Bounty Run', 'contract_bounty'),
+          small('Data Run', 'contract_data'),
+        ]),
+        const SizedBox(height: 6),
+        Text(briefs[s.mode] ?? '', style: const TextStyle(color: Color(0xFFD5DCEC), fontSize: 11.5, height: 1.3)),
+        const Text('A won contract gives each player Season Pass XP (up to 3 a day). It never changes solo points or rankings.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 10.5, height: 1.3)),
+      ],
       if (!host) const Padding(padding: EdgeInsets.only(top: 6), child: Text('The host picks the mode.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 11))),
     ]);
   }
@@ -407,7 +445,7 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                Text('${s.hostName}\'s ${s.mode == 'city' ? 'city patrol' : 'squad'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                Text('${s.hostName}\'s ${s.mode == 'city' ? 'city patrol' : (s.mode.startsWith('contract_') ? 'contract' : 'squad')}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                 Text('${s.memberIds.length}/${s.maxPlayers} players', style: const TextStyle(color: Color(0xFF9AA6C2), fontSize: 12)),
               ]),
             ),

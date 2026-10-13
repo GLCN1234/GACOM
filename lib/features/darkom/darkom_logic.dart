@@ -116,6 +116,23 @@ class DarkomLogic extends RealmLogic {
   final Map<int, Offset> coopTargets = <int, Offset>{};
   final Set<int> coopDead = <int>{};
   final Map<String, int> coopKills = <String, int>{};
+  bool coopRemoteFx = false;
+  double coopFxBudget = 6;
+
+  // Squad Contract state (host decides, guests mirror it from snapshots).
+  int cpTarget = 0;
+  int cpProgress = 0;
+  double cpLimit = 0;
+  double cpClock = 0;
+
+  /// 0 running, 1 won, 2 failed.
+  int cpResult = 0;
+  final List<Offset> cpNodes = <Offset>[];
+  final Set<int> cpTaken = <int>{};
+  double cpSpawnT = 1;
+  DEnemy? cpBoss;
+  bool cpBossSpawned = false;
+  String cpRewardNote = '';
 
   // ---- hero ---------------------------------------------------------------
   double hx = 0;
@@ -271,6 +288,7 @@ class DarkomLogic extends RealmLogic {
       if (coop != null) {
         say('Dispatch', 'City Patrol. Stay close, watch each other. The host runs the streets; if the host leaves, the patrol ends.', const Color(0xFF69F0AE), dur: 7);
         waveBreak = 4.0;
+        this.coopContractInit();
         this.coopWire();
         return;
       }
@@ -363,7 +381,9 @@ class DarkomLogic extends RealmLogic {
   @override
   List<RealmChip> get chips {
     final List<RealmChip> out = <RealmChip>[];
-    if (roam) {
+    if (roam && coop != null && coop!.args.contract.isNotEmpty) {
+      out.add(RealmChip(this.coopContractChip(), Icons.assignment_rounded, const Color(0xFF69F0AE)));
+    } else if (roam) {
       out.add(RealmChip('Wave $wave', Icons.local_fire_department_rounded, const Color(0xFFFF9100)));
     } else if (mission != null) {
       final DarkomMission m = mission!;
@@ -408,11 +428,18 @@ class DarkomLogic extends RealmLogic {
       return m;
     }
     if (coop != null) {
-      m['Mode'] = 'City Patrol';
-      m['Waves cleared'] = '$wavesCleared';
+      final bool ct = coop!.args.contract.isNotEmpty;
+      m['Mode'] = ct ? 'Squad Contract: ${this.coopContractTitle(coop!.args.contract)}' : 'City Patrol';
+      if (ct) {
+        m['Result'] = cpResult == 1 ? 'Complete' : (cpResult == 2 ? 'Failed' : 'Not finished');
+        m['Time'] = '${cpClock.floor() ~/ 60}:${(cpClock.floor() % 60).toString().padLeft(2, '0')}';
+        if (cpRewardNote.isNotEmpty) m['Team reward'] = cpRewardNote;
+      } else {
+        m['Waves cleared'] = '$wavesCleared';
+      }
       m['Team kills'] = '$kills';
       m['Your kills'] = '${coopKills[coop!.args.myId] ?? 0}';
-      m['Note'] = 'Patrols do not change rankings';
+      m['Note'] = 'Squad runs never change rankings';
       return m;
     }
     if (roam) {
@@ -442,6 +469,7 @@ class DarkomLogic extends RealmLogic {
 
   @override
   String get resultTitle {
+    if (coop != null && coop!.args.contract.isNotEmpty) return cpResult == 1 ? 'CONTRACT COMPLETE' : (cpResult == 2 ? 'CONTRACT FAILED' : 'CONTRACT OVER');
     if (coop != null) return 'PATROL OVER';
     if (mission == null) return 'RUN COMPLETE';
     if (missionDone) return 'MISSION COMPLETE';
@@ -472,6 +500,8 @@ class DarkomLogic extends RealmLogic {
   Offset? get targetPoint {
     if (over) return null;
     if (roam) {
+      final Offset? ct = this.coopTarget();
+      if (ct != null) return ct;
       final DEnemy? b = nearestBounty();
       if (b != null) return Offset(b.x, b.y);
       final DEnemy? n = nearestAliveEnemy();
@@ -644,6 +674,7 @@ class DarkomLogic extends RealmLogic {
   }
 
   void ringFx(double x, double y, double r, Color c, {double life = 0.35}) {
+    if (x == hx && y == hy) this.coopFxOut('ring', x, y, 0, r, c.value, life);
     if (fxs.length >= 40) fxs.removeAt(0);
     fxs.add(DFx(0, x, y, 0, r, 0, life, c));
   }
@@ -654,6 +685,7 @@ class DarkomLogic extends RealmLogic {
   }
 
   void flashFx(double x, double y, double r, Color c, {double life = 0.2}) {
+    if (x == hx && y == hy) this.coopFxOut('flash', x, y, 0, r, c.value, life);
     if (fxs.length >= 40) fxs.removeAt(0);
     fxs.add(DFx(3, x, y, 0, r, 0, life, c));
   }
@@ -698,7 +730,7 @@ class DarkomLogic extends RealmLogic {
     _updatePicks(dt);
     _updateFx(dt);
     _updateContract(dt);
-    if (this.isCoopHost && heroDead && phase != 4) _updateRoam(dt);
+    if (this.isCoopHost && heroDead && phase != 4) _roamOrContract(dt);
     _updateMissionFlow(dt);
     if (phase == 0 || phase == 1 || phase == 3) {
       if (!roam) _updateSpawns(dt);
@@ -1268,7 +1300,7 @@ class DarkomLogic extends RealmLogic {
       return;
     }
     if (roam) {
-      if (!this.isGuest) _updateRoam(dt);
+      if (!this.isGuest) _roamOrContract(dt);
       return;
     }
     switch (phase) {
@@ -1351,6 +1383,14 @@ class DarkomLogic extends RealmLogic {
   }
 
   // ---- roam (story finished) ----------------------------------------------
+
+  void _roamOrContract(double dt) {
+    if (coop != null && coop!.args.contract.isNotEmpty) {
+      this.coopContractTick(dt);
+    } else {
+      _updateRoam(dt);
+    }
+  }
 
   void _updateRoam(double dt) {
     if (time >= 480) {
@@ -1567,7 +1607,23 @@ class DarkomLogic extends RealmLogic {
     if (reported) return;
     reported = true;
     if (coop != null) {
-      // A patrol never touches rankings, passes or wallets.
+      // Nothing here touches rankings, solo points or wallets. A won contract
+      // may add Season Pass XP, decided and capped by the server.
+      final DarkomCoop cp = coop!;
+      if (cp.args.contract.isNotEmpty) {
+        if (cpResult == 1) {
+          cpRewardNote = 'Checking...';
+          final DarkomCoopReward r = await DarkomService.reportCoopContract(
+            squadId: cp.args.squadId,
+            contract: cp.args.contract,
+            seconds: cpClock.round(),
+            kills: coopKills[cp.args.myId] ?? 0,
+          );
+          cpRewardNote = r.accepted ? '+${r.xp} Season Pass XP' : r.note;
+        } else {
+          cpRewardNote = 'No reward for a failed contract';
+        }
+      }
       reportDone = true;
       return;
     }

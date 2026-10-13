@@ -5,6 +5,7 @@ import 'darkom_combat.dart';
 import 'darkom_coop.dart';
 import 'darkom_entities.dart';
 import 'darkom_logic.dart';
+import 'darkom_story.dart';
 
 /// The co-op side of [DarkomLogic]. The host runs the enemies; guests mirror
 /// them. See darkom_coop.dart for the overview.
@@ -44,6 +45,8 @@ extension DarkomCoopLogic on DarkomLogic {
     cp.onHurt = (Map<String, dynamic> p) => this.coopApplyHurt(p);
     cp.onKill = (Map<String, dynamic> p) => this.coopApplyKill(p);
     cp.onHostLost = () => this.coopHostLost();
+    cp.onFx = (String from, Map<String, dynamic> p) => this.coopApplyFx(from, p);
+    cp.onHostChanged = (bool nowHost) => this.coopHostChanged(nowHost);
     cp.start();
   }
 
@@ -52,6 +55,7 @@ extension DarkomCoopLogic on DarkomLogic {
   void coopTick(double dt) {
     final DarkomCoop? cp = coop;
     if (cp == null) return;
+    coopFxBudget = min(6.0, coopFxBudget + dt * 10);
     double sw = 0;
     if (swingT >= 0) {
       final double fr = swingDur > 0 ? swingT / swingDur : 0.0;
@@ -59,20 +63,343 @@ extension DarkomCoopLogic on DarkomLogic {
     }
     cp.tick(dt, hx, hy, hFace, hp, maxHp, heroDead, sw, false);
     if (cp.args.isHost) {
+      for (final DAlly a in cp.allies.values) {
+        if (a.alive) world.updateFlowSlot(a.slot, a.x, a.y);
+      }
       coopSnapT -= dt;
       if (coopSnapT <= 0) {
-        coopSnapT = 0.12;
+        bool busy = false;
+        for (final DEnemy e in enemies) {
+          if (e.alive) {
+            busy = true;
+            break;
+          }
+        }
+        if (!busy) {
+          for (final DProj pr in projs) {
+            if (pr.hostile) {
+              busy = true;
+              break;
+            }
+          }
+        }
+        coopSnapT = busy ? 0.15 + 0.02 * cp.allies.length : 1.0;
         cp.send('snap', this.coopBuildSnap());
       }
     }
   }
 
+  // ---- host handover ------------------------------------------------------------------
+
   void coopHostLost() {
-    if (phase == 4 || over) return;
+    final DarkomCoop? cp = coop;
+    if (cp == null || phase == 4 || over) return;
+    cp.handleHostLoss();
+    if (!cp.args.isHost && cp.electNext() == null) {
+      phase = 4;
+      endT = 2.5;
+      invuln = 99;
+      showBanner('HOST LEFT', const Color(0xFFFF5252), dur: 2.5);
+    }
+  }
+
+  void coopHostChanged(bool nowHost) {
+    if (nowHost) {
+      this.coopPromote();
+    } else {
+      aiAlly = null;
+      showBanner('NEW HOST', const Color(0xFFFFD54F), dur: 1.6);
+    }
+  }
+
+  /// This phone takes over running the enemies. The enemies it was only
+  /// drawing become real ones, with the same health and place.
+  void coopPromote() {
+    int top = nextId;
+    for (final DEnemy e in enemies) {
+      if (e.id >= top) top = e.id + 1;
+      if (!e.alive) continue;
+      final DarkomEnemyDef d = darkomEnemies[e.type] ?? darkomEnemies['shade']!;
+      e.speed = d.speed * 1.12;
+      e.dmg = d.dmg * dmgScale;
+      e.spawnT = 0;
+      e.aggro = true;
+      e.cd = 0.8 + rnd.nextDouble();
+      e.tele = 0;
+      e.tShape = 0;
+      e.blinkCd = 2 + rnd.nextDouble() * 2;
+      if (e.bounty && coop!.args.contract == 'bounty') cpBoss = e;
+    }
+    nextId = top + 1000;
+    coopTargets.clear();
+    projs.removeWhere((DProj p) => p.hostile);
+    cpBossSpawned = cpBoss != null || cpProgress > 0;
+    if (waveBreak > 0.5 && cpClock > 1) waveBreak = 0.5;
+    coopSnapT = 0;
+    spawnQueue.clear();
+    showBanner('YOU RUN THE STREETS NOW', const Color(0xFFFFD54F), dur: 2.2);
+    say('Dispatch', 'The host dropped. You are the host now, the patrol continues.', const Color(0xFFFFD54F), dur: 4);
+  }
+
+  // ---- shared attack effects -------------------------------------------------------------------
+
+  void coopFxOut(String k, double x, double y, double a, double r, int col, double life) {
+    final DarkomCoop? cp = coop;
+    if (cp == null || coopRemoteFx || coopFxBudget < 1 || heroDead) return;
+    coopFxBudget -= 1;
+    cp.send('fx', <String, dynamic>{
+      'k': k,
+      'x': x.round(),
+      'y': y.round(),
+      'a': a.round(),
+      'b': r.round(),
+      'c': col,
+      'l': (life * 100).round(),
+    });
+  }
+
+  void coopApplyFx(String from, Map<String, dynamic> p) {
+    final DarkomCoop? cp = coop;
+    final DAlly? al = cp?.allies[from];
+    if (cp == null || al == null || !al.alive) return;
+    final String k = p['k'] is String ? p['k'] as String : '';
+    final double life = (_f(p['l'], 30) / 100).clamp(0.1, 1.2).toDouble();
+    if (k == 'ring' || k == 'flash') {
+      final double r = _f(p['b'], 80).clamp(10.0, 260.0).toDouble();
+      final Color col = Color(_i(p['c'], 0xFFFFFFFF) & 0xFFFFFFFF);
+      coopRemoteFx = true;
+      if (k == 'ring') {
+        ringFx(al.x, al.y, r, col, life: life);
+      } else {
+        flashFx(al.x, al.y, r, col, life: life);
+      }
+      coopRemoteFx = false;
+    } else if (k == 'b') {
+      if (projs.length >= darkomMaxProjectiles) return;
+      final double vx = _f(p['a']).clamp(-900.0, 900.0).toDouble();
+      // x,y are where the shot started; for bolts vx rides in 'a' and vy in 'b'
+      final double vy = _f(p['b']).clamp(-900.0, 900.0).toDouble();
+      projs.add(DProj(_f(p['x']), _f(p['y']), vx, vy, 0, 7, life, false, 1)..visual = true);
+    } else if (k == 'nova') {
+      for (int i = 0; i < 8; i++) {
+        if (projs.length >= darkomMaxProjectiles) break;
+        final double ang = i * pi / 4;
+        projs.add(DProj(al.x + cos(ang) * 20, al.y + sin(ang) * 20, cos(ang) * 430, sin(ang) * 430, 0, 6, 0.5, false, 1)..visual = true);
+      }
+    }
+  }
+
+  // ---- Squad Contracts ----------------------------------------------------------------------------
+
+  String coopContractTitle(String c) {
+    switch (c) {
+      case 'clear':
+        return 'Block Sweep';
+      case 'hold':
+        return 'Hold the Line';
+      case 'bounty':
+        return 'Bounty Run';
+      case 'data':
+        return 'Data Run';
+      default:
+        return 'City Patrol';
+    }
+  }
+
+  String coopContractBrief(String c) {
+    switch (c) {
+      case 'clear':
+        return 'Clear $cpTarget hostiles from the streets before time runs out.';
+      case 'hold':
+        return 'Survive ${cpTarget ~/ 60} minutes. They keep coming, and more of them as time goes on.';
+      case 'bounty':
+        return 'A bounty target is loose in the city. Find it and take it down together.';
+      case 'data':
+        return 'Collect $cpTarget data nodes spread across the city. Any one of you can pick one up.';
+      default:
+        return '';
+    }
+  }
+
+  String coopContractChip() {
+    final String c = coop?.args.contract ?? '';
+    switch (c) {
+      case 'hold':
+        return '${max(0, cpTarget - cpClock.floor())}s';
+      case 'bounty':
+        return 'Bounty';
+      default:
+        return '$cpProgress/$cpTarget';
+    }
+  }
+
+  void coopContractInit() {
+    final DarkomCoop? cp = coop;
+    if (cp == null || cp.args.contract.isEmpty) return;
+    final int n = cp.args.playerIds.length;
+    switch (cp.args.contract) {
+      case 'clear':
+        cpTarget = 14 + 8 * n;
+        cpLimit = 420;
+        break;
+      case 'hold':
+        cpTarget = 240;
+        cpLimit = 240;
+        break;
+      case 'bounty':
+        cpTarget = 1;
+        cpLimit = 360;
+        break;
+      case 'data':
+        cpTarget = 4 + n;
+        cpLimit = 420;
+        final Random r = Random(cp.args.seed ^ 0x2f1d);
+        final List<Offset> pts = world.clearPts;
+        for (int tries = 0; tries < 600 && cpNodes.length < cpTarget && pts.isNotEmpty; tries++) {
+          final Offset c = pts[r.nextInt(pts.length)];
+          if ((c - world.extract).distance < 700) continue;
+          bool near = false;
+          for (final Offset o in cpNodes) {
+            if ((o - c).distance < 850) {
+              near = true;
+              break;
+            }
+          }
+          if (!near) cpNodes.add(c);
+        }
+        cpTarget = cpNodes.length;
+        break;
+      default:
+        break;
+    }
+    say('Dispatch', coopContractBrief(cp.args.contract), const Color(0xFF69F0AE), dur: 7);
+  }
+
+  /// The point the arrow and minimap flag should lead to, if the contract has one.
+  Offset? coopTarget() {
+    final DarkomCoop? cp = coop;
+    if (cp == null || cp.args.contract != 'data' || cpResult != 0) return null;
+    Offset? best;
+    double bd = double.infinity;
+    for (int i = 0; i < cpNodes.length; i++) {
+      if (cpTaken.contains(i)) continue;
+      final double d = (cpNodes[i] - heroPos).distanceSquared;
+      if (d < bd) {
+        bd = d;
+        best = cpNodes[i];
+      }
+    }
+    return best;
+  }
+
+  void coopContractEnd(bool win) {
+    if (cpResult != 0) return;
+    cpResult = win ? 1 : 2;
     phase = 4;
-    endT = 2.5;
+    endT = 3.0;
     invuln = 99;
-    showBanner('HOST LEFT', const Color(0xFFFF5252), dur: 2.5);
+    cues.add(win ? 'win' : 'bad');
+    showBanner(win ? 'CONTRACT COMPLETE' : 'CONTRACT FAILED', win ? const Color(0xFF69F0AE) : const Color(0xFFFF5252), dur: 3.0);
+  }
+
+  /// Host only. Runs the objective and keeps feeding enemies in.
+  void coopContractTick(double dt) {
+    final DarkomCoop? cp = coop;
+    if (cp == null || phase == 4 || cpResult != 0) return;
+    if (waveBreak > 0) {
+      waveBreak -= dt;
+      return;
+    }
+    cpClock += dt;
+    final String c = cp.args.contract;
+    final int count = coopCount;
+    switch (c) {
+      case 'clear':
+        cpProgress = kills;
+        if (cpProgress >= cpTarget) this.coopContractEnd(true);
+        break;
+      case 'hold':
+        cpProgress = cpClock.floor();
+        if (cpClock >= cpTarget) this.coopContractEnd(true);
+        break;
+      case 'bounty':
+        if (!cpBossSpawned) {
+          cpBossSpawned = true;
+          final List<Offset> pts = world.clearPts;
+          final Offset anchor = this.coopSpawnAnchor();
+          Offset? far;
+          double fd = -1;
+          for (int i = 0; i < 14 && pts.isNotEmpty; i++) {
+            final Offset q = pts[rnd.nextInt(pts.length)];
+            final double d = (q - anchor).distance;
+            if (d > fd) {
+              fd = d;
+              far = q;
+            }
+          }
+          if (far != null) {
+            final DEnemy? b = makeEnemy('bounty', far.dx, far.dy, bounty: true, name: darkomRoamBounties[(cp.args.seed.abs()) % darkomRoamBounties.length]);
+            if (b != null) {
+              b.hp *= 2.4;
+              b.maxHp = b.hp;
+              cpBoss = b;
+              showBanner('BOUNTY TARGET LOOSE', const Color(0xFFFF1744), dur: 2.2);
+            }
+          }
+        } else if (cpBoss != null && !cpBoss!.alive) {
+          cpProgress = 1;
+          this.coopContractEnd(true);
+        }
+        break;
+      case 'data':
+        for (int i = 0; i < cpNodes.length; i++) {
+          if (cpTaken.contains(i)) continue;
+          bool got = !heroDead && (cpNodes[i] - heroPos).distance < 48;
+          if (!got) {
+            for (final DAlly a in cp.allies.values) {
+              if (a.alive && (cpNodes[i] - Offset(a.x, a.y)).distance < 48) {
+                got = true;
+                break;
+              }
+            }
+          }
+          if (got) {
+            cpTaken.add(i);
+            cues.add('good');
+            floatText(cpNodes[i].dx, cpNodes[i].dy - 20, 'DATA', const Color(0xFFFFD54F), size: 16);
+          }
+        }
+        cpProgress = cpTaken.length;
+        if (cpTarget > 0 && cpProgress >= cpTarget) this.coopContractEnd(true);
+        break;
+      default:
+        break;
+    }
+    if (cpResult == 0 && c != 'hold' && cpClock >= cpLimit) this.coopContractEnd(false);
+    if (cpResult != 0) return;
+    cpSpawnT -= dt;
+    if (cpSpawnT > 0) return;
+    int want;
+    switch (c) {
+      case 'hold':
+        want = 4 + 2 * count + (cpClock ~/ 40) * count;
+        break;
+      case 'bounty':
+        want = 2 + 2 * count;
+        break;
+      case 'data':
+        want = 3 + 2 * count;
+        break;
+      default:
+        want = 4 + 3 * count;
+        break;
+    }
+    final int cap = this.maxEnemiesNow - 2;
+    if (want > cap) want = cap;
+    cpSpawnT = max(0.5, 1.5 - 0.12 * count);
+    if (aliveCount() >= want || enemies.length >= this.maxEnemiesNow) return;
+    final Offset? q = ambientSpawnPoint();
+    if (q != null) makeEnemy(pickType(), q.dx, q.dy);
   }
 
   // ---- host: snapshot ------------------------------------------------------
@@ -120,6 +447,10 @@ extension DarkomCoopLogic on DarkomLogic {
       'k': kills,
       'ck': Map<String, int>.from(coopKills),
       'end': phase == 4 ? 1 : 0,
+      'cc': (cpClock * 10).round() / 10,
+      'cp': cpProgress,
+      'cr': cpResult,
+      'dn': cpTaken.toList(),
       'e': es,
       'p': ps,
     };
@@ -205,7 +536,18 @@ extension DarkomCoopLogic on DarkomLogic {
         coopKills[key.toString()] = _i(v);
       });
     }
-    if (p['end'] == 1 && phase != 4) {
+    cpClock = _f(p['cc'], cpClock);
+    cpProgress = _i(p['cp'], cpProgress);
+    final dynamic dn = p['dn'];
+    if (dn is List) {
+      for (final dynamic v in dn) {
+        final int idx = _i(v, -1);
+        if (idx >= 0 && idx < cpNodes.length && cpTaken.add(idx)) cues.add('good');
+      }
+    }
+    final int cr = _i(p['cr']);
+    if (cr != 0 && cpResult == 0) this.coopContractEnd(cr == 1);
+    if (p['end'] == 1 && phase != 4 && (coop?.args.contract ?? '').isEmpty) {
       phase = 4;
       endT = 2.0;
       invuln = 99;

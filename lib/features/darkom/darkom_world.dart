@@ -211,6 +211,36 @@ class DarkomWorld {
     final int start = ty * cols + tx;
     if (start == _flowTile) return;
     _flowTile = start;
+    _fill(flow, start);
+  }
+
+  // Extra fields, one per squad member, so enemies chasing a teammate follow
+  // a path to that teammate and not to the host.
+  final List<List<int>?> _slotField = <List<int>?>[null, null, null, null];
+  final List<int> _slotTile = <int>[-1, -1, -1, -1];
+
+  void updateFlowSlot(int slot, double x, double y) {
+    if (slot < 0 || slot > 3) return;
+    int tx = (x / tile).floor();
+    int ty = (y / tile).floor();
+    tx = tx < 0 ? 0 : (tx >= cols ? cols - 1 : tx);
+    ty = ty < 0 ? 0 : (ty >= rows ? rows - 1 : ty);
+    final int start = ty * cols + tx;
+    if (start == _slotTile[slot] && _slotField[slot] != null) return;
+    _slotTile[slot] = start;
+    final List<int> f = _slotField[slot] ?? List<int>.filled(cols * rows, -1);
+    _slotField[slot] = f;
+    _fill(f, start);
+  }
+
+  Offset flowDirSlot(int slot, double x, double y) {
+    if (slot < 0 || slot > 3) return flowDir(x, y);
+    final List<int>? f = _slotField[slot];
+    if (f == null) return flowDir(x, y);
+    return _dirIn(f, x, y);
+  }
+
+  void _fill(List<int> flow, int start) {
     for (int i = 0; i < flow.length; i++) {
       flow[i] = -1;
     }
@@ -243,7 +273,9 @@ class DarkomWorld {
   }
 
   /// Unit direction from (x, y) along the flow field, or zero.
-  Offset flowDir(double x, double y) {
+  Offset flowDir(double x, double y) => _dirIn(flow, x, y);
+
+  Offset _dirIn(List<int> flow, double x, double y) {
     final int tx = (x / tile).floor();
     final int ty = (y / tile).floor();
     if (tx < 0 || ty < 0 || tx >= cols || ty >= rows) return Offset.zero;

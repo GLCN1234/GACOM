@@ -92,6 +92,9 @@ class DarkomPainter extends CustomPainter {
     _drawBlocks(canvas, th, w);
     _drawArena(canvas, th, w);
     _drawMarkers(canvas, th);
+    for (int i = 0; i < g.cpNodes.length; i++) {
+      if (!g.cpTaken.contains(i) && _view.contains(g.cpNodes[i])) _drawNode(canvas, g.cpNodes[i]);
+    }
     for (final DEnemy e in g.enemies) {
       if (e.alive && _view.contains(Offset(e.x, e.y))) _drawTele(canvas, e);
     }
@@ -641,6 +644,20 @@ class DarkomPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(c, Offset(o.dx - tp.width / 2, o.dy - 34));
+  }
+
+  void _drawNode(Canvas c, Offset o) {
+    final double pulse = 0.5 + 0.5 * sin(_t * 4);
+    RealmDraw.glow(c, o, 40 + pulse * 8, const Color(0xFFFFD54F), alpha: 0.22);
+    final Path d = Path()
+      ..moveTo(o.dx, o.dy - 15)
+      ..lineTo(o.dx + 11, o.dy)
+      ..lineTo(o.dx, o.dy + 15)
+      ..lineTo(o.dx - 11, o.dy)
+      ..close();
+    c.drawPath(d, Paint()..color = const Color(0xFFFFD54F).withValues(alpha: 0.85));
+    c.drawPath(d, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.white);
+    _text(c, 'DATA', Offset(o.dx, o.dy - 28), 11, const Color(0xFFFFD54F));
   }
 
   void _drawAlly(Canvas c, DAlly a) {

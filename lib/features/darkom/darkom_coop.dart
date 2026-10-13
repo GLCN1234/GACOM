@@ -14,17 +14,23 @@ import '../../core/services/supabase_service.dart';
 /// Who is in the patrol and who runs it.
 class DarkomCoopArgs {
   final String squadId;
-  final String hostId;
+
+  /// Whoever runs the enemies right now. Changes if the host leaves.
+  String hostId;
   final String myId;
   final List<String> playerIds;
   final List<String> names;
 
-  const DarkomCoopArgs({
+  /// '' for a free patrol, else clear | hold | bounty | data (a Squad Contract).
+  final String contract;
+
+  DarkomCoopArgs({
     required this.squadId,
     required this.hostId,
     required this.myId,
     required this.playerIds,
     required this.names,
+    this.contract = '',
   });
 
   bool get isHost => myId == hostId;
@@ -103,6 +109,11 @@ class DarkomCoop {
   void Function(Map<String, dynamic> p)? onHurt;
   void Function(Map<String, dynamic> p)? onKill;
   void Function()? onHostLost;
+  void Function(String from, Map<String, dynamic> p)? onFx;
+  void Function(bool nowHost)? onHostChanged;
+
+  /// Former hosts that went silent. Never elected again.
+  final Set<String> lostHosts = <String>{};
 
   DarkomCoop(this.args) {
     for (int i = 0; i < args.playerIds.length; i++) {
@@ -114,7 +125,7 @@ class DarkomCoop {
 
   double get now => _sw.elapsedMilliseconds / 1000.0;
 
-  static const List<String> _events = <String>['pos', 'snap', 'hit', 'hurt', 'kill'];
+  static const List<String> _events = <String>['pos', 'snap', 'hit', 'hurt', 'kill', 'fx', 'host'];
 
   Future<void> start() async {
     if (_disposed || _ch != null) return;
@@ -195,6 +206,19 @@ class DarkomCoop {
         if (u != args.hostId) return;
         onKill?.call(p);
         break;
+      case 'fx':
+        onFx?.call(u, p);
+        break;
+      case 'host':
+        // Someone took over after the host went quiet.
+        if (lostHosts.contains(u) || u == args.hostId) return;
+        final bool wasHost = args.isHost;
+        args.hostId = u;
+        hostLostFired = false;
+        snapSeen = false;
+        lastSnapAt = now;
+        if (wasHost) onHostChanged?.call(false);
+        break;
     }
   }
 
@@ -209,13 +233,56 @@ class DarkomCoop {
   }
 
   double _posT = 0;
+  double _lastX = 0;
+  double _lastY = 0;
+  int _lastH = -1;
+  double _quiet = 0;
+
+  /// The player who should take over, or null if nobody else is around.
+  String? electNext() {
+    for (final String id in args.playerIds) {
+      if (lostHosts.contains(id)) continue;
+      if (id == args.myId) return id;
+      final DAlly? a = allies[id];
+      if (a != null && a.seen && !a.gone && now - a.lastSeen < 4) return id;
+    }
+    return null;
+  }
+
+  /// The host went quiet. Returns true if this player is the new host.
+  bool handleHostLoss() {
+    lostHosts.add(args.hostId);
+    final String? next = electNext();
+    hostLostFired = false;
+    snapSeen = false;
+    lastSnapAt = now;
+    if (next == null) return false;
+    args.hostId = next;
+    if (next == args.myId) {
+      send('host', <String, dynamic>{});
+      onHostChanged?.call(true);
+      return true;
+    }
+    return false;
+  }
 
   /// Call every frame. Sends this player's position about 8 times a second
   /// and glides the other players toward their last known spot.
   void tick(double dt, double x, double y, double face, double hp, double maxHp, bool dead, double swing, bool moving) {
     _posT -= dt;
+    _quiet += dt;
     if (_posT <= 0) {
-      _posT = 0.12;
+      // Slower in bigger squads and silent while standing still, to stay
+      // inside the realtime message budget.
+      _posT = 0.14 + 0.03 * allies.length;
+      final bool still = (x - _lastX).abs() < 3 && (y - _lastY).abs() < 3 && hp.round() == _lastH && swing == 0;
+      if (still && _quiet < 1.2) {
+        // skip this one
+      } else {
+        _quiet = 0;
+        _lastX = x;
+        _lastY = y;
+        _lastH = hp.round();
       send('pos', <String, dynamic>{
         'x': x.round(),
         'y': y.round(),
@@ -225,6 +292,7 @@ class DarkomCoop {
         'd': dead ? 1 : 0,
         's': (swing * 100).round() / 100,
       });
+      }
     }
     final double t = now;
     final double k = min(1.0, dt * 12);
@@ -245,7 +313,7 @@ class DarkomCoop {
       if (a.moving) a.phase += dt * 11;
     }
     if (!args.isHost && !hostLostFired) {
-      final double wait = snapSeen ? 8 : 25;
+      final double wait = snapSeen ? 5 : 14;
       if (t - lastSnapAt > wait) {
         hostLostFired = true;
         onHostLost?.call();
