@@ -173,6 +173,27 @@ class HubSquadController extends ChangeNotifier {
     refresh();
   }
 
+  /// Host only: switch between the arena match and the City Patrol.
+  Future<void> setMode(String mode) async {
+    final DarkomSquad? s = mine;
+    if (s == null || busy || s.hostId != myId || s.status != 'open' || s.mode == mode) return;
+    busy = true;
+    message = null;
+    _n();
+    try {
+      final DarkomSquad? u = await DarkomHubService.setSquadMode(s.id, mode);
+      if (u != null) {
+        _setMine(u);
+      } else {
+        message = 'Could not change the mode right now.';
+      }
+    } catch (_) {
+      message = 'Could not change the mode right now.';
+    }
+    busy = false;
+    _n();
+  }
+
   Future<void> start() async {
     final DarkomSquad? s = mine;
     if (s == null || busy || s.hostId != myId) return;
@@ -315,6 +336,8 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
           ]),
         ),
       const SizedBox(height: 6),
+      _modeRow(s, host),
+      const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
         _btn('SQUAD CHAT', Icons.chat_bubble_rounded, kHubCyan, widget.onSquadChat, filled: false),
         _btn('SQUAD VOICE', Icons.headset_mic_rounded, kHubViolet, widget.onSquadVoice, filled: false),
@@ -327,7 +350,41 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
           Expanded(child: _btn(started ? 'STARTING' : 'START', Icons.play_arrow_rounded, kHubGreen, (c.busy || started) ? null : c.start)),
         ],
       ]),
-      if (!host) const Padding(padding: EdgeInsets.only(top: 8), child: Text('The host starts the match.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 12))),
+      if (!host) const Padding(padding: EdgeInsets.only(top: 8), child: Text('The host starts the game.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 12))),
+    ]);
+  }
+
+  Widget _modeRow(DarkomSquad s, bool host) {
+    final HubSquadController c = widget.squads;
+    final bool city = s.mode == 'city';
+    Widget chip(String label, String sub, String mode, bool on) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: (host && !c.busy && s.status == 'open') ? () => c.setMode(mode) : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              color: on ? kHubGreen.withOpacity(0.18) : const Color(0xFF121A2E),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: on ? kHubGreen : const Color(0xFF263050), width: on ? 1.6 : 1),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+              Text(label, style: TextStyle(color: on ? kHubGreen : Colors.white70, fontWeight: FontWeight.w900, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(sub, style: const TextStyle(color: Color(0xFF9AA6C2), fontSize: 11, height: 1.25)),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Row(children: <Widget>[
+        chip('ARENA', 'Free for all match', 'arena', !city),
+        const SizedBox(width: 8),
+        chip('CITY PATROL', 'Co-op. Same enemies, shared city', 'city', city),
+      ]),
+      if (!host) const Padding(padding: EdgeInsets.only(top: 6), child: Text('The host picks the mode.', style: TextStyle(color: Color(0xFF9AA6C2), fontSize: 11))),
     ]);
   }
 
@@ -350,7 +407,7 @@ class _HubSquadPanelState extends State<HubSquadPanel> {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-                Text('${s.hostName}\'s squad', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                Text('${s.hostName}\'s ${s.mode == 'city' ? 'city patrol' : 'squad'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                 Text('${s.memberIds.length}/${s.maxPlayers} players', style: const TextStyle(color: Color(0xFF9AA6C2), fontSize: 12)),
               ]),
             ),

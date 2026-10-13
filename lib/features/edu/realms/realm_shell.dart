@@ -87,6 +87,9 @@ class RealmShell extends StatefulWidget {
   /// Makes the action buttons bigger (1.0 is the normal size).
   final double actionScale;
 
+  /// False for modes whose score must never reach a leaderboard (co-op).
+  final bool saveScore;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -110,6 +113,7 @@ class RealmShell extends StatefulWidget {
     this.pauseActions,
     this.skipIntro = false,
     this.actionScale = 1.0,
+    this.saveScore = true,
   });
 
   @override
@@ -300,7 +304,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
       l.onRunEnd().catchError((Object _) {}).whenComplete(() {
         if (mounted) setState(() {});
       });
-      GameScoreService.save(gameName: widget.gameName, score: l.finalScore, won: l.stats.correct > 0 ? true : null);
+      if (widget.saveScore) GameScoreService.save(gameName: widget.gameName, score: l.finalScore, won: l.stats.correct > 0 ? true : null);
       final int bonus = l.xp - l.stats.correct * 8;
       bool first = true;
       if (widget.learning) l.stats.askedBy.forEach((String sid, int asked) {

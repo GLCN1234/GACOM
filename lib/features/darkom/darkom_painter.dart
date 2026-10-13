@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/services/cosmetics_service.dart';
 import '../edu/realms/realm_kit.dart';
+import 'darkom_coop.dart';
 import 'darkom_combat.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart' show MissionGhost;
@@ -13,7 +14,7 @@ import 'darkom_world.dart';
 
 class _Item {
   final double y;
-  final int kind; // 0 enemy, 1 courier, 2 hero
+  final int kind; // 0 enemy, 1 courier, 2 hero, 3 ally
   final Object? ref;
   _Item(this.y, this.kind, this.ref);
 }
@@ -104,12 +105,20 @@ class DarkomPainter extends CustomPainter {
     final DCourier? cr = g.courier;
     if (cr != null) items.add(_Item(cr.y, 1, cr));
     if (!g.heroDead) items.add(_Item(g.hy, 2, null));
+    final DarkomCoop? cp = g.coop;
+    if (cp != null) {
+      for (final DAlly a in cp.allies.values) {
+        if (a.alive && _view.contains(Offset(a.x, a.y))) items.add(_Item(a.y, 3, a));
+      }
+    }
     items.sort((_Item a, _Item b) => a.y.compareTo(b.y));
     for (final _Item it in items) {
       if (it.kind == 0) {
         _drawEnemy(canvas, it.ref as DEnemy);
       } else if (it.kind == 1) {
         _drawCourier(canvas, it.ref as DCourier);
+      } else if (it.kind == 3) {
+        _drawAlly(canvas, it.ref as DAlly);
       } else {
         _drawHero(canvas);
       }
@@ -632,6 +641,24 @@ class DarkomPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(c, Offset(o.dx - tp.width / 2, o.dy - 34));
+  }
+
+  void _drawAlly(Canvas c, DAlly a) {
+    final Color col = darkomAllyColors[a.slot % darkomAllyColors.length];
+    final double fs = cos(a.face) >= 0 ? 1.0 : -1.0;
+    RealmDraw.glow(c, Offset(a.x, a.y + 6), 26, col, alpha: 0.14);
+    c.drawOval(Rect.fromCenter(center: Offset(a.x, a.y + 14), width: 30, height: 10), _p..color = Colors.black.withValues(alpha: 0.25));
+    c.drawOval(Rect.fromCenter(center: Offset(a.x, a.y + 14), width: 26, height: 8), Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = col.withValues(alpha: 0.9));
+    RealmDraw.person(c, a.x, a.y - 8, phase: a.phase, moving: a.moving, facing: fs, shirt: col, pants: const Color(0xFF263050), skin: const Color(0xFFF2B785), hair: const Color(0xFF2B1B12), scale: 1.2);
+    if (a.swing > 0) {
+      final double k = a.swing;
+      c.drawArc(Rect.fromCircle(center: Offset(a.x, a.y - 2), radius: 40), a.face - 0.9 + k * 1.8 - 0.5, 1.0, false, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = col.withValues(alpha: 0.7 * (1 - k * 0.5)));
+    }
+    _text(c, a.name, Offset(a.x, a.y - 52), 12, col);
+    const double bw = 34;
+    final double f = (a.hp / (a.maxHp < 1 ? 1 : a.maxHp)).clamp(0.0, 1.0).toDouble();
+    c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(a.x - bw / 2, a.y - 44, bw, 4), const Radius.circular(2)), _p..color = const Color(0xAA000000));
+    c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(a.x - bw / 2, a.y - 44, bw * f, 4), const Radius.circular(2)), _p..color = f > 0.35 ? const Color(0xFF69F0AE) : const Color(0xFFFF5252));
   }
 
   void _drawHero(Canvas c) {

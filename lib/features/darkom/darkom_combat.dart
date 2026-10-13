@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'darkom_coop.dart';
+import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
 import 'darkom_logic.dart';
 import 'darkom_story.dart';
@@ -74,6 +76,7 @@ extension DarkomCombat on DarkomLogic {
 
   bool hurtEnemy(DEnemy e, double dmg, {double kx = 0, double ky = 0, double kb = 0, double stun = 0, bool crit = false}) {
     if (!e.alive || e.spawnT > 0) return false;
+    if (this.isGuest) return this.coopHitRemote(e, dmg, kx, ky, kb, stun, crit);
     e.hp -= dmg;
     e.flash = 0.12;
     e.aggro = true;
@@ -101,6 +104,7 @@ extension DarkomCombat on DarkomLogic {
   void killEnemy(DEnemy e) {
     if (!e.alive) return;
     e.alive = false;
+    this.coopOnKillHost(e);
     final DarkomEnemyDef def = darkomEnemies[e.type] ?? darkomEnemies['shade']!;
     spark(e.x, e.y, def.glow, n: 14, spd: 220, life: 0.55);
     spark(e.x, e.y, Colors.white, n: 4, spd: 120, size: 2.5);
@@ -127,6 +131,8 @@ extension DarkomCombat on DarkomLogic {
   /// Damage to the hero from an enemy at (sx, sy). Returns true if it landed
   /// or was blocked.
   bool hurtHero(double dmg, double sx, double sy, {double kb = 150}) {
+    final DAlly? stand = aiAlly;
+    if (stand != null) return this.coopHurtAlly(stand, dmg, sx, sy, kb);
     if (heroDead || phase == 4) return false;
     if (invuln > 0 || dashT > 0) return false;
     final double dx = sx - hx;

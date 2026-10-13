@@ -110,7 +110,7 @@ class DarkomSquad {
   final String houseId;
   final String hostId;
   final String hostName;
-  final String mode; // 'arena'
+  final String mode; // 'arena' | 'city'
   final int maxPlayers;
   final String status; // open|started|closed
   final List<String> memberIds;
@@ -446,6 +446,10 @@ class DarkomHubService {
 
   static Future<void> leaveSquad(String squadId) async {
     await _rpc('darkom_leave_squad', <String, dynamic>{'p_squad': squadId});
+  }
+
+  static Future<DarkomSquad?> setSquadMode(String squadId, String mode) async {
+    return _squadFrom(await _rpc('darkom_set_squad_mode', <String, dynamic>{'p_squad': squadId, 'p_mode': mode}));
   }
 
   static Future<DarkomSquad?> startSquad(String squadId) async {

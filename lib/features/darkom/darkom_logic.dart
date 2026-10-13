@@ -5,6 +5,8 @@ import '../edu/realms/realm_kit.dart';
 import 'darkom_ai.dart';
 import 'darkom_armory.dart';
 import 'darkom_combat.dart';
+import 'darkom_coop.dart';
+import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart';
 import 'darkom_missions.dart';
@@ -21,7 +23,9 @@ class DarkomBoot {
 
   /// Set when a mission from the board is being played instead of the story.
   DarkomMission? mission;
-  DarkomBoot(this.progress, this.armory, this.ghost, {this.mission});
+  /// Set for City Patrol (co-op). Null for solo play.
+  DarkomCoop? coop;
+  DarkomBoot(this.progress, this.armory, this.ghost, {this.mission, this.coop});
 
   /// Mission ids this player has cleared (for choosing the next one).
   final Set<String> cleared = <String>{};
@@ -68,12 +72,13 @@ class DarkomLogic extends RealmLogic {
 
   DarkomLogic(RealmContent content, this.boot)
       : chapterNo = _chapterOf(boot),
+        coop = boot.coop,
         roam = _chapterOf(boot) >= 6,
         mission = boot.mission,
         ch = boot.mission != null ? boot.mission!.asChapter() : darkomChapter(_chapterOf(boot)),
         theme = darkomTheme(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district),
         world = (boot.mission == null && _chapterOf(boot) >= 6)
-            ? DarkomWorld.generateCity(content.seed + _chapterOf(boot) * 7919)
+            ? DarkomWorld.generateCity((boot.coop != null ? boot.coop!.args.seed : content.seed) + _chapterOf(boot) * 7919)
             : DarkomWorld.generate(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district,
                 content.seed + (boot.mission != null ? boot.mission!.seedSalt : _chapterOf(boot) * 7919)),
         armory = boot.armory,
@@ -84,6 +89,7 @@ class DarkomLogic extends RealmLogic {
   }
 
   static int _chapterOf(DarkomBoot b) {
+    if (b.coop != null) return 6;
     if (b.mission != null) return b.mission!.district;
     final int c = b.progress.chapter;
     return c < 1 ? 1 : (c > 6 ? 6 : c);
@@ -98,6 +104,18 @@ class DarkomLogic extends RealmLogic {
     } catch (_) {}
     return 'You';
   }
+
+  // ---- co-op (City Patrol) -------------------------------------------------
+  final DarkomCoop? coop;
+
+  /// Host: the ally the enemy being stepped right now is attacking.
+  DAlly? aiAlly;
+  double coopSnapT = 0;
+  int coopSeq = 0;
+  String coopHitter = '';
+  final Map<int, Offset> coopTargets = <int, Offset>{};
+  final Set<int> coopDead = <int>{};
+  final Map<String, int> coopKills = <String, int>{};
 
   // ---- hero ---------------------------------------------------------------
   double hx = 0;
@@ -250,6 +268,12 @@ class DarkomLogic extends RealmLogic {
       return;
     }
     if (roam) {
+      if (coop != null) {
+        say('Dispatch', 'City Patrol. Stay close, watch each other. The host runs the streets; if the host leaves, the patrol ends.', const Color(0xFF69F0AE), dur: 7);
+        waveBreak = 4.0;
+        this.coopWire();
+        return;
+      }
       say(ch.fixer, darkomRoamIntro, ch.fixerColor, dur: 7);
       waveBreak = 2.5;
       return;
@@ -383,6 +407,14 @@ class DarkomLogic extends RealmLogic {
       }
       return m;
     }
+    if (coop != null) {
+      m['Mode'] = 'City Patrol';
+      m['Waves cleared'] = '$wavesCleared';
+      m['Team kills'] = '$kills';
+      m['Your kills'] = '${coopKills[coop!.args.myId] ?? 0}';
+      m['Note'] = 'Patrols do not change rankings';
+      return m;
+    }
     if (roam) {
       m['Waves'] = '$wavesCleared';
     } else {
@@ -410,6 +442,7 @@ class DarkomLogic extends RealmLogic {
 
   @override
   String get resultTitle {
+    if (coop != null) return 'PATROL OVER';
     if (mission == null) return 'RUN COMPLETE';
     if (missionDone) return 'MISSION COMPLETE';
     return missionFailed ? 'MISSION FAILED' : 'MISSION OVER';
@@ -656,7 +689,8 @@ class DarkomLogic extends RealmLogic {
       _updateHero(dt);
     }
     _updateLater(dt);
-    world.updateFlow(hx, hy);
+    this.coopTick(dt);
+    if (!this.isGuest) world.updateFlow(hx, hy);
     this.updateEnemies(dt);
     this.updateCourier(dt);
     this.updateProjectiles(dt);
@@ -664,6 +698,7 @@ class DarkomLogic extends RealmLogic {
     _updatePicks(dt);
     _updateFx(dt);
     _updateContract(dt);
+    if (this.isCoopHost && heroDead && phase != 4) _updateRoam(dt);
     _updateMissionFlow(dt);
     if (phase == 0 || phase == 1 || phase == 3) {
       if (!roam) _updateSpawns(dt);
@@ -836,9 +871,9 @@ class DarkomLogic extends RealmLogic {
 
   void loseLife() {
     if (heroDead) return;
-    lives -= 1;
+    if (coop == null) lives -= 1;
     heroDead = true;
-    deathT = 1.2;
+    deathT = coop != null ? 3.0 : 1.2;
     cues.add('lose');
     doShake(10);
     spark(hx, hy, const Color(0xFFFF5252), n: 14, spd: 220);
@@ -873,6 +908,7 @@ class DarkomLogic extends RealmLogic {
       over = true;
       return;
     }
+    if (coop != null) checkpoint = this.coopRespawnPoint();
     heroDead = false;
     hx = checkpoint.dx;
     hy = checkpoint.dy;
@@ -929,10 +965,11 @@ class DarkomLogic extends RealmLogic {
   }
 
   DEnemy? makeEnemy(String type, double x, double y, {bool bounty = false, String name = ''}) {
-    if (enemies.length >= darkomMaxEnemies) return null;
+    if (enemies.length >= this.maxEnemiesNow) return null;
     final DarkomEnemyDef d = darkomEnemies[type] ?? darkomEnemies['shade']!;
     double hpv = d.hp * hpScale;
     if (bounty) hpv = d.hp * (1 + 0.15 * (roam ? 4 + wave * 0.3 : chapterNo - 1)) * (mission?.hpMul ?? 1.0);
+    hpv *= this.coopHpMul;
     final DEnemy e = DEnemy(nextId++, type, x, y, hpv, d.r, d.speed * (1 + 0.03 * (chapterNo > 5 ? 4 : chapterNo - 1)), d.dmg * dmgScale);
     e.bounty = bounty;
     e.name = name;
@@ -958,10 +995,11 @@ class DarkomLogic extends RealmLogic {
   Offset? ambientSpawnPoint() {
     final List<Offset> pts = world.clearPts;
     if (pts.isEmpty) return null;
+    final Offset anchor = this.coopSpawnAnchor();
     for (int i = 0; i < 12; i++) {
       final Offset p = pts[rnd.nextInt(pts.length)];
-      final double d = (p - heroPos).distance;
-      if (d > 520 && d < 1300) return p;
+      final double d = (p - anchor).distance;
+      if (d > 520 && d < 1300 && this.coopClearOfAllies(p)) return p;
     }
     return null;
   }
@@ -1230,7 +1268,7 @@ class DarkomLogic extends RealmLogic {
       return;
     }
     if (roam) {
-      _updateRoam(dt);
+      if (!this.isGuest) _updateRoam(dt);
       return;
     }
     switch (phase) {
@@ -1329,7 +1367,7 @@ class DarkomLogic extends RealmLogic {
     }
     // trickle the queued enemies in
     spawnT -= dt;
-    if (spawnQueue.isNotEmpty && spawnT <= 0 && enemies.length < darkomMaxEnemies && aliveCount() < 8 + wave ~/ 2) {
+    if (spawnQueue.isNotEmpty && spawnT <= 0 && enemies.length < this.maxEnemiesNow && aliveCount() < ((8 + wave ~/ 2) * this.coopWaveMul).round()) {
       final Offset? p = ambientSpawnPoint();
       if (p != null) {
         final String t = spawnQueue.removeAt(0);
@@ -1358,7 +1396,7 @@ class DarkomLogic extends RealmLogic {
     wave++;
     waveActive = true;
     spawnQueue.clear();
-    final int n = min(20, 4 + wave * 2);
+    final int n = min(34, ((4 + wave * 2) * this.coopWaveMul).round());
     if (wave % 3 == 0) spawnQueue.add('bounty');
     for (int i = 0; i < n; i++) {
       spawnQueue.add(pickType());
@@ -1528,6 +1566,11 @@ class DarkomLogic extends RealmLogic {
   Future<void> onRunEnd() async {
     if (reported) return;
     reported = true;
+    if (coop != null) {
+      // A patrol never touches rankings, passes or wallets.
+      reportDone = true;
+      return;
+    }
     if (mission != null) {
       // Missions are reported one by one as they finish (see _onMissionDone).
       reportDone = true;

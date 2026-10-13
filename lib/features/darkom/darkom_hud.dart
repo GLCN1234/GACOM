@@ -6,6 +6,7 @@ import '../../shared/widgets/cosmetic_avatar.dart';
 import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart' show realmActionPadWidth;
+import 'darkom_coop.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart' show MissionGhost;
 import 'darkom_logic.dart';
@@ -30,6 +31,7 @@ Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
   return Positioned.fill(
     child: Stack(children: <Widget>[
       Positioned(left: 10, top: compact ? 44 : 132, child: IgnorePointer(child: _playerBlock(g))),
+      if (g.coop != null) Positioned(left: 10, top: compact ? 112 : 214, child: IgnorePointer(child: _squadCard(g, compact))),
       Positioned(right: 10, top: compact ? 54 : 132, child: _MapBox(g: g, compact: compact, screenW: sz.width, screenH: sz.height)),
       if (!g.over && !g.missionDone && !g.heroDead)
         Positioned(
@@ -195,6 +197,41 @@ Widget _playerBlock(DarkomLogic g) {
 
 /// What the player is doing right now, with a progress bar when the goal can
 /// be counted: kills, chips, seconds held, the mission clock and lives.
+/// City Patrol: everyone in the squad with their health and kills.
+Widget _squadCard(DarkomLogic g, bool compact) {
+  final DarkomCoop cp = g.coop!;
+  final List<Widget> rows = <Widget>[];
+  Widget row(String name, double frac, int kills, Color col, bool down) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: col)),
+        const SizedBox(width: 5),
+        SizedBox(width: 58, child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: down ? Colors.white38 : Colors.white, fontSize: compact ? 9.5 : 10.5, fontWeight: FontWeight.w800))),
+        _bar(compact ? 44 : 56, 5, down ? 0.0 : frac, down ? Colors.white24 : const Color(0xFF69F0AE)),
+        const SizedBox(width: 5),
+        Text(down ? 'DOWN' : '$kills', style: TextStyle(color: down ? _hudRed : _hudGold, fontSize: compact ? 9 : 10, fontWeight: FontWeight.w900)),
+      ]),
+    );
+  }
+
+  final String me = cp.args.myId;
+  rows.add(row('You', g.hp / g.maxHp, g.coopKills[me] ?? 0, darkomAllyColors[cp.args.slotOf(me) % darkomAllyColors.length], g.heroDead));
+  for (final DAlly a in cp.allies.values) {
+    if (a.gone) continue;
+    rows.add(row(a.name, a.hp / (a.maxHp < 1 ? 1.0 : a.maxHp), g.coopKills[a.id] ?? 0, darkomAllyColors[a.slot % darkomAllyColors.length], a.seen && a.dead));
+  }
+  return Container(
+    padding: const EdgeInsets.fromLTRB(8, 6, 8, 3),
+    decoration: BoxDecoration(color: const Color(0xAA05060A), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white12)),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+      Text('SQUAD  ${g.kills} kills', style: const TextStyle(color: Color(0xFF69F0AE), fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1)),
+      const SizedBox(height: 3),
+      ...rows,
+    ]),
+  );
+}
+
 Widget _tracker(DarkomLogic g, bool compact) {
   double? frac;
   String right = '';
@@ -202,7 +239,7 @@ Widget _tracker(DarkomLogic g, bool compact) {
   IconData icon = Icons.flag_rounded;
   Color color = _hudGold;
   if (g.roam) {
-    title = 'Free roam';
+    title = g.coop != null ? 'City Patrol' : 'Free roam';
     right = 'Wave ${g.wave}';
     icon = Icons.local_fire_department_rounded;
     color = const Color(0xFFFF9100);
@@ -462,6 +499,13 @@ class DarkomMiniPainter extends CustomPainter {
         ..lineTo(fx, fy - 6)
         ..close();
       canvas.drawPath(flag, p..color = _hudGold);
+    }
+    final DarkomCoop? cp = g.coop;
+    if (cp != null) {
+      for (final DAlly a in cp.allies.values) {
+        if (!a.alive) continue;
+        canvas.drawCircle(Offset(a.x * sx, a.y * sy), 3.0, p..color = darkomAllyColors[a.slot % darkomAllyColors.length]);
+      }
     }
     // you
     final double hx = g.hx * sx;

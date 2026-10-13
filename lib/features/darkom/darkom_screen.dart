@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../edu/realms/realm_kit.dart';
 import '../edu/realms/realm_shell.dart';
 import 'darkom_armory.dart';
+import 'darkom_coop.dart';
 import 'darkom_ghost.dart';
 import 'darkom_hud.dart';
 import 'darkom_logic.dart';
@@ -16,8 +17,11 @@ const Color _dkAccent = Color(0xFFFF2E93);
 /// Darkom City: an open, top-down, cyber-noir action game.
 /// Route: '/darkom'.
 class DarkomScreen extends StatefulWidget {
-  const DarkomScreen({super.key, this.config = const RealmConfig(useSchool: false), this.mission});
+  const DarkomScreen({super.key, this.config = const RealmConfig(useSchool: false), this.mission, this.coopArgs});
   final RealmConfig config;
+
+  /// Set for City Patrol: the squad that plays together in one city.
+  final DarkomCoopArgs? coopArgs;
 
   /// A mission picked on the board. Null plays the story (or free roam).
   final DarkomMission? mission;
@@ -36,6 +40,12 @@ class _DarkomScreenState extends State<DarkomScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _boot?.coop?.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     DarkomProgress progress = DarkomProgress.empty;
     DarkomArmory armory = DarkomArmory.plain();
@@ -51,6 +61,7 @@ class _DarkomScreenState extends State<DarkomScreen> {
     } catch (_) {}
     if (!mounted) return;
     final DarkomBoot boot = DarkomBoot(progress, armory, ghost, mission: widget.mission);
+    if (widget.coopArgs != null) boot.coop = DarkomCoop(widget.coopArgs!);
     if (widget.mission != null) {
       try {
         final DarkomMissionStats st = await DarkomService.loadMissionStats().timeout(const Duration(seconds: 5), onTimeout: () => DarkomMissionStats.empty);
@@ -107,14 +118,15 @@ class _DarkomScreenState extends State<DarkomScreen> {
       );
     }
     final DarkomMission? ms = _mission;
-    final bool roam = ms == null && b.progress.chapter >= 6;
+    final bool patrol = b.coop != null;
+    final bool roam = ms == null && (patrol || b.progress.chapter >= 6);
     final DarkomChapterDef ch = ms != null ? ms.asChapter() : darkomChapter(roam ? 5 : b.progress.chapter);
     final Widget shell = RealmShell(
       key: ValueKey<int>(_gen),
       gameName: 'Darkom City',
       gameId: 'darkom',
-      title: ms != null ? ms.title : (roam ? 'Darkom City: Free Roam' : 'Chapter ${ch.n}: ${ch.name}'),
-      story: ms != null ? ms.brief : (roam ? darkomRoamIntro : '${ch.fixer}, ${ch.fixerRole}: "${ch.intro}"'),
+      title: ms != null ? ms.title : (patrol ? 'Darkom City: City Patrol' : (roam ? 'Darkom City: Free Roam' : 'Chapter ${ch.n}: ${ch.name}')),
+      story: ms != null ? ms.brief : (patrol ? 'Your squad patrols the open city together. The same enemies hunt all of you, so stay close and cover each other. Patrols are for fun: they never change rankings.' : roam ? darkomRoamIntro : '${ch.fixer}, ${ch.fixerRole}: "${ch.intro}"'),
       howTo: 'Drag anywhere to move. ATTACK fights with your weapon and aims at the nearest enemy. SPECIAL is a strong move that recharges, DASH is a short safe dodge, SWAP changes weapon. Follow the arrow and the minimap flag. On a computer: WASD to move, SPACE to attack, E for special, SHIFT to dash, Q to swap weapon.',
       icon: Icons.location_city_rounded,
       accent: _dkAccent,
@@ -130,6 +142,7 @@ class _DarkomScreenState extends State<DarkomScreen> {
       ],
       joystick: true,
       actionScale: 1.22,
+      saveScore: !patrol,
       background: const Color(0xFF05060A),
       learning: false,
       skipIntro: _skipIntro,

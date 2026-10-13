@@ -1,3 +1,4 @@
+import '../darkom_coop.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -634,6 +635,20 @@ class _DarkomHubScreenState extends State<DarkomHubScreen> with SingleTickerProv
     if (_paused) {
       // Busy in another screen: leave the started squad so nobody stays stuck in it.
       _squads.afterMatch();
+      return;
+    }
+    if (s.mode == 'city') {
+      final List<String> names = <String>[];
+      for (int i = 0; i < s.memberIds.length; i++) {
+        names.add(i < s.memberNames.length ? s.memberNames[i] : 'Player');
+      }
+      _goto(
+        context.push<void>(
+          '/darkom/coop',
+          extra: DarkomCoopArgs(squadId: s.id, hostId: s.hostId, myId: _myId, playerIds: List<String>.from(s.memberIds), names: names),
+        ),
+        squad: true,
+      );
       return;
     }
     _goto(

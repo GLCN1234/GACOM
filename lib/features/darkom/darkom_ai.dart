@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'darkom_combat.dart';
+import 'darkom_coop_logic.dart';
 import 'darkom_entities.dart';
 import 'darkom_ghost.dart';
 import 'darkom_logic.dart';
@@ -10,9 +11,18 @@ import 'darkom_story.dart';
 /// Every dangerous attack starts with a telegraph of at least half a second.
 extension DarkomAi on DarkomLogic {
   void updateEnemies(double dt) {
+    if (this.isGuest) {
+      this.coopGuestEnemies(dt);
+      return;
+    }
     for (int i = 0; i < enemies.length; i++) {
       final DEnemy e = enemies[i];
-      if (e.alive) aiStep(e, dt);
+      if (!e.alive) continue;
+      if (coop == null) {
+        aiStep(e, dt);
+      } else {
+        this.coopAiStep(e, dt);
+      }
     }
     enemies.removeWhere((DEnemy e) => !e.alive);
   }
@@ -578,7 +588,11 @@ extension DarkomAi on DarkomLogic {
       p.x = nx;
       p.y = ny;
       if (p.hostile) {
-        if (!heroDead) {
+        if (this.coopProjHitsAlly(p)) {
+          projs.removeAt(i);
+          continue;
+        }
+        if (!heroDead && !this.isGuest) {
           final double dx = p.x - hx;
           final double dy = p.y - hy;
           if (dx * dx + dy * dy < (p.r + darkomHeroRadius) * (p.r + darkomHeroRadius)) {
@@ -691,6 +705,7 @@ extension DarkomAi on DarkomLogic {
           this.hurtHero(a.dmg, a.x, a.y, kb: 130);
         }
       }
+      if (a.hostile) this.coopAxeHitsAllies(a);
     }
   }
 
