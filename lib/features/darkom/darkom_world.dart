@@ -28,10 +28,23 @@ class _Seg {
 /// same seed. Cells: 0 free, 1 building or wall, 2 cover, 3 water.
 class DarkomWorld {
   static const int tile = 60;
-  static const int cols = 40;
-  static const int rows = 30;
-  static const double width = 2400;
-  static const double height = 1800;
+
+  /// Size of one district and of the whole open city, in tiles.
+  static const int districtCols = 40;
+  static const int districtRows = 30;
+  static const int cityDistrictsAcross = 2;
+  static const int cityDistrictsDown = 2;
+
+  /// This world's size in tiles. A single district is 40 by 30; the open city
+  /// is four districts side by side, 80 by 60.
+  final int cols;
+  final int rows;
+  double get width => cols * tile.toDouble();
+  double get height => rows * tile.toDouble();
+
+  /// Only for the open city: which district style covers each quarter, in the
+  /// order top left, top right, bottom left, bottom right.
+  final List<String> quarters;
 
   final String district;
   final List<int> cells;
@@ -46,11 +59,20 @@ class DarkomWorld {
   final Rect arenaRect;
 
   // Flow field toward a target tile (used by enemies and the courier).
-  final List<int> flow = List<int>.filled(cols * rows, -1);
-  final List<int> _queue = List<int>.filled(cols * rows, 0);
+  late final List<int> flow = List<int>.filled(cols * rows, -1);
+  late final List<int> _queue = List<int>.filled(cols * rows, 0);
   int _flowTile = -1;
 
-  DarkomWorld._(this.district, this.cells, this.blocks, this.vRoads, this.hRoads, this.waterRow, this.clearPts, this.extract, this.arena, this.arenaRadius, this.arenaRect);
+  DarkomWorld._(this.district, this.cells, this.blocks, this.vRoads, this.hRoads, this.waterRow, this.clearPts, this.extract, this.arena, this.arenaRadius, this.arenaRect,
+      {this.cols = districtCols, this.rows = districtRows, this.quarters = const <String>[]});
+
+  /// The district style at a point (the open city mixes four).
+  String districtAt(double x, double y) {
+    if (quarters.length < 4) return district;
+    final int qx = x < width / 2 ? 0 : 1;
+    final int qy = y < height / 2 ? 0 : 1;
+    return quarters[qy * 2 + qx];
+  }
 
   // ---- queries -------------------------------------------------------------
 
@@ -284,6 +306,9 @@ class DarkomWorld {
   }
 
   static DarkomWorld generate(String district, int seed) {
+    const int cols = districtCols;
+    const int rows = districtRows;
+    final double width = cols * tile.toDouble();
     final Random r = Random(seed & 0x7fffffff);
     final List<int> cells = List<int>.filled(cols * rows, 0);
     final List<DBlock> blocks = <DBlock>[];
@@ -560,6 +585,129 @@ class DarkomWorld {
     if (docks) hr.add(<int>[19, 21]);
 
     return DarkomWorld._(district, cells, blocks, vr, hr, waterRow, clear, extract, arena, 240, arenaRect);
+  }
+
+
+  /// The open city: four districts of different styles joined into one 80 by 60
+  /// map. Each district is built by [generate] on its own seed, copied into its
+  /// quarter, and the borders between them are opened where both sides have a
+  /// street, so every quarter can be reached from every other.
+  static DarkomWorld generateCity(int seed) {
+    const List<String> keys = <String>['neon', 'rustyard', 'spire', 'grid'];
+    const int sc = districtCols;
+    const int sr = districtRows;
+    const int cols = sc * cityDistrictsAcross;
+    const int rows = sr * cityDistrictsDown;
+    final List<DarkomWorld> subs = <DarkomWorld>[
+      for (int k = 0; k < 4; k++) generate(keys[k], seed + 104729 * (k + 1)),
+    ];
+    final List<int> cells = List<int>.filled(cols * rows, 1);
+    final List<DBlock> blocks = <DBlock>[];
+    for (int k = 0; k < 4; k++) {
+      final int ox = (k % 2) * sc;
+      final int oy = (k ~/ 2) * sr;
+      final DarkomWorld w = subs[k];
+      for (int y = 0; y < sr; y++) {
+        for (int x = 0; x < sc; x++) {
+          cells[(oy + y) * cols + ox + x] = w.cells[y * sc + x];
+        }
+      }
+      for (final DBlock b in w.blocks) {
+        blocks.add(DBlock(b.tx + ox, b.ty + oy, b.tw, b.th, b.style, b.seed, b.sign, b.colorIdx));
+      }
+    }
+
+    Set<int> streetTiles(List<List<int>> roads) {
+      final Set<int> out = <int>{};
+      for (final List<int> r in roads) {
+        for (int i = r[0]; i <= r[1]; i++) {
+          out.add(i);
+        }
+      }
+      return out;
+    }
+
+    // Open the side borders where both districts have a street on the same row.
+    for (int row = 0; row < 2; row++) {
+      final DarkomWorld a = subs[row * 2];
+      final DarkomWorld b = subs[row * 2 + 1];
+      final Set<int> common = streetTiles(a.hRoads).intersection(streetTiles(b.hRoads));
+      for (final int y in common) {
+        if (y < 1 || y >= sr - 1) continue;
+        final int gy = row * sr + y;
+        cells[gy * cols + sc - 1] = 0;
+        cells[gy * cols + sc] = 0;
+      }
+    }
+    // And the top and bottom borders on a shared street column.
+    for (int col = 0; col < 2; col++) {
+      final DarkomWorld a = subs[col];
+      final DarkomWorld b = subs[2 + col];
+      final Set<int> common = streetTiles(a.vRoads).intersection(streetTiles(b.vRoads));
+      for (final int x in common) {
+        if (x < 1 || x >= sc - 1) continue;
+        final int gx = col * sc + x;
+        cells[(sr - 1) * cols + gx] = 0;
+        cells[sr * cols + gx] = 0;
+      }
+    }
+
+    // Reachability from the first crossroad, which is always open.
+    final List<int> seen = List<int>.filled(cols * rows, 0);
+    final List<int> q = <int>[2 * cols + 2];
+    seen[2 * cols + 2] = 1;
+    int head = 0;
+    while (head < q.length) {
+      final int c = q[head++];
+      final int cx = c % cols;
+      final int cy = c ~/ cols;
+      for (int d = 0; d < 4; d++) {
+        final int nx = cx + (d == 0 ? 1 : (d == 1 ? -1 : 0));
+        final int ny = cy + (d == 2 ? 1 : (d == 3 ? -1 : 0));
+        if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+        final int ni = ny * cols + nx;
+        if (seen[ni] == 1 || cells[ni] != 0) continue;
+        seen[ni] = 1;
+        q.add(ni);
+      }
+    }
+    final List<Offset> clear = <Offset>[];
+    for (int y = 2; y < rows - 2; y++) {
+      for (int x = 2; x < cols - 2; x++) {
+        if (seen[y * cols + x] != 1) continue;
+        bool ok = true;
+        for (int oy = -1; oy <= 1 && ok; oy++) {
+          for (int ox = -1; ox <= 1; ox++) {
+            if (cells[(y + oy) * cols + x + ox] != 0) {
+              ok = false;
+              break;
+            }
+          }
+        }
+        if (ok) clear.add(Offset(x * tile + tile / 2.0, y * tile + tile / 2.0));
+      }
+    }
+    if (clear.isEmpty) clear.add(Offset(2 * tile + tile / 2.0, 2 * tile + tile / 2.0));
+
+    // The Echo arena sits in the spire quarter; the gate in the neon quarter.
+    final Offset shift = Offset(0, sr * tile.toDouble());
+    final DarkomWorld spire = subs[2];
+    return DarkomWorld._(
+      'city',
+      cells,
+      blocks,
+      <List<int>>[for (final List<int> r in subs[0].vRoads) r],
+      <List<int>>[for (final List<int> r in subs[0].hRoads) r],
+      -1,
+      clear,
+      subs[0].extract,
+      spire.arena + shift,
+      240,
+      spire.arenaRect.shift(shift),
+      cols: cols,
+      rows: rows,
+      quarters: keys,
+    );
   }
 
   static void _scatter(Random r, bool Function(int, int, int, int, int) areaFree, void Function(int, int, int, int, int, {int sign, int code}) put, int x0, int y0, int w, int h, int count, int maxLen, int unused) {

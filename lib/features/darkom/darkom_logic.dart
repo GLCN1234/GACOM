@@ -72,8 +72,10 @@ class DarkomLogic extends RealmLogic {
         mission = boot.mission,
         ch = boot.mission != null ? boot.mission!.asChapter() : darkomChapter(_chapterOf(boot)),
         theme = darkomTheme(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district),
-        world = DarkomWorld.generate(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district,
-            content.seed + (boot.mission != null ? boot.mission!.seedSalt : _chapterOf(boot) * 7919)),
+        world = (boot.mission == null && _chapterOf(boot) >= 6)
+            ? DarkomWorld.generateCity(content.seed + _chapterOf(boot) * 7919)
+            : DarkomWorld.generate(boot.mission != null ? boot.mission!.districtKey : darkomChapter(_chapterOf(boot)).district,
+                content.seed + (boot.mission != null ? boot.mission!.seedSalt : _chapterOf(boot) * 7919)),
         armory = boot.armory,
         rnd = content.rng,
         heroName = _nameNow(),

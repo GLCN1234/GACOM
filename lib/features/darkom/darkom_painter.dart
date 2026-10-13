@@ -65,15 +65,15 @@ class DarkomPainter extends CustomPainter {
     final double hh = size.height / (2 * zoom);
     double cx = g.camX;
     double cy = g.camY;
-    if (DarkomWorld.width > hw * 2) {
-      cx = cx < hw ? hw : (cx > DarkomWorld.width - hw ? DarkomWorld.width - hw : cx);
+    if (w.width > hw * 2) {
+      cx = cx < hw ? hw : (cx > w.width - hw ? w.width - hw : cx);
     } else {
-      cx = DarkomWorld.width / 2;
+      cx = w.width / 2;
     }
-    if (DarkomWorld.height > hh * 2) {
-      cy = cy < hh ? hh : (cy > DarkomWorld.height - hh ? DarkomWorld.height - hh : cy);
+    if (w.height > hh * 2) {
+      cy = cy < hh ? hh : (cy > w.height - hh ? w.height - hh : cy);
     } else {
-      cy = DarkomWorld.height / 2;
+      cy = w.height / 2;
     }
     double shx = 0;
     double shy = 0;
@@ -134,19 +134,27 @@ class DarkomPainter extends CustomPainter {
   // ---- ground and blocks --------------------------------------------------
 
   void _drawGround(Canvas c, DarkomTheme th, DarkomWorld w) {
-    const double W = DarkomWorld.width;
-    const double H = DarkomWorld.height;
+    final double W = w.width;
+    final double H = w.height;
     const double T = 60;
-    c.drawRect(const Rect.fromLTWH(-200, -200, W + 400, H + 400), _p..color = const Color(0xFF080910));
-    c.drawRect(const Rect.fromLTWH(T, T, W - 2 * T, H - 2 * T), _p..color = th.ground);
+    c.drawRect(Rect.fromLTWH(-200, -200, W + 400, H + 400), _p..color = const Color(0xFF080910));
+    c.drawRect(Rect.fromLTWH(T, T, W - 2 * T, H - 2 * T), _p..color = th.ground);
+    if (w.quarters.length == 4) {
+      // The open city: each quarter has the ground colour of its own district.
+      for (int q = 0; q < 4; q++) {
+        final Rect qr = Rect.fromLTWH((q % 2) * W / 2, (q ~/ 2) * H / 2, W / 2, H / 2).intersect(Rect.fromLTWH(T, T, W - 2 * T, H - 2 * T));
+        if (!qr.overlaps(_view)) continue;
+        c.drawRect(qr, _p..color = darkomTheme(w.quarters[q]).ground);
+      }
+    }
     // faint tile grid
     _s
       ..strokeWidth = 1
       ..color = Colors.white.withValues(alpha: 0.025);
     final int gx0 = max(1, (_view.left / T).floor());
-    final int gx1 = min(DarkomWorld.cols - 1, (_view.right / T).ceil());
+    final int gx1 = min(w.cols - 1, (_view.right / T).ceil());
     final int gy0 = max(1, (_view.top / T).floor());
-    final int gy1 = min(DarkomWorld.rows - 1, (_view.bottom / T).ceil());
+    final int gy1 = min(w.rows - 1, (_view.bottom / T).ceil());
     for (int x = gx0; x <= gx1; x++) {
       c.drawLine(Offset(x * T, T), Offset(x * T, H - T), _s);
     }
@@ -196,8 +204,8 @@ class DarkomPainter extends CustomPainter {
           c.drawLine(Offset(x + sx, y), Offset(x + sx + 24, y), _s);
         }
       }
-      for (int ty = w.waterRow; ty < DarkomWorld.rows - 1; ty++) {
-        for (int tx = 1; tx < DarkomWorld.cols - 1; tx++) {
+      for (int ty = w.waterRow; ty < w.rows - 1; ty++) {
+        for (int tx = 1; tx < w.cols - 1; tx++) {
           if (w.cellAt(tx, ty) != 0) continue;
           final Rect pr = Rect.fromLTWH(tx * T, ty * T, T, T);
           if (!pr.overlaps(_view)) continue;

@@ -311,7 +311,7 @@ class _MapBoxState extends State<_MapBox> {
   @override
   Widget build(BuildContext context) {
     final bool c = widget.compact;
-    final double ratio = DarkomWorld.height / DarkomWorld.width;
+    final double ratio = widget.g.world.height / widget.g.world.width;
     double w = c ? 112 : 140;
     if (_big) {
       final double maxW = min(widget.screenW * 0.5, 320.0);
@@ -420,14 +420,14 @@ class DarkomMiniPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double sx = size.width / DarkomWorld.width;
-    final double sy = size.height / DarkomWorld.height;
+    final double sx = size.width / g.world.width;
+    final double sy = size.height / g.world.height;
     final Paint p = Paint();
     final DarkomTheme th = g.theme;
     canvas.drawRect(Offset.zero & size, p..color = th.ground);
     final DarkomWorld w = g.world;
     if (w.waterRow > 0) {
-      canvas.drawRect(Rect.fromLTRB(60 * sx, w.waterRow * 60 * sy, (DarkomWorld.width - 60) * sx, (DarkomWorld.height - 60) * sy), p..color = th.water);
+      canvas.drawRect(Rect.fromLTRB(60 * sx, w.waterRow * 60 * sy, (g.world.width - 60) * sx, (g.world.height - 60) * sy), p..color = th.water);
     }
     for (final DBlock b in w.blocks) {
       final Rect r = Rect.fromLTWH(b.tx * 60 * sx, b.ty * 60 * sy, b.tw * 60 * sx, b.th * 60 * sy);

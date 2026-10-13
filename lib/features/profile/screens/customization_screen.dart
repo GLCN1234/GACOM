@@ -7,6 +7,7 @@ import '../../edu/edu_subscription_service.dart';
 import '../../../shared/widgets/cosmetic_visuals.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../../shared/widgets/rarity.dart';
+import 'boost_shelf.dart';
 import 'shop_extras.dart';
 
 /// Chip order of the shop. 'featured' and 'bundles' are sections; the rest
@@ -25,6 +26,7 @@ const Map<String, String> _chipLabels = {
   'badge': 'Badges',
   'name_color': 'Name colours',
   'bundles': 'Bundles',
+  'boosts': 'Boosts',
 };
 
 class CustomizationScreen extends StatefulWidget {
@@ -482,6 +484,7 @@ class _CustomizationScreenState extends State<CustomizationScreen> {
   Widget _content() {
     if (_tab == 'featured') return _featuredTab();
     if (_tab == 'bundles') return _bundlesTab();
+    if (_tab == 'boosts') return const BoostShelf();
     return _grid(_tab);
   }
 
