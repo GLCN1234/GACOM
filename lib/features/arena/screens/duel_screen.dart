@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/duel_live.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/cosmetics_service.dart';
 import '../../../shared/fx/feedback_fx.dart';
@@ -11,6 +12,7 @@ import '../duels/duel_registry.dart';
 import '../services/duel_service.dart';
 import '../../../shared/widgets/pc_controls_gate.dart';
 import '../widgets/game_logo.dart';
+import '../widgets/duel_versus.dart';
 
 /// One head-to-head duel: wait for an opponent, play the same game with the
 /// same seed, then see who won. The server decides the result.
@@ -28,6 +30,10 @@ class _DuelScreenState extends State<DuelScreen> {
   DuelGame? _game;
   Widget? _gameWidget;
   DuelSession? _session;
+  DuelLive? _live;
+  Map<String, dynamic>? _rivalLoadout;
+  bool _rivalFetching = false;
+  DateTime? _vsUntil;
   Map<String, Map<String, dynamic>> _profiles = <String, Map<String, dynamic>>{};
 
   bool _loading = true;
@@ -79,6 +85,7 @@ class _DuelScreenState extends State<DuelScreen> {
     _tick?.cancel();
     _limit?.cancel();
     _session?.stop();
+    _live?.stop();
     final DuelMatch? m = _m;
     if (m != null && m.isPlayer(_uid)) {
       final bool playing = m.status == 'active' && !_submitted;
@@ -120,12 +127,28 @@ class _DuelScreenState extends State<DuelScreen> {
     if (m.status == 'completed' || m.status == 'cancelled') {
       _limit?.cancel();
       _session?.stop();
+      _live?.stop();
     }
+    _loadRivalLoadout(m);
     if (needProfiles) {
       final Map<String, Map<String, dynamic>> p = await DuelService.profiles(<String>[m.creatorId, if (m.opponentId != null) m.opponentId!]);
       if (mounted) setState(() => _profiles = <String, Map<String, dynamic>>{..._profiles, ...p});
     }
   }
+
+  /// The other player's equipped gear (banner, frame, title, finisher), fetched once.
+  Future<void> _loadRivalLoadout(DuelMatch m) async {
+    final String? uid = _uid;
+    if (uid == null || !m.isPlayer(uid) || _rivalFetching || _rivalLoadout != null) return;
+    final String? oppId = m.otherId(uid);
+    if (oppId == null) return;
+    _rivalFetching = true;
+    final Map<String, dynamic>? l = await CosmeticsService.equipped(oppId);
+    if (!mounted) return;
+    setState(() => _rivalLoadout = l ?? <String, dynamic>{});
+  }
+
+  String? _avatarOf(String? id) => id == null ? null : _profiles[id]?['avatar_url']?.toString();
 
   int _rank(String s) => s == 'waiting' ? 0 : (s == 'active' ? 1 : 2);
 
@@ -141,6 +164,12 @@ class _DuelScreenState extends State<DuelScreen> {
     final DuelSession s = DuelSession(seed: m.seed, onScore: _onScore);
     _session = s;
     s.start();
+    if (_uid != null) {
+      final DuelLive live = DuelLive(m.id, _uid!);
+      _live = live;
+      live.start();
+    }
+    _vsUntil = DateTime.now().add(const Duration(seconds: 5));
     _gameWidget = PcControlsGate(gameKey: g.key, child: g.build());
     if (g.scoring != DuelScoring.firstResult && g.seconds > 0) {
       _limitLeft = g.seconds;
@@ -319,7 +348,15 @@ class _DuelScreenState extends State<DuelScreen> {
       ]);
     }
     if (m.status == 'waiting') return _waitingPanel(m);
-    if (m.status == 'completed') return _resultPanel(m);
+    if (m.status == 'completed') {
+      final bool iWon = m.isPlayer(_uid) && !m.isDraw && m.winnerId == _uid;
+      final bool theyWon = m.isPlayer(_uid) && !m.isDraw && m.winnerId != null && m.winnerId != _uid;
+      return Stack(fit: StackFit.expand, children: <Widget>[
+        _resultPanel(m),
+        if (iWon) DuelFinisherStage(winnerLoadout: CosmeticsService.myLoadout.value),
+        if (theyWon && _rivalLoadout != null) DuelFinisherStage(winnerLoadout: _rivalLoadout),
+      ]);
+    }
     // active
     if (!m.isPlayer(_uid)) {
       return _centered(<Widget>[const Text('Duel in progress.', style: TextStyle(color: GacomColors.textSecondary))]);
@@ -328,7 +365,36 @@ class _DuelScreenState extends State<DuelScreen> {
       return _centered(<Widget>[Text(_error!, style: const TextStyle(color: GacomColors.error))]);
     }
     if (_submitted) return _waitingForOpponent(m);
-    return _gameWidget ?? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange));
+    final Widget game = _gameWidget ?? const Center(child: CircularProgressIndicator(color: GacomColors.deepOrange));
+    final String? oppId = _uid == null ? null : m.otherId(_uid!);
+    final DuelLive? live = _live;
+    final bool showVs = _vsUntil != null && DateTime.now().isBefore(_vsUntil!);
+    return Stack(fit: StackFit.expand, children: <Widget>[
+      game,
+      if (showVs)
+        Positioned(
+          left: 8,
+          right: 8,
+          top: 6,
+          child: IgnorePointer(
+            child: DuelVersusIntro(
+              myName: DuelService.nameOf(_profiles, _uid),
+              myAvatar: _avatarOf(_uid),
+              myLoadout: CosmeticsService.myLoadout.value,
+              rivalName: _name(oppId),
+              rivalAvatar: _avatarOf(oppId),
+              rivalLoadout: _rivalLoadout,
+            ),
+          ),
+        ),
+      if (live != null && live.reported && !showVs)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 8,
+          child: Center(child: DuelRivalBar(live: live, rivalName: _name(oppId))),
+        ),
+    ]);
   }
 
   Widget _button(String label, VoidCallback onTap, {bool secondary = false}) => SizedBox(
@@ -411,9 +477,9 @@ class _DuelScreenState extends State<DuelScreen> {
       _headline(headline, color, won),
       const SizedBox(height: 18),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        _scoreBox(isPlayer ? 'You' : _name(m.creatorId), mine, won),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 14), child: Text('VS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textMuted))),
-        _scoreBox(isPlayer ? _name(oppId) : _name(m.opponentId), theirs, isPlayer && !won && !draw),
+        DuelPlayerChip(name: isPlayer ? 'You' : _name(m.creatorId), avatarUrl: _avatarOf(isPlayer ? uid : m.creatorId), loadout: isPlayer ? CosmeticsService.myLoadout.value : null, score: mine, highlight: won, width: 150, height: 82),
+        const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Text('VS', style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textMuted))),
+        DuelPlayerChip(name: isPlayer ? _name(oppId) : _name(m.opponentId), avatarUrl: _avatarOf(isPlayer ? oppId : m.opponentId), loadout: isPlayer ? _rivalLoadout : null, score: theirs, highlight: isPlayer && !won && !draw, width: 150, height: 82, alignRight: true),
       ]),
       if (reason.isNotEmpty) ...<Widget>[
         const SizedBox(height: 12),
@@ -453,19 +519,4 @@ class _DuelScreenState extends State<DuelScreen> {
       },
     );
   }
-
-  Widget _scoreBox(String name, int? score, bool highlight) => Container(
-        width: 110,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: GacomColors.cardDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: highlight ? GacomColors.success : GacomColors.borderBright, width: highlight ? 1.5 : 1),
-        ),
-        child: Column(children: <Widget>[
-          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: GacomColors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(score == null ? '-' : '$score', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 28, color: GacomColors.textPrimary)),
-        ]),
-      );
 }

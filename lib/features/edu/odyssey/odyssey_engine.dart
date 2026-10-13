@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' show Offset;
 import 'odyssey_questions.dart';
 
 class OdyEnemy {
@@ -229,6 +230,53 @@ class OdysseyEngine {
   double _enemyTimer = 14;
   double _starTimer = 18;
   double _crystalTimer = 1.2;
+
+  // ---- relic rush: a shared objective -------------------------------------------
+  /// Relics to bring in to finish the rush. 0 switches the objective off.
+  int relicGoal = 0;
+  int relicsTaken = 0;
+  bool relicDone = false;
+  /// Points for finishing the rush, kept so the result can show it.
+  int relicBonus = 0;
+  static const double relicRadius = 34;
+  final List<Offset> _relicPts = <Offset>[];
+
+  /// Where relic [i] lies. It depends only on the seed, so two players in a duel
+  /// see every relic in the same place and race to it.
+  Offset relicAt(int i) {
+    while (_relicPts.length <= i) {
+      final int k = _relicPts.length;
+      final Random r = Random(seed * 1009 + k * 7919 + 13);
+      final double ang = r.nextDouble() * pi * 2;
+      final double dist = 560 + r.nextDouble() * 520;
+      final Offset from = k == 0 ? Offset.zero : _relicPts[k - 1];
+      _relicPts.add(Offset(from.dx + cos(ang) * dist, from.dy + sin(ang) * dist));
+    }
+    return _relicPts[i];
+  }
+
+  Offset get relicNow => relicAt(relicsTaken);
+
+  void _relicStep() {
+    if (relicGoal <= 0) return;
+    final Offset r = relicNow;
+    final double dx = r.dx - px;
+    final double dy = r.dy - py;
+    final double reach = relicRadius + playerRadius;
+    if (dx * dx + dy * dy > reach * reach) return;
+    relicsTaken++;
+    score += 300;
+    _gainXp(6);
+    cues.add('star');
+    _toast('Relic $relicsTaken taken  +300', true);
+    if (!relicDone && relicsTaken >= relicGoal) {
+      relicDone = true;
+      // Faster is worth more, and the sum depends only on this player's own clock.
+      relicBonus = max(100, 700 - (time * 3).round());
+      score += relicBonus;
+      _say('RELIC RUSH COMPLETE  +$relicBonus');
+    }
+  }
 
   OdysseyEngine({required this.pool, required this.subjects, required this.mixed, required this.seed, required this.rng, this.allowRest = true, this.labels = const <String, String>{}});
 
@@ -765,6 +813,8 @@ class OdysseyEngine {
       }
       return dx * dx + dy * dy > 1000 * 1000 || c.age > 45;
     });
+
+    _relicStep();
 
     // --- quests ---
     if (allowRest) {

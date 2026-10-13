@@ -5,10 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/services/duel_live.dart';
 import '../../../core/services/duel_session.dart';
 import '../../../core/services/game_score_service.dart';
 import '../../../core/services/sound_service.dart';
 import '../../../shared/fx/feedback_fx.dart';
+import '../../../core/services/cosmetics_service.dart';
+import '../../../shared/widgets/cosmetic_art.dart' show FinisherOverlay, artColor, artColor2;
 import '../../../shared/widgets/cosmetic_avatar.dart' show paintCosmeticTrail;
 import '../edu_progress_recorder.dart';
 import '../realms/realm_kit.dart' show HeroLook, ObjectiveArrowPainter, RealmDraw, realmDarken, realmLighten;
@@ -60,6 +63,9 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   bool _paused = false;
   bool _intro = false;
   bool _inDuel = false;
+  int _repSec = -1;
+  bool _finisherOn = false;
+  bool _finisherShown = false;
   bool _ended = false;
   bool _saved = false;
   JourneyRunResult? _journey;
@@ -226,6 +232,10 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       allowRest: !_inDuel,
       labels: <String, String>{for (final MapEntry<String, OdySubject> en in _subjects.entries) en.key: en.value.label},
     );
+    e.relicGoal = _inDuel ? 5 : 0;
+    _finisherOn = false;
+    _finisherShown = false;
+    _repSec = -1;
     _engine = e;
     _loadHero(e);
     _ended = false;
@@ -250,6 +260,15 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     _applyKeys(e);
     e.step(dt);
     _playCues(e);
+    if (_inDuel && e.time.floor() != _repSec) {
+      _repSec = e.time.floor();
+      DuelLive.current?.report(score: e.finalScore, relics: e.relicsTaken, goalRelics: e.relicGoal);
+    }
+    if (e.relicDone && !_finisherShown) {
+      _finisherShown = true;
+      // The finisher you bought plays when you finish the rush.
+      if (CosmeticsService.artOf(CosmeticsService.myLoadout.value, 'finisher') != null) _finisherOn = true;
+    }
     if (_maxSeconds != null && e.time >= _maxSeconds!) e.over = true;
     _frame.value++;
     if (e.novaFlash) HapticFeedback.mediumImpact();
@@ -422,6 +441,21 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
               ),
             ),
             SafeArea(child: _hud(e)),
+            if (_finisherOn && !_ended)
+              Positioned.fill(
+                child: Builder(builder: (BuildContext context) {
+                  final Map<String, dynamic>? art = CosmeticsService.artOf(CosmeticsService.myLoadout.value, 'finisher');
+                  if (art == null) return const SizedBox.shrink();
+                  return FinisherOverlay(
+                    kind: art['kind']?.toString() ?? 'shockwave',
+                    color: artColor(art),
+                    color2: artColor2(art, Colors.white),
+                    onDone: () {
+                      if (mounted) setState(() => _finisherOn = false);
+                    },
+                  );
+                }),
+              ),
             if (e.gate != null && !_ended) _gateOverlay(e),
             if (_intro) _introOverlay(),
             if (_paused && !_ended) _pauseOverlay(),
@@ -452,7 +486,12 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       }
     }
 
-    if (rm != null && e.resting) {
+    if (e.relicGoal > 0) {
+      text = e.relicsTaken >= e.relicGoal
+          ? 'Relic rush complete. Every extra relic is still +300'
+          : 'Relic rush  ${e.relicsTaken}/${e.relicGoal}. Reach the relic before your rival';
+      consider(e.relicNow.dx, e.relicNow.dy);
+    } else if (rm != null && e.resting) {
       final int shown = rm.progress > rm.target ? rm.target : rm.progress;
       text = e.restMissionDone ? 'Mission done. Tap READY for your question' : 'Rest mission: ${rm.title}  $shown/${rm.target}';
       if (!e.restMissionDone && rm.kind == 'coins') {
@@ -561,6 +600,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
           if (e.resting) _pill('Free roam ${_clock(e.freeLeft)}', Icons.self_improvement_rounded, const Color(0xFF80D8FF)),
           if (e.resting && e.restMission != null)
             _pill(e.restMissionDone ? 'Mission done' : '${e.restMission!.title}  ${e.restMission!.progress > e.restMission!.target ? e.restMission!.target : e.restMission!.progress}/${e.restMission!.target}', Icons.flag_circle_rounded, e.restMissionDone ? const Color(0xFF69F0AE) : const Color(0xFFFFD54F)),
+          if (e.relicGoal > 0) _pill('Relics ${min(e.relicsTaken, e.relicGoal)}/${e.relicGoal}', Icons.diamond_rounded, const Color(0xFFFFD54F)),
           if (_maxSeconds != null) _pill('${max(0, (_maxSeconds! - e.time).ceil())}s', Icons.timer_rounded, Colors.white),
         ]),
       ),
@@ -1016,6 +1056,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                   _stat('Best streak', '${e.bestStreak}'),
                   _stat('XP', '+${e.xp}'),
                   if (e.questsDone > 0) _stat('Quests', '${e.questsDone}'),
+                  if (e.relicGoal > 0) _stat('Relics', '${e.relicsTaken}'),
+                  if (e.relicBonus > 0) _stat('Rush bonus', '+${e.relicBonus}'),
                   if (!_inDuel) _stat('Level', '${e.heroLevel}'),
                   if (e.missionsDone > 0) _stat('Missions', '${e.missionsDone}'),
                   if (e.corrected > 0) _stat('Corrected', '${e.corrected}'),
@@ -1151,6 +1193,28 @@ class _WorldPainter extends CustomPainter {
       canvas.drawOval(Rect.fromCenter(center: Offset(c.x, c.y), width: 20 * squash + 4, height: 20), _p);
       _p.color = const Color(0xFFFFE082);
       canvas.drawOval(Rect.fromCenter(center: Offset(c.x, c.y), width: 11 * squash + 2, height: 12), _p);
+    }
+
+    // the relic of the duel's shared objective
+    if (engine.relicGoal > 0) {
+      final Offset rp = engine.relicNow;
+      final double pulse = 1 + sin(engine.time * 4) * 0.08;
+      final Offset c = Offset(rp.dx, rp.dy + sin(engine.time * 2.4) * 5);
+      _p.color = const Color(0xFFFFD54F).withValues(alpha: 0.14);
+      canvas.drawCircle(c, 78 * pulse, _p);
+      _p.color = const Color(0xFFFFD54F).withValues(alpha: 0.26);
+      canvas.drawCircle(c, 52 * pulse, _p);
+      final Path gem = Path()
+        ..moveTo(c.dx, c.dy - 30)
+        ..lineTo(c.dx + 19, c.dy)
+        ..lineTo(c.dx, c.dy + 30)
+        ..lineTo(c.dx - 19, c.dy)
+        ..close();
+      _p.color = const Color(0xFFFFE082);
+      canvas.drawPath(gem, _p);
+      canvas.drawPath(gem, Paint()..style = PaintingStyle.stroke..strokeWidth = 3..color = Colors.white);
+      canvas.drawCircle(c, 64 * pulse, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFFFFD54F).withValues(alpha: 0.7));
+      _label(canvas, 'RELIC ${engine.relicsTaken + 1}', Offset(c.dx, c.dy - 62));
     }
 
     // stars: life (red heart star) and shield (blue)
