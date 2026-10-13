@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/services/supabase_service.dart';
 import '../edu_progress_recorder.dart';
+import '../question_quality.dart';
 import 'odyssey_bank.dart';
 
 /// One subject region of the world.
@@ -241,8 +242,13 @@ class QuestionPool {
       }
     }
     if (answer == null || !options.contains(answer)) return null;
-    final List<String> wrong = options.where((String o) => o != answer).toList()..shuffle(rng);
-    return _build(qd.trim(), answer, wrong.take(3).toList(), subject, topic, school, rng);
+    // A question that cannot be answered on its own never reaches a player.
+    // School questions also have to fit the small question card of a fast game.
+    if (QuestionQuality.problem(qd, options, answer, maxLen: school ? 320 : 0) != null) return null;
+    final String cleanAnswer = QuestionQuality.stripLetter(answer, options);
+    final List<String> cleanOptions = QuestionQuality.stripLetters(options);
+    final List<String> wrong = cleanOptions.where((String o) => o != cleanAnswer).toList()..shuffle(rng);
+    return _build(qd.trim(), cleanAnswer, wrong.take(3).toList(), subject, topic, school, rng);
   }
 }
 
@@ -284,13 +290,14 @@ class OdysseyData {
         final String topic = (m['topic'] as String?) ?? '';
         final dynamic gq = m['generated_questions'];
         if (gq is! List) continue;
-        for (final dynamic q in gq) {
-          if (q is Map) {
-            final Map<String, dynamic> qm = Map<String, dynamic>.from(q);
-            qm['topic'] = topic;
-            out.putIfAbsent(sid, () => <Map<String, dynamic>>[]).add(qm);
-            labels[sid] = label;
-          }
+        final List<Map<String, dynamic>> pre = <Map<String, dynamic>>[
+          for (final dynamic q in gq)
+            if (q is Map) Map<String, dynamic>.from(q),
+        ];
+        for (final Map<String, dynamic> qm in QuestionQuality.filterTopic(pre)) {
+          qm['topic'] = topic;
+          out.putIfAbsent(sid, () => <Map<String, dynamic>>[]).add(qm);
+          labels[sid] = label;
         }
       }
     } catch (e) {

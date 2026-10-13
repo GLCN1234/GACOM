@@ -88,6 +88,43 @@ async function callGemini(apiKey: string, prompt: string, maxTokens: number, att
   return text.trim()
 }
 
+// ---- question quality: a question must stand on its own ----------------------
+// Mirrors the database guard (20261106_question_quality.sql) and the app filter
+// (lib/features/edu/question_quality.dart). Keep the three in step.
+const PRE = '(?:according to|based on|from|in|using|refer to|read|reading|within|throughout)'
+const VN = '(?:diagram|figure|picture|image|graph|chart|illustration|table)'
+const UNSEEN = new RegExp([
+  '\\b(?:the|this)\\s+(?:passage|extract|excerpt|article)\\b',
+  '\\b(?:why|how) does the (?:author|writer|poet|narrator)\\b',
+  "\\bthe\\s+(?:author|writer|poet|narrator)(?:['\u2019]s)?\\s+(?:choice|decision|use of|description of|mention of|inclusion|reason|says|states|tells|describes|mentions|implies|suggests|uses|intends|means)\\b",
+  '\\bin this context\\b',
+  `\\b${PRE}\\s+(?:the|this)\\s+(?:poem|paragraph|text|dialogue|comprehension)\\b(?!['\u2019]s)`,
+  '\\b(?:poem|paragraph|text|passage|extract|excerpt|dialogue)\\s+(?:above|below)\\b',
+  '\\b(?:above|below|following)\\s+(?:passage|poem|text|extract|excerpt|dialogue|paragraph)\\b',
+  `\\b${VN}\\b[^.?!]{0,25}\\b(?:above|below)\\b`,
+  `\\b(?:above|below|following|given)\\s+${VN}\\b`,
+  '\\bin the (?:diagram|figure|picture|image|graph|chart|illustration)\\b',
+  '\\bthe (?:diagram|figure|picture|image|graph|chart|illustration) (?:shows|above|below)\\b',
+  '\\b(?:shown|given|drawn)\\s+(?:above|below)\\b',
+].join('|'), 'i')
+const QUOTED = /[\u201c"][^\u201d"]{25,}[\u201d"]|(?:^|[\s:(])'(?:[^']|(?<=\w)'(?=\w)){25,}'(?:[\s.,;:?!)]|$)/
+const POSITIONAL = /\b(?:all|none|both|neither)\s+of\s+the\s+above\b|\bboth\s+[a-d]\s+and\s+[a-d]\b|\b[a-d]\s+and\s+[a-d]\s+only\b|^\s*[a-d]\s+and\s+[a-d]\s*$|\babove\s+options?\b/i
+const LETTER = /^\s*[A-Da-d][.)]\s+/
+
+function isSelfContained(q: any): boolean {
+  const text = String(q?.question ?? '')
+  if (!text.trim()) return false
+  if (UNSEEN.test(text) && !QUOTED.test(text)) return false
+  const opts = Array.isArray(q?.options) ? q.options.map((o: any) => String(o)) : null
+  if (opts) {
+    if (opts.some((o: string) => POSITIONAL.test(o))) return false
+    const shown = opts.every((o: string) => LETTER.test(o)) ? opts.map((o: string) => o.replace(LETTER, '').trim()) : opts.map((o: string) => o.trim())
+    if (new Set(shown).size < shown.length) return false
+    if (q.answer !== undefined && q.answer !== null && !opts.includes(String(q.answer))) return false
+  }
+  return true
+}
+
 function parseBatchJSON(rawText: string, levelLabel: string): { questions: any[]; chapterUpdate: string } {
   let cleaned = rawText.trim()
   cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
@@ -141,13 +178,18 @@ Rules:
 - "narrative_failure": short gentle in-world line for wrong answer (never "wrong")
 - "concept": one sentence, plain academic language, for parent/teacher review
 - If "Boss Battle" stage, questions feel like a climactic showdown
+- SELF-CONTAINED: a question is shown alone, in any order, with its options shuffled. It must NEVER refer to a passage, text, poem, story, diagram, picture, table, graph or "above/below" that is not written inside the question itself. For reading comprehension, put the whole passage (at most 50 words, in quotation marks) inside that same question
+- NEVER use options like "All of the above", "None of the above", "Both A and B" or any option that refers to another option
+- Exactly ONE option is correct and the other three are clearly wrong to someone who knows the topic. No trick wording, no opinion questions, no "which is best" questions with more than one defensible answer. Hard is fine; ambiguous is not
+- Keep every question under 300 characters unless it carries its own quoted passage
 
 Respond with ONLY this JSON object, nothing else:
 {"questions":[{"type":"multiple_choice","question":"...","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A. ...","steps":["Step 1: ...","Step 2: ..."],"narrative_success":"...","narrative_failure":"...","concept":"..."}],"chapter_update":"One or two sentences: what this stretch of the adventure just accomplished, to carry forward into the next chapter."}`
 
   const rawText = await callGemini(apiKey, prompt, 4096)
   const { questions, chapterUpdate } = parseBatchJSON(rawText, level.label)
-  const tagged = questions.map((q: any) => ({ ...q, level: level.key, level_label: level.label, world_theme: worldTheme }))
+  const usable = questions.filter(isSelfContained)
+  const tagged = usable.map((q: any) => ({ ...q, level: level.key, level_label: level.label, world_theme: worldTheme }))
   return { questions: tagged, chapterUpdate }
 }
 

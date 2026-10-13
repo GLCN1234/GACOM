@@ -1,3 +1,4 @@
+import '../question_quality.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -40,7 +41,7 @@ class _CurriculumGamePickerScreenState extends State<CurriculumGamePickerScreen>
           .select('topic,subject,generated_questions')
           .eq('id', widget.curriculumId)
           .single();
-      final qs = List<Map<String, dynamic>>.from(row['generated_questions'] as List? ?? const []);
+      final qs = QuestionQuality.filterTopic(List<Map<String, dynamic>>.from(row['generated_questions'] as List? ?? const []));
       if (mounted) setState(() {
         _topic = row['topic'] as String? ?? 'This Topic';
         _subjectLabel = row['subject'] as String? ?? '';
