@@ -129,6 +129,7 @@ class _DarkomScreenState extends State<DarkomScreen> {
         RealmAction(3, Icons.swap_horiz_rounded, 'SWAP'),
       ],
       joystick: true,
+      actionScale: 1.22,
       background: const Color(0xFF05060A),
       learning: false,
       skipIntro: _skipIntro,

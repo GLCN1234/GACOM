@@ -7,6 +7,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 /// A top-down survival shooter: joystick to move, auto-fires at the
 /// nearest enemy. No networking at all — this is the free, fully local
@@ -97,6 +98,7 @@ class ShooterGame extends FlameGame
 
   void addScore(int points) {
     score += points;
+    DuelLive.current?.progress(score);
     scoreNotifier.value = score;
   }
 

@@ -171,6 +171,25 @@ class _DuelRivalBarState extends State<DuelRivalBar> {
           final int diff = mine - theirs;
           final bool ahead = diff >= 0;
           final int goal = live.goal > 0 ? live.goal : (r?.goal ?? 0);
+          // Games that only have a final result: show status, not a score race.
+          final bool scored = live.progressive || (r?.progressive ?? false) || goal > 0;
+          if (!scored) {
+            final bool theyDone = r?.done ?? false;
+            final String status = r == null
+                ? 'Waiting for ${widget.rivalName}...'
+                : theyDone
+                    ? '${widget.rivalName} finished with $theirs'
+                    : '${widget.rivalName} is playing';
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(color: const Color(0xCC0B0B0F), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white24)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+                Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: theyDone ? const Color(0xFF69F0AE) : const Color(0xFF40C4FF))),
+                const SizedBox(width: 8),
+                Text(status, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+              ]),
+            );
+          }
           String line;
           Color lineColor;
           if (_flash.isNotEmpty) {
@@ -179,6 +198,9 @@ class _DuelRivalBarState extends State<DuelRivalBar> {
           } else if (r == null) {
             line = 'Waiting for ${widget.rivalName}...';
             lineColor = Colors.white60;
+          } else if (r.done) {
+            line = '${widget.rivalName} finished with $theirs';
+            lineColor = const Color(0xFF69F0AE);
           } else if (diff == 0) {
             line = 'Level scores';
             lineColor = Colors.white70;

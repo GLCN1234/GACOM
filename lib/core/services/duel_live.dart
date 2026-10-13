@@ -9,7 +9,13 @@ class RivalLive {
   final int relics;
   final int goal;
   final DateTime at;
-  const RivalLive({required this.userId, required this.score, required this.relics, required this.goal, required this.at});
+
+  /// True once the rival has finished and sent their final number.
+  final bool done;
+
+  /// True when the rival's game sends running scores (not just a final one).
+  final bool progressive;
+  const RivalLive({required this.userId, required this.score, required this.relics, required this.goal, required this.at, this.done = false, this.progressive = false});
 }
 
 /// A light live link between the two players of one duel, so each can see the
@@ -31,6 +37,13 @@ class DuelLive {
   /// True once the game has reported at least once. Games that never report
   /// show no live bar.
   bool reported = false;
+
+  /// True once the game on screen sends running scores through [progress].
+  bool progressive = false;
+
+  /// True after [finish] has been called.
+  bool finished = false;
+  int _lastAt = 0;
 
   RealtimeChannel? _ch;
   bool _subscribed = false;
@@ -58,11 +71,16 @@ class DuelLive {
           relics: _int(p['r']),
           goal: _int(p['g']),
           at: DateTime.now(),
+          done: _int(p['f']) == 1,
+          progressive: _int(p['m']) == 1,
         );
       });
       ch.subscribe((RealtimeSubscribeStatus status, Object? error) {
         if (_disposed) return;
         _subscribed = status == RealtimeSubscribeStatus.subscribed;
+        if (_subscribed && reported) {
+          report(score: mineScore.value, relics: mineRelics.value, goalRelics: goal, force: true);
+        }
       });
     } catch (_) {
       // a duel plays fine without the live link
@@ -72,7 +90,7 @@ class DuelLive {
   static int _int(dynamic v) => v is num ? v.toInt() : (int.tryParse('$v') ?? 0);
 
   /// Called by the game about once a second.
-  void report({required int score, int relics = 0, int goalRelics = 0}) {
+  void report({required int score, int relics = 0, int goalRelics = 0, bool force = false}) {
     if (_disposed) return;
     reported = true;
     mineScore.value = score;
@@ -80,13 +98,52 @@ class DuelLive {
     if (goalRelics > 0) goal = goalRelics;
     final RealtimeChannel? ch = _ch;
     if (ch == null || !_subscribed) return;
-    final int stamp = score * 31 + relics;
-    if (stamp == _lastSent) return;
+    final int stamp = score * 31 + relics + (finished ? 1 : 0);
+    if (!force && stamp == _lastSent) return;
     _lastSent = stamp;
     try {
-      final Future<dynamic> f = ch.sendBroadcastMessage(event: 'p', payload: <String, dynamic>{'u': myId, 's': score, 'r': relics, 'g': goal});
+      final Future<dynamic> f = ch.sendBroadcastMessage(
+        event: 'p',
+        payload: <String, dynamic>{'u': myId, 's': score, 'r': relics, 'g': goal, 'f': finished ? 1 : 0, 'm': progressive ? 1 : 0},
+      );
       f.then((dynamic _) {}, onError: (Object _) {});
     } catch (_) {}
+  }
+
+  /// Any game can call this whenever its score changes. It is rate limited,
+  /// so calling it on every point is fine. Safe to call outside a duel via
+  /// `DuelLive.current?.progress(score)`.
+  void progress(int score) {
+    if (_disposed || finished) return;
+    progressive = true;
+    mineScore.value = score;
+    reported = true;
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastAt < 700) return;
+    _lastAt = now;
+    report(score: score, relics: mineRelics.value, goalRelics: goal);
+  }
+
+  /// Tells the rival this player has finished, with the number being submitted.
+  void finish(int score) {
+    if (_disposed) return;
+    finished = true;
+    report(score: score, relics: mineRelics.value, goalRelics: goal, force: true);
+    // one repeat, in case the first message was dropped
+    Future<void>.delayed(const Duration(seconds: 2), () {
+      if (!_disposed) report(score: score, relics: mineRelics.value, goalRelics: goal, force: true);
+    });
+  }
+
+  /// Marks the duel as live so the rival bar shows even for games that only
+  /// have a final result. Sends a first "playing" message.
+  void markPlaying() {
+    if (_disposed) return;
+    reported = true;
+    report(score: mineScore.value, relics: mineRelics.value, goalRelics: goal, force: true);
+    Future<void>.delayed(const Duration(seconds: 3), () {
+      if (!_disposed && !finished) report(score: mineScore.value, relics: mineRelics.value, goalRelics: goal, force: true);
+    });
   }
 
   Future<void> stop() async {

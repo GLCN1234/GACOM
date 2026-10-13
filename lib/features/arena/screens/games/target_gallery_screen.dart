@@ -7,6 +7,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class GalleryTarget {
   final int type; // 0 normal, 1 small, 2 gold, 3 friendly
@@ -105,6 +106,7 @@ class GalleryEngine {
     }
     final int pts = best.points * multiplier;
     score += pts;
+    DuelLive.current?.progress(score);
     combo++;
     hits++;
     lastPoints = pts;

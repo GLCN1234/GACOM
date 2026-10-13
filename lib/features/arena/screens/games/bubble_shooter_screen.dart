@@ -6,6 +6,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 const List<Color> kBbColors = [
   Color(0xFFEF5350),
@@ -259,9 +260,11 @@ class BubbleEngine {
       for (final k in cluster) { grid[k ~/ 11][k % 11] = -1; }
       lastPopped = cluster.length;
       score += cluster.length * 10 + (cluster.length - 3) * 5;
+      DuelLive.current?.progress(score);
       final int dropped = _dropFloating();
       lastDropped = dropped;
       score += dropped * 20;
+      DuelLive.current?.progress(score);
       misses = 0;
     } else {
       misses++;
@@ -271,6 +274,7 @@ class BubbleEngine {
       level++;
       levelUps++;
       score += 500;
+      DuelLive.current?.progress(score);
       colors = min(6, 3 + level);
       _newBoard();
     } else if (misses >= missLimit) {

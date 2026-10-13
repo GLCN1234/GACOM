@@ -8,6 +8,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class BzBullet {
   double x;
@@ -143,6 +144,7 @@ class BlasterEngine {
 
   void _onKill(BzEnemy e) {
     score += e.type == 0 ? 10 : (e.type == 1 ? 25 : 50);
+    DuelLive.current?.progress(score);
     if (rng.nextDouble() < 0.14) {
       final double k = rng.nextDouble();
       powers.add(BzPower(k < 0.5 ? 0 : (k < 0.9 ? 1 : 2), e.x, e.y));
@@ -245,6 +247,7 @@ class BlasterEngine {
             weapon++;
           } else {
             score += 100;
+            DuelLive.current?.progress(score);
           }
         } else if (p.kind == 1) {
           shield = 8.0;
@@ -253,6 +256,7 @@ class BlasterEngine {
             lives++;
           } else {
             score += 100;
+            DuelLive.current?.progress(score);
           }
         }
       }

@@ -7,6 +7,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 // A distinct, vibrant palette — warm sunset gradient, not the dark
 // cyan/panel look used by Signal Run or Drone Breach.
@@ -202,6 +203,7 @@ class _SignalMatchScreenState extends State<SignalMatchScreen> {
     HapticFeedback.mediumImpact();
     if (gem.isTarget) {
       _score += 20;
+      DuelLive.current?.progress(_score);
       _correctCount++;
       SoundService.instance.playCorrect();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 10, questionsAnswered: 1, correctAnswers: 1);

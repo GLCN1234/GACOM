@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
+import '../../../../core/services/duel_live.dart';
 
 /// Void Protocols: Entropy Breach — rebuilt as a real physics
 /// trajectory puzzle, not a twin-stick shooter. The player sets a
@@ -179,6 +180,7 @@ class VoidProtocolsController extends ChangeNotifier {
     levelComplete = true;
     final points = max(5, 20 - (attemptsThisLevel - 1) * 5);
     score += points;
+    DuelLive.current?.progress(score);
     SoundService.instance.playWin();
     notifyListeners();
   }

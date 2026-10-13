@@ -5,6 +5,7 @@ import '../../../edu/edu_progress_recorder.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
+import '../../../../core/services/duel_live.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
@@ -173,6 +174,7 @@ class _DroneBreachScreenState extends State<DroneBreachScreen> {
     drone.shotCorrectly = drone.isTarget;
     if (drone.isTarget) {
       _score += 20;
+      DuelLive.current?.progress(_score);
       _correctCount++;
       SoundService.instance.playCorrect();
       EduProgressRecorder.recordSession(subject: widget.subject, xpEarned: 10, questionsAnswered: 1, correctAnswers: 1);

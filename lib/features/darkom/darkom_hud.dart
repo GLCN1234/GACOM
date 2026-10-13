@@ -5,6 +5,7 @@ import '../../shared/widgets/cosmetic_art.dart';
 import '../../shared/widgets/cosmetic_avatar.dart';
 import '../../shared/widgets/weapon_art.dart';
 import '../edu/realms/realm_kit.dart';
+import '../edu/realms/realm_shell.dart' show realmActionPadWidth;
 import 'darkom_entities.dart';
 import 'darkom_logic.dart';
 import 'darkom_missions.dart';
@@ -28,9 +29,16 @@ Widget darkomHud(BuildContext context, RealmLogic logic, VoidCallback refresh) {
   return Positioned.fill(
     child: Stack(children: <Widget>[
       Positioned(left: 10, top: compact ? 44 : 132, child: IgnorePointer(child: _playerBlock(g))),
-      Positioned(right: 10, top: compact ? 54 : 132, child: IgnorePointer(child: _miniMap(g, compact))),
+      Positioned(right: 10, top: compact ? 54 : 132, child: _MapBox(g: g, compact: compact, screenW: sz.width, screenH: sz.height)),
+      if (!g.over && !g.missionDone && !g.heroDead)
+        Positioned(
+          left: compact ? 205 : 12,
+          right: compact ? 130 : 12,
+          top: compact ? 88 : 140,
+          child: IgnorePointer(child: Align(alignment: Alignment.topCenter, child: _tracker(g, compact))),
+        ),
       if (toast != null) Positioned(left: 10, bottom: compact ? 10 : 24, child: IgnorePointer(child: _toastCard(toast, toastW))),
-      Positioned(right: compact ? 144 : 96, bottom: compact ? 8 : 22, child: _swapCard(g, refresh, compact)),
+      Positioned(right: realmActionPadWidth(compact, 1.22) + (compact ? 6 : 10), bottom: compact ? 8 : 22, child: _swapCard(g, refresh, compact)),
       if (g.mission != null && g.phase == 5 && g.missionDone)
         Positioned.fill(child: _MissionFx(key: ValueKey<String>('${g.mission!.id}:${g.missionStart}'), compact: compact)),
       if (g.mission != null && g.phase == 5 && g.missionDone)
@@ -182,9 +190,142 @@ Widget _playerBlock(DarkomLogic g) {
   ]);
 }
 
-Widget _miniMap(DarkomLogic g, bool compact) {
-  final double w = compact ? 84 : 112;
-  final double h = compact ? 63 : 84;
+/// What the player is doing right now, with a progress bar when the goal can
+/// be counted: kills, chips, seconds held, the mission clock and lives.
+Widget _tracker(DarkomLogic g, bool compact) {
+  double? frac;
+  String right = '';
+  String title;
+  IconData icon = Icons.flag_rounded;
+  Color color = _hudGold;
+  if (g.roam) {
+    title = 'Free roam';
+    right = 'Wave ${g.wave}';
+    icon = Icons.local_fire_department_rounded;
+    color = const Color(0xFFFF9100);
+  } else if (g.mission != null) {
+    final DarkomMission m = g.mission!;
+    title = m.title;
+    color = m.tierColor;
+    if (g.phase == 0) {
+      switch (g.cKind) {
+        case 'clear':
+          if (g.cTarget > 0) { frac = g.cKills / g.cTarget; right = '${g.cKills}/${g.cTarget}'; }
+          icon = Icons.whatshot_rounded;
+          break;
+        case 'collect':
+          if (g.cTarget > 0) { frac = g.collected / g.cTarget; right = '${g.collected}/${g.cTarget}'; }
+          icon = Icons.memory_rounded;
+          break;
+        case 'survive':
+          if (g.cTarget > 0) { frac = g.cTimer / g.cTarget; right = '${max(0, (g.cTarget - g.cTimer).ceil())} s'; }
+          icon = Icons.shield_rounded;
+          break;
+        case 'recover':
+          frac = g.carrying ? 0.6 : 0.2;
+          right = g.carrying ? 'Go to the gate' : 'Find the shard';
+          icon = Icons.diamond_rounded;
+          break;
+        case 'escort':
+          right = 'Escort';
+          icon = Icons.people_alt_rounded;
+          break;
+        case 'hunt':
+          right = 'Hunt';
+          icon = Icons.gps_fixed_rounded;
+          break;
+      }
+    }
+  } else {
+    title = 'Chapter ${g.ch.n}: ${g.ch.name}';
+    if (g.cTarget > 0 && g.phase == 0) {
+      frac = (g.cKind == 'collect' ? g.collected : g.cKills) / g.cTarget;
+      right = g.cKind == 'collect' ? '${g.collected}/${g.cTarget}' : '${g.cKills}/${g.cTarget}';
+    }
+  }
+  final String? dist = g.objectiveDistance;
+  return Container(
+    constraints: BoxConstraints(maxWidth: compact ? 260 : 330),
+    padding: const EdgeInsets.fromLTRB(10, 6, 10, 7),
+    decoration: BoxDecoration(color: const Color(0xB30B0B0F), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.85), width: 1.2)),
+    child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
+      Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Icon(icon, color: color, size: 15),
+        const SizedBox(width: 6),
+        Flexible(child: Text(title.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: color, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 12.5, letterSpacing: 0.6))),
+        if (right.isNotEmpty) ...<Widget>[
+          const SizedBox(width: 10),
+          Text(right, style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 13)),
+        ],
+        if (dist != null) ...<Widget>[
+          const SizedBox(width: 10),
+          const Icon(Icons.navigation_rounded, color: Colors.white54, size: 12),
+          const SizedBox(width: 2),
+          Text(dist, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 11.5)),
+        ],
+      ]),
+      if (frac != null) ...<Widget>[
+        const SizedBox(height: 5),
+        _bar(compact ? 200 : 260, 6, frac, color),
+      ],
+      if (g.mission != null) ...<Widget>[
+        const SizedBox(height: 4),
+        Row(mainAxisSize: MainAxisSize.min, children: <Widget>[
+          for (int i = 0; i < 3; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 3),
+              child: Icon(i < g.lives ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 12, color: i < g.lives ? _hudRed : Colors.white24),
+            ),
+        ]),
+      ],
+    ]),
+  );
+}
+
+/// The corner minimap. Tap it to open it large, tap again to shrink it. It
+/// never pauses the game, so it is semi transparent when open.
+class _MapBox extends StatefulWidget {
+  final DarkomLogic g;
+  final bool compact;
+  final double screenW;
+  final double screenH;
+  const _MapBox({required this.g, required this.compact, required this.screenW, required this.screenH});
+
+  @override
+  State<_MapBox> createState() => _MapBoxState();
+}
+
+class _MapBoxState extends State<_MapBox> {
+  bool _big = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool c = widget.compact;
+    final double ratio = DarkomWorld.height / DarkomWorld.width;
+    double w = c ? 112 : 140;
+    if (_big) {
+      final double maxW = min(widget.screenW * 0.5, 320.0);
+      final double maxH = widget.screenH * (c ? 0.62 : 0.4);
+      w = min(maxW, maxH / ratio);
+    }
+    final double h = w * ratio;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _big = !_big),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: <Widget>[
+        Opacity(opacity: _big ? 0.92 : 1.0, child: _miniMap(widget.g, w, h)),
+        const SizedBox(height: 3),
+        Text(_big ? 'Tap to shrink' : 'Tap for big map', style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.w600)),
+        if (_big) ...<Widget>[
+          const SizedBox(height: 2),
+          const Text('Gold flag: goal   Red: enemy   Green: ally', style: TextStyle(color: Colors.white54, fontSize: 9)),
+        ],
+      ]),
+    );
+  }
+}
+
+Widget _miniMap(DarkomLogic g, double w, double h) {
   return Container(
     width: w,
     height: h,

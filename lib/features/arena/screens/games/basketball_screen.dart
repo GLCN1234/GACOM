@@ -7,6 +7,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 /// Side-view free throws on a 100 x 150 court. y grows downward.
 class BasketEngine {
@@ -115,6 +116,7 @@ class BasketEngine {
       if (streak > bestStreak) { bestStreak = streak; }
       lastPoints = 2 + (streak >= 5 ? 2 : (streak >= 3 ? 1 : 0));
       score += lastPoints;
+      DuelLive.current?.progress(score);
       makes++;
     }
     if (bx < ballR) {

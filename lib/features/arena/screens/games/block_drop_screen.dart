@@ -8,6 +8,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class BdShape {
   final int n; // size of the square the piece rotates inside
@@ -151,6 +152,7 @@ class BlockDropEngine {
     p.row += 1;
     if (_try(p)) {
       score += 1;
+      DuelLive.current?.progress(score);
       return true;
     }
     return false;
@@ -167,6 +169,7 @@ class BlockDropEngine {
       d++;
     }
     score += 2 * d;
+    DuelLive.current?.progress(score);
     _lock();
   }
 
@@ -228,6 +231,7 @@ class BlockDropEngine {
     }
     if (cleared > 0) {
       score += _lineScore[cleared] * level;
+      DuelLive.current?.progress(score);
       lines += cleared;
     }
     _spawn();

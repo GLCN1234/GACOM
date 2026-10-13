@@ -7,6 +7,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 /// Chrono-Spire: The Cellular Siege — a top-down twin-stick shooter.
 /// The Chemistry mechanic: payloads (Acid/Thermal/Electro) actually
@@ -154,6 +155,7 @@ class ChronoSpireGame extends FlameGame with HasCollisionDetection, DragCallback
 
   void addScore(int points) {
     score += points;
+    DuelLive.current?.progress(score);
     scoreNotifier.value = score;
   }
 

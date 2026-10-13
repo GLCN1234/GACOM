@@ -6,6 +6,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/playing_card.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class SCard {
   final PlayingCard card;
@@ -64,6 +65,7 @@ class Sol {
     if (s.tab[col].isNotEmpty && !s.tab[col].last.up) {
       s.tab[col].last.up = true;
       s.score += 5;
+      DuelLive.current?.progress(s.score);
     }
   }
 
@@ -94,6 +96,7 @@ class Sol {
     s.waste.removeLast();
     s.tab[to].add(c);
     s.score += 5;
+    DuelLive.current?.progress(s.score);
     return true;
   }
 
@@ -104,6 +107,7 @@ class Sol {
     s.waste.removeLast();
     s.found[c.card.suit.index].add(c.card);
     s.score += 10;
+    DuelLive.current?.progress(s.score);
     return true;
   }
 
@@ -127,6 +131,7 @@ class Sol {
     col.removeLast();
     s.found[c.card.suit.index].add(c.card);
     s.score += 10;
+    DuelLive.current?.progress(s.score);
     _flip(s, from);
     return true;
   }

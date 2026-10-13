@@ -17,6 +17,9 @@ import '../edu_progress_recorder.dart';
 import '../realms/realm_kit.dart' show HeroLook, ObjectiveArrowPainter, RealmDraw, realmDarken, realmLighten;
 import 'odyssey_engine.dart';
 import 'odyssey_questions.dart';
+import 'odyssey_shared.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../darkom/hub/darkom_hub_service.dart' show DarkomHubService;
 import '../../journey/journey_result_card.dart';
 import '../../journey/journey_service.dart';
 
@@ -82,6 +85,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   double? _maxSeconds;
   bool _music = true;
   int _coinCue = 0;
+  OdysseyShared? _shared;
+  bool _sharedOn = true;
 
   @override
   void initState() {
@@ -95,6 +100,8 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
   @override
   void dispose() {
     SoundService.instance.stopBackgroundMusic();
+    _shared?.dispose();
+    _shared = null;
     _ticker.dispose();
     _frame.dispose();
     super.dispose();
@@ -198,11 +205,35 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     _maxSeconds = inDuel ? 240 : null;
     _inDuel = inDuel;
     _intro = !inDuel;
+    _startShared(inDuel, mixed && ids.length > 1, ids);
     _startRun();
     setState(() => _loading = false);
   }
 
   static const String _heroKey = 'ody_hero_xp';
+
+  /// Joins the shared world: same subjects means the same map and the same
+  /// room. Never in a duel, and only when the world is mixed.
+  void _startShared(bool inDuel, bool mixed, List<String> ids) {
+    _shared?.dispose();
+    _shared = null;
+    if (inDuel || !mixed) return;
+    final String? uid = SupabaseService.currentUserId;
+    if (uid == null) return;
+    String name = 'Explorer';
+    try {
+      final dynamic meta = SupabaseService.client.auth.currentUser?.userMetadata;
+      final dynamic n = meta == null ? null : (meta['username'] ?? meta['full_name'] ?? meta['name']);
+      final String t = n == null ? '' : n.toString().trim();
+      if (t.isNotEmpty) name = t;
+    } catch (_) {}
+    final OdysseyShared sh = OdysseyShared(OdysseyShared.roomFor(ids), uid, name);
+    _shared = sh;
+    sh.start();
+    DarkomHubService.blockedIds().then((Set<String> b) {
+      if (mounted && identical(_shared, sh)) sh.setBlocked(b);
+    }, onError: (Object _) {});
+  }
 
   Future<void> _loadHero(OdysseyEngine e) async {
     if (_inDuel) return;
@@ -227,7 +258,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
       pool: _pool!,
       subjects: _subjectIds,
       mixed: widget.config.subjectId == 'mix' && _subjectIds.length > 1,
-      seed: rng.nextInt(1 << 30),
+      seed: _shared != null ? OdysseyShared.seedFor(_shared!.room) : rng.nextInt(1 << 30),
       rng: rng,
       allowRest: !_inDuel,
       labels: <String, String>{for (final MapEntry<String, OdySubject> en in _subjects.entries) en.key: en.value.label},
@@ -259,6 +290,12 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     final double dt = (elapsed - prev).inMicroseconds / 1e6;
     _applyKeys(e);
     e.step(dt);
+    final OdysseyShared? sh = _shared;
+    if (sh != null) {
+      sh.step(dt);
+      final double spd = sqrt(e.vx * e.vx + e.vy * e.vy);
+      sh.maybeSend(e.px, e.py, e.facingX, spd > 20, e.score);
+    }
     _playCues(e);
     if (_inDuel && e.time.floor() != _repSec) {
       _repSec = e.time.floor();
@@ -434,7 +471,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
                 onPanCancel: _panEnd,
                 child: RepaintBoundary(
                   child: CustomPaint(
-                    painter: _WorldPainter(engine: e, subjects: _subjects, repaint: _frame, stickOrigin: () => _stickOrigin, stickKnob: () => _stickKnob),
+                    painter: _WorldPainter(engine: e, subjects: _subjects, shared: () => _sharedOn ? _shared : null, repaint: _frame, stickOrigin: () => _stickOrigin, stickKnob: () => _stickKnob),
                     size: Size.infinite,
                   ),
                 ),
@@ -591,6 +628,7 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
         top: 50,
         child: Wrap(spacing: 6, runSpacing: 4, children: <Widget>[
           if (!_inDuel) _heroBar(e),
+          if (_shared != null) _sharedPill(),
           _pill('${e.score + e.distance ~/ 40}', Icons.star_rounded, GacomColors.gold),
           _pill('${e.crystals} coins', Icons.monetization_on_rounded, const Color(0xFFFFD54F)),
           _pill(rs.label, Icons.place_rounded, _lighten(rs.color, 0.25)),
@@ -963,6 +1001,24 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
     );
   }
 
+  /// Shows how many explorers share the map. Tap to hide or show them.
+  Widget _sharedPill() {
+    final OdysseyShared sh = _shared!;
+    return ValueListenableBuilder<int>(
+      valueListenable: sh.online,
+      builder: (BuildContext context, int n, Widget? _) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          setState(() {
+            _sharedOn = !_sharedOn;
+            sh.hidden = !_sharedOn;
+          });
+        },
+        child: _pill(_sharedOn ? (n <= 1 ? 'Shared map: just you' : 'Shared map: $n here') : 'Shared map: off', Icons.groups_rounded, _sharedOn ? const Color(0xFF69F0AE) : Colors.white54),
+      ),
+    );
+  }
+
   Widget _pill(String text, IconData icon, Color color) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white24)),
@@ -1126,13 +1182,14 @@ class _OdysseyScreenState extends State<OdysseyScreen> with SingleTickerProvider
 class _WorldPainter extends CustomPainter {
   final OdysseyEngine engine;
   final Map<String, OdySubject> subjects;
+  final OdysseyShared? Function() shared;
   final Offset? Function() stickOrigin;
   final Offset Function() stickKnob;
   static const double tile = 150;
   final Map<String, List<Color>> _ground = <String, List<Color>>{};
   final Paint _p = Paint();
 
-  _WorldPainter({required this.engine, required this.subjects, required Listenable repaint, required this.stickOrigin, required this.stickKnob}) : super(repaint: repaint);
+  _WorldPainter({required this.engine, required this.subjects, required this.shared, required Listenable repaint, required this.stickOrigin, required this.stickKnob}) : super(repaint: repaint);
 
   OdySubject _subj(String id) => subjects[id] ?? odySubjectById(id);
 
@@ -1304,6 +1361,14 @@ class _WorldPainter extends CustomPainter {
         }
       }
     }
+    final OdysseyShared? sh = shared();
+    if (sh != null) {
+      final int nowMs = DateTime.now().millisecondsSinceEpoch;
+      for (final OdyRemote r in sh.visible(px, py, nowMs)) {
+        if ((r.x - px).abs() > w / 2 + 60 || (r.y - py).abs() > h / 2 + 80) continue;
+        _drawRemote(canvas, r, r.alpha(nowMs));
+      }
+    }
     if (!blink) {
       _drawHero(canvas, px, py);
     }
@@ -1365,6 +1430,49 @@ class _WorldPainter extends CustomPainter {
 
   /// A small humanoid: head, hair, body, swinging arms and legs. Feet stand
   /// on (x, y + 18), so the collision circle sits around the torso.
+  /// Another explorer: a simple figure in their own colours with a name tag.
+  void _drawRemote(Canvas canvas, OdyRemote r, double a) {
+    final double x = r.x;
+    final double y = r.y;
+    final double fx = r.facing >= 0 ? 1.0 : -1.0;
+    final double swing = r.moving ? sin(r.phase) : 0.0;
+    final double bob = r.moving ? sin(r.phase * 2).abs() * 2.0 : 0.0;
+    final double footY = y + 18;
+    double al(double v) => v * a;
+    _p.style = PaintingStyle.fill;
+    _p.color = Colors.black.withValues(alpha: al(0.28));
+    canvas.drawOval(Rect.fromCenter(center: Offset(x, footY + 1), width: 28, height: 8), _p);
+    final Paint stroke = Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    stroke.strokeWidth = 6;
+    stroke.color = r.pants.withValues(alpha: a);
+    canvas.drawLine(Offset(x - 3, y + 7 - bob), Offset(x - 3 - swing * 6 * fx, footY - 1), stroke);
+    canvas.drawLine(Offset(x + 3, y + 7 - bob), Offset(x + 3 + swing * 6 * fx, footY - 1), stroke);
+    _p.color = r.shirt.withValues(alpha: a);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x - 9, y - 8 - bob, 18, 20), const Radius.circular(7)), _p);
+    final double hy = y - 17 - bob;
+    _p.color = r.skin.withValues(alpha: a);
+    canvas.drawCircle(Offset(x, hy), 9.5, _p);
+    _p.color = r.hair.withValues(alpha: a);
+    canvas.drawArc(Rect.fromCircle(center: Offset(x, hy), radius: 10), pi, pi, true, _p);
+    _p.color = Colors.white.withValues(alpha: a);
+    canvas.drawCircle(Offset(x - 3.4 + fx, hy + 1), 2.2, _p);
+    canvas.drawCircle(Offset(x + 3.4 + fx, hy + 1), 2.2, _p);
+    _p.color = const Color(0xFF14101A).withValues(alpha: a);
+    canvas.drawCircle(Offset(x - 3.4 + fx * 1.6, hy + 1), 1.1, _p);
+    canvas.drawCircle(Offset(x + 3.4 + fx * 1.6, hy + 1), 1.1, _p);
+    // name tag
+    final TextPainter tp = TextPainter(
+      text: TextSpan(text: r.name, style: TextStyle(color: Colors.white.withValues(alpha: a), fontSize: 11, fontWeight: FontWeight.w700)),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: '..',
+    )..layout(maxWidth: 110);
+    final Rect tag = Rect.fromLTWH(x - tp.width / 2 - 6, hy - 34, tp.width + 12, tp.height + 4);
+    _p.color = Colors.black.withValues(alpha: al(0.6));
+    canvas.drawRRect(RRect.fromRectAndRadius(tag, const Radius.circular(8)), _p);
+    tp.paint(canvas, Offset(tag.left + 6, tag.top + 2));
+  }
+
   void _drawHero(Canvas canvas, double x, double y) {
     final double sp = sqrt(engine.vx * engine.vx + engine.vy * engine.vy);
     final bool moving = sp > 20;

@@ -7,6 +7,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class SliceItem {
   final bool bomb;
@@ -121,6 +122,7 @@ class SliceEngine {
           return cut;
         }
         score += 1;
+        DuelLive.current?.progress(score);
         sliced++;
         swipeFruit++;
         halves.add(SliceHalf(it.x, it.y, it.vx - 18.0, it.vy * 0.3, it.kind, it.r, 0.0, -2.0, true));
@@ -136,6 +138,7 @@ class SliceEngine {
     if (swipeFruit >= 3) {
       bonus = swipeFruit * 2;
       score += bonus;
+      DuelLive.current?.progress(score);
     }
     if (swipeFruit > bestCombo) { bestCombo = swipeFruit; }
     swipeFruit = 0;

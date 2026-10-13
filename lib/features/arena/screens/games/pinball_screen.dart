@@ -7,6 +7,7 @@ import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
 import '../../widgets/arcade_kit.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 class PinSeg {
   final double x1, y1, x2, y2;
@@ -174,6 +175,7 @@ class PinballEngine {
         bvx += nx * 70.0;
         bvy += ny * 70.0;
         score += 100 * mult;
+        DuelLive.current?.progress(score);
         bumperEvents++;
       }
     }
@@ -184,9 +186,11 @@ class PinballEngine {
       if (dx * dx + dy * dy < 3.5 * 3.5 && !lanes[i]) {
         lanes[i] = true;
         score += 50 * mult;
+        DuelLive.current?.progress(score);
         laneEvents++;
         if (lanes[0] && lanes[1] && lanes[2]) {
           score += 1000 * mult;
+          DuelLive.current?.progress(score);
           if (mult < 5) mult++;
           message = 'LANES COMPLETE! Multiplier x$mult';
           lanes[0] = false;

@@ -28,6 +28,14 @@ class RealmAction {
 typedef RealmPainterBuilder = CustomPainter Function(RealmLogic logic, Listenable repaint);
 typedef RealmHudBuilder = Widget Function(BuildContext context, RealmLogic logic, VoidCallback refresh);
 
+/// Size of one action button for a given layout and scale. Shared so a game's
+/// own HUD can keep clear of the button pad.
+double realmActionOuter(bool compact, double scale) => (compact ? 58.0 : 70.0) * scale;
+
+/// Width the button pad takes at the bottom right, plus its margin.
+double realmActionPadWidth(bool compact, double scale) =>
+    compact ? 2 * realmActionOuter(true, scale) + 4 + 10 : realmActionOuter(false, scale) + 18;
+
 /// The common screen around every realm game: loading, intro, pause, music,
 /// joystick and keyboard, result screen, saving progress and duels. A game
 /// only supplies its [RealmLogic], a painter and optional overlays.
@@ -76,6 +84,9 @@ class RealmShell extends StatefulWidget {
   /// Start playing at once instead of showing the intro card.
   final bool skipIntro;
 
+  /// Makes the action buttons bigger (1.0 is the normal size).
+  final double actionScale;
+
   const RealmShell({
     super.key,
     required this.gameName,
@@ -98,6 +109,7 @@ class RealmShell extends StatefulWidget {
     this.exitLabel = 'EXIT',
     this.pauseActions,
     this.skipIntro = false,
+    this.actionScale = 1.0,
   });
 
   @override
@@ -519,7 +531,7 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
           right: 18,
           bottom: 26,
           child: Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-            for (final RealmAction a in widget.actions) _actionButton(l, a, false),
+            for (final RealmAction a in widget.actions) _actionButton(l, a, false, widget.actionScale),
           ]),
         ),
       // Sideways phone: a small two-by-two pad in the bottom right corner, with the
@@ -529,13 +541,13 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
           right: 10,
           bottom: 8,
           child: SizedBox(
-            width: 2 * 62.0 + 4,
+            width: 2 * realmActionOuter(true, widget.actionScale) + 6,
             child: Wrap(
               alignment: WrapAlignment.end,
               spacing: 4,
               runSpacing: 4,
               children: <Widget>[
-                for (final RealmAction a in widget.actions.reversed) _actionButton(l, a, true),
+                for (final RealmAction a in widget.actions.reversed) _actionButton(l, a, true, widget.actionScale),
               ],
             ),
           ),
@@ -590,13 +602,14 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
     return out;
   }
 
-  Widget _actionButton(RealmLogic l, RealmAction a, bool compact) {
+  Widget _actionButton(RealmLogic l, RealmAction a, bool compact, [double scale = 1.0]) {
     final double ready = l.actionReady(a.id).clamp(0.0, 1.0);
-    final double outer = compact ? 58 : 70;
-    final double inner = compact ? 44 : 54;
+    final double outer = realmActionOuter(compact, scale);
+    final double inner = (compact ? 44.0 : 54.0) * scale;
     return Padding(
       padding: EdgeInsets.only(top: compact ? 0 : 10),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTapDown: (_) => l.onAction(a.id),
         child: SizedBox(
           width: outer,
@@ -612,8 +625,8 @@ class _RealmShellState extends State<RealmShell> with SingleTickerProviderStateM
               height: inner,
               decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.5), border: Border.all(color: Colors.white54)),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-                Icon(a.icon, color: Colors.white, size: compact ? 18 : 22),
-                Text(a.label, style: TextStyle(color: Colors.white70, fontSize: compact ? 7 : 8.5, fontWeight: FontWeight.w700)),
+                Icon(a.icon, color: Colors.white, size: (compact ? 18.0 : 22.0) * scale),
+                Text(a.label, style: TextStyle(color: Colors.white70, fontSize: (compact ? 7.0 : 8.5) * (scale > 1 ? 1.12 : 1.0), fontWeight: FontWeight.w700)),
               ]),
             ),
           ]),

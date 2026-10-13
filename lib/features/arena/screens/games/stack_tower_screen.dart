@@ -5,6 +5,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../widgets/how_to_play_overlay.dart';
+import '../../../../core/services/duel_live.dart';
 
 /// The field is 100 units wide. Each tower block is [x, width].
 class StackEngine {
@@ -76,6 +77,7 @@ class StackEngine {
       streak++;
       perfects++;
       score += 2;
+      DuelLive.current?.progress(score);
       double nw = pw;
       double nx = px;
       if (streak >= 3) {
@@ -91,6 +93,7 @@ class StackEngine {
     }
     streak = 0;
     score += 1;
+    DuelLive.current?.progress(score);
     if (x < px) {
       cut = [x, left - x, level.toDouble()];
     } else {

@@ -7,6 +7,7 @@ import '../../../../core/services/sound_service.dart';
 import '../../../../core/services/game_score_service.dart';
 import '../../games/topic_block.dart';
 import '../../../../core/services/duel_session.dart';
+import '../../../../core/services/duel_live.dart';
 
 const _bg = Color(0xFF0B0B0F);
 const _panel = Color(0xFF1A1A22);
@@ -226,9 +227,11 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
         item.hitResult = true;
         _tally += item.value;
         _score += item.value > 0 ? item.value : 1;
+        DuelLive.current?.progress(_score);
         HapticFeedback.selectionClick();
         if (_tally >= _missionTarget) {
           _score += 50;
+          DuelLive.current?.progress(_score);
           _bestMissionReached = _missionTarget.toDouble();
           _missionTarget += 8 + _rng.nextInt(8);
           _tally = 0;
@@ -243,6 +246,7 @@ class _EndlessRunnerScreenState extends State<EndlessRunnerScreen> {
       item.hitResult = item.isCorrectAnswer;
       if (item.isCorrectAnswer) {
         _score += 15;
+        DuelLive.current?.progress(_score);
         _correctCount++;
         HapticFeedback.selectionClick();
         SoundService.instance.playCorrect();

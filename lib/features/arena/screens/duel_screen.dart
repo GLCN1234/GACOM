@@ -168,6 +168,7 @@ class _DuelScreenState extends State<DuelScreen> {
       final DuelLive live = DuelLive(m.id, _uid!);
       _live = live;
       live.start();
+      live.markPlaying();
     }
     _vsUntil = DateTime.now().add(const Duration(seconds: 5));
     _gameWidget = PcControlsGate(gameKey: g.key, child: g.build());
@@ -192,9 +193,11 @@ class _DuelScreenState extends State<DuelScreen> {
         break;
       case DuelScoring.bestInTime:
         if (score > _best) _best = score;
+        _live?.progress(_best);
         break;
       case DuelScoring.totalInTime:
         _total += score;
+        _live?.progress(_total);
         break;
     }
   }
@@ -206,6 +209,7 @@ class _DuelScreenState extends State<DuelScreen> {
     _submitted = true;
     _limit?.cancel();
     _session?.stop();
+    _live?.finish(score);
     final int ms = _startedAt == null ? 0 : DateTime.now().difference(_startedAt!).inMilliseconds;
     if (mounted) setState(() { _submitting = true; _error = null; _mine = score; });
     try {
