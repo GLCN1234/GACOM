@@ -102,7 +102,7 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> with Widget
       } else if (res is Map && res['code'] == 'need_school') {
         GacomSnackbar.show(context, 'Choose your school first, then register again.');
         edu_prefs.setEduMode(true);
-        context.go('/edu/setup');
+        context.go('/edu/setup?next=${Uri.encodeComponent('/edu/competition/${c['id']}')}');
       } else {
         GacomSnackbar.show(context, (res is Map ? res['error'] : null)?.toString() ?? 'Could not register', isError: true);
       }

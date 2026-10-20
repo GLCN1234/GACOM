@@ -335,7 +335,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // ── Edu Gaming routes ──────────────────────────────────────────
           GoRoute(path: '/edu/home',     builder: (_, __) => const EduHomeScreen()),
           GoRoute(path: '/edu/competition/:id', builder: (_, s) => EduCompetitionScreen(competitionId: s.pathParameters['id']!)),
-          GoRoute(path: '/edu/setup',    builder: (_, __) => const InstitutionPickerScreen()),
+          GoRoute(path: '/edu/setup',    builder: (_, s) => InstitutionPickerScreen(next: s.uri.queryParameters['next'])),
           GoRoute(path: '/edu/portal',   builder: (_, __) => const InstitutionPortalScreen()),
           GoRoute(path: '/edu/subjects', builder: (_, __) => const EduSubjectsScreen()),
           GoRoute(path: '/edu/profile',  builder: (_, __) => const EduProfileScreen()),

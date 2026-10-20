@@ -8,7 +8,9 @@ import '../../../core/utils/edu_prefs.dart' as edu_prefs;
 /// They pick their institution from the list (or say they have none).
 /// The choice is saved to student_institutions and localStorage.
 class InstitutionPickerScreen extends StatefulWidget {
-  const InstitutionPickerScreen({super.key});
+  /// Where to go after saving (for example the competition the student came from).
+  final String? next;
+  const InstitutionPickerScreen({super.key, this.next});
   @override State<InstitutionPickerScreen> createState() => _InstitutionPickerState();
 }
 
@@ -23,6 +25,12 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
   bool _noInstitution = false;
   bool _saving = false;
   bool _creatingInstitution = false;
+
+  static const _states = [
+    'Abia','Adamawa','Akwa Ibom','Anambra','Bauchi','Bayelsa','Benue','Borno','Cross River','Delta','Ebonyi','Edo',
+    'Ekiti','Enugu','FCT Abuja','Gombe','Imo','Jigawa','Kaduna','Kano','Katsina','Kebbi','Kogi','Kwara','Lagos',
+    'Nasarawa','Niger','Ogun','Ondo','Osun','Oyo','Plateau','Rivers','Sokoto','Taraba','Yobe','Zamfara',
+  ];
 
   static const _classLevels = [
     'Primary 1','Primary 2','Primary 3','Primary 4','Primary 5','Primary 6',
@@ -50,7 +58,7 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
 
   Future<void> _createInstitution() async {
     final nameCtrl = TextEditingController(text: _search);
-    final stateCtrl = TextEditingController();
+    String? chosenState;
     String type = 'Secondary School';
     await showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
       backgroundColor: GacomColors.cardDark,
@@ -67,18 +75,26 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
           onChanged: (v) => setDlg(() => type = v ?? type),
         ),
         const SizedBox(height: 12),
-        TextField(controller: stateCtrl, style: const TextStyle(color: GacomColors.textPrimary),
-          decoration: const InputDecoration(labelText: 'State', labelStyle: TextStyle(color: GacomColors.textMuted))),
+        DropdownButtonFormField<String>(
+          value: chosenState, isExpanded: true, dropdownColor: GacomColors.elevatedCard, style: const TextStyle(color: GacomColors.textPrimary),
+          decoration: const InputDecoration(labelText: 'State your school is in', labelStyle: TextStyle(color: GacomColors.textMuted)),
+          items: _states.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+          onChanged: (v) => setDlg(() => chosenState = v),
+        ),
       ]),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: GacomColors.textMuted))),
         ElevatedButton(
           onPressed: _creatingInstitution ? null : () async {
             if (nameCtrl.text.trim().isEmpty) return;
+            if (chosenState == null) {
+              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Choose the state your school is in')));
+              return;
+            }
             setState(() => _creatingInstitution = true);
             try {
               final row = await SupabaseService.client.from('institutions').insert({
-                'name': nameCtrl.text.trim(), 'type': type, 'state': stateCtrl.text.trim().isEmpty ? null : stateCtrl.text.trim(), 'is_active': true,
+                'name': nameCtrl.text.trim(), 'type': type, 'state': chosenState, 'country': 'Nigeria', 'is_active': true,
               }).select().single();
               if (mounted) {
                 Navigator.pop(ctx);
@@ -117,7 +133,7 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
         'no_institution': _noInstitution,
       }, onConflict: 'student_id');
       edu_prefs.setEduMode(true);
-      if (mounted) context.go('/edu/home');
+      if (mounted) context.go((widget.next != null && widget.next!.startsWith('/')) ? widget.next! : '/edu/home');
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -134,6 +150,13 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
       automaticallyImplyLeading: false,
     ),
     body: Column(children: [
+      if (widget.next != null)
+        Container(
+          width: double.infinity,
+          color: GacomColors.deepOrange.withOpacity(0.12),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: const Text('Step 1 of 2: choose your school (or add it, with its state). Step 2: you come straight back to register for the competition.', style: TextStyle(color: GacomColors.textPrimary, fontSize: 12, height: 1.35)),
+        ),
       // Progress indicator
       Container(color: GacomColors.cardDark, padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

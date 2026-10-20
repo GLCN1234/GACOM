@@ -115,7 +115,7 @@ class _EduCompetitionScreenState extends State<EduCompetitionScreen> with Single
         await _load();
       } else if (res is Map && res['code'] == 'need_school') {
         GacomSnackbar.show(context, 'Choose your school first, then register again.');
-        context.go('/edu/setup');
+        context.go('/edu/setup?next=${Uri.encodeComponent('/edu/competition/${widget.competitionId}')}');
       } else {
         GacomSnackbar.show(context, (res is Map ? res['error'] : null)?.toString() ?? 'Could not register', isError: true);
       }

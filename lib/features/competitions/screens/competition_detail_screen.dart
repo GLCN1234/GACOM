@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
@@ -77,6 +78,60 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
     }
   }
 
+  /// Tells the student exactly why they cannot enter, using their GACOM Edu school,
+  /// and sends them to set up or change it, then straight back here.
+  Future<void> _explainNotEligible(String userId) async {
+    String? school, state;
+    try {
+      final row = await SupabaseService.client
+          .from('student_institutions')
+          .select('institution_id, institutions(name, state)')
+          .eq('student_id', userId)
+          .maybeSingle();
+      final inst = row?['institutions'];
+      if (inst is Map) {
+        school = inst['name'] as String?;
+        state = inst['state'] as String?;
+      }
+    } catch (_) {}
+    final c = _competition ?? const <String, dynamic>{};
+    final scope = c['scope_type'];
+    final need = scope == 'institution'
+        ? 'students of one specific school'
+        : scope == 'state'
+            ? 'schools in ${c['scope_state']} State'
+            : scope == 'country'
+                ? 'schools in ${c['scope_country']}'
+                : 'eligible students';
+    final hasSchool = school != null;
+    if (!mounted) return;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: GacomColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(hasSchool ? 'Not open to your school' : 'Set up your GACOM Edu profile', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, color: GacomColors.textPrimary)),
+        content: Text(
+          hasSchool
+              ? 'This competition is open to $need. Your GACOM Edu profile says: $school${state != null ? ' ($state State)' : ''}. If that is wrong, change your school and come straight back.'
+              : 'This competition is open to $need. GACOM checks your school from your GACOM Edu profile. It takes a minute: choose your school (or add it with its state), then you return here to register.',
+          style: const TextStyle(color: GacomColors.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CLOSE', style: TextStyle(color: GacomColors.textMuted))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: GacomColors.deepOrange),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(hasSchool ? 'CHANGE MY SCHOOL' : 'SET UP IN GACOM EDU', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (go == true && mounted) {
+      context.go('/edu/setup?next=${Uri.encodeComponent('/competitions/${widget.competitionId}')}');
+    }
+  }
+
   Future<void> _joinCompetition() async {
     final userId = SupabaseService.currentUserId;
     if (userId == null) return;
@@ -88,7 +143,7 @@ class _CompetitionDetailScreenState extends ConsumerState<CompetitionDetailScree
       final eligible = await SupabaseService.client.rpc('check_competition_eligibility',
           params: {'p_competition_id': widget.competitionId, 'p_user_id': userId});
       if (eligible != true) {
-        if (mounted) GacomSnackbar.show(context, 'This competition is restricted to a specific school, state, or country you\'re not registered under.', isError: true);
+        if (mounted) await _explainNotEligible(userId);
         return;
       }
     } catch (_) {
