@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'edu_subscription_service.dart';
+import 'competition/edu_competition_banner.dart';
 import '../arena/widgets/game_logo.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
@@ -144,6 +145,8 @@ class _EduHomeState extends State<EduHomeScreen> {
       ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         if (_expiry != null && _expiry!.daysLeft <= 5 && !_bannerDismissed) _expiryBanner(),
+        const EduCompetitionBanner(inEdu: true),
+
         // Greeting
         Row(children: [
           Container(width: 48, height: 48,

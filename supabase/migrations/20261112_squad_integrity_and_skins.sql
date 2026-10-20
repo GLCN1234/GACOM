@@ -238,4 +238,4 @@ grant execute on function public.darkom_report_coop_contract(uuid, text, integer
 grant execute on function public.darkom_coop_board(text) to authenticated;
 grant execute on function public.darkom_admin_coop_recent(integer) to authenticated;
 grant execute on function public.darkom_admin_coop_flag(uuid, text, boolean) to authenticated;
-notify pgrst, 'reload schema';
+notify pgrst, 'reload schema'; 

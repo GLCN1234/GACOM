@@ -54,5 +54,16 @@ class EduProgressRecorder {
       // Silently fail — a progress-recording error should never block
       // the student from seeing their game results.
     }
+    // Competition points. The server keeps only Maths and English for the competitions
+    // the student has joined, and applies the limits. Failure is silent for the same reason.
+    if (questionsAnswered > 0) {
+      try {
+        await SupabaseService.client.rpc('edu_comp_record', params: {
+          'p_subject': subject,
+          'p_questions': questionsAnswered,
+          'p_correct': correctAnswers,
+        });
+      } catch (_) {}
+    }
   }
 }

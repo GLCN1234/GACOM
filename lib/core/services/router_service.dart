@@ -106,6 +106,7 @@ import '../../features/arena/screens/games/reaction_solo.dart';
 import '../../features/arena/screens/games/algebra_game.dart';
 import '../../features/arena/screens/games/physics_game.dart';
 import '../../features/edu/edu_home_screen.dart';
+import '../../features/edu/competition/edu_competition_screen.dart';
 import '../../features/edu/edu_subject_screen.dart';
 import '../../features/edu/edu_subjects_screen.dart';
 import '../../features/edu/edu_profile_screen.dart';
@@ -333,6 +334,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/exco-dashboard', builder: (_, __) => const ExcoDashboardScreen()),
           // ── Edu Gaming routes ──────────────────────────────────────────
           GoRoute(path: '/edu/home',     builder: (_, __) => const EduHomeScreen()),
+          GoRoute(path: '/edu/competition/:id', builder: (_, s) => EduCompetitionScreen(competitionId: s.pathParameters['id']!)),
           GoRoute(path: '/edu/setup',    builder: (_, __) => const InstitutionPickerScreen()),
           GoRoute(path: '/edu/portal',   builder: (_, __) => const InstitutionPortalScreen()),
           GoRoute(path: '/edu/subjects', builder: (_, __) => const EduSubjectsScreen()),
