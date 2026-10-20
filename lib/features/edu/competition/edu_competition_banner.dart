@@ -22,6 +22,7 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> with Widget
   List<Map<String, dynamic>> _items = [];
   String? _busyId;
   Timer? _timer;
+  String _debug = 'loading';
 
   @override
   void initState() {
@@ -45,13 +46,24 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> with Widget
 
   Future<void> _load() async {
     List<Map<String, dynamic>>? items;
+    String dbg = '';
     try {
       final res = await SupabaseService.client.rpc('edu_comp_banners');
-      if (res is List) items = res.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-    } catch (_) {}
+      if (res is List) {
+        items = res.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        dbg = 'server list: ${items.length}';
+      } else {
+        dbg = 'server returned ${res.runtimeType}';
+      }
+    } catch (e) {
+      dbg = 'server error: $e';
+    }
     // If the server function is missing or failing, read the table directly so the banner still shows.
-    items ??= await _fallback();
-    if (mounted && items != null) setState(() => _items = items!);
+    if (items == null) {
+      items = await _fallback();
+      dbg += ' | direct read: ${items?.length ?? 'failed'}';
+    }
+    if (mounted) setState(() { if (items != null) _items = items; _debug = dbg; });
   }
 
   Future<List<Map<String, dynamic>>?> _fallback() async {
@@ -140,11 +152,19 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> with Widget
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(children: [for (final c in _items) _card(c)]),
+    // TEMPORARY: the grey line below shows what the app received. It is removed once the banner is confirmed.
+    final dbgLine = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Text('Banner check: $_debug', style: const TextStyle(color: GacomColors.textMuted, fontSize: 10)),
     );
+    if (_items.isEmpty) return dbgLine;
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Column(children: [for (final c in _items) _card(c)]),
+      ),
+      dbgLine,
+    ]);
   }
 
   Widget _card(Map<String, dynamic> c) {
@@ -163,11 +183,7 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> with Widget
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (banner.isNotEmpty)
-          AspectRatio(
-            aspectRatio: 16 / 7,
-            child: FlyerImage(url: banner),
-          ),
+        if (banner.isNotEmpty) FlyerImage(url: banner, natural: true),
         Padding(
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
