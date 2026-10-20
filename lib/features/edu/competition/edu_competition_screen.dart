@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'flyer_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../shared/widgets/gacom_snackbar.dart';
@@ -191,7 +191,7 @@ class _EduCompetitionScreenState extends State<EduCompetitionScreen> with Single
       if (banner.isNotEmpty)
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: AspectRatio(aspectRatio: 16 / 8, child: CachedNetworkImage(imageUrl: banner, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: GacomColors.elevatedCard))),
+          child: AspectRatio(aspectRatio: 16 / 8, child: FlyerImage(url: banner)),
         ),
       const SizedBox(height: 12),
       Text('${c['title'] ?? ''}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: GacomColors.textPrimary)),

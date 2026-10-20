@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../edu/competition/flyer_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/pick_upload.dart';
@@ -141,7 +141,7 @@ class _CompetitionsAdminSectionState extends State<CompetitionsAdminSection> {
                         padding: const EdgeInsets.only(right: 12),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: SizedBox(width: 64, height: 64, child: CachedNetworkImage(imageUrl: banner, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: GacomColors.elevatedCard))),
+                          child: SizedBox(width: 64, height: 64, child: FlyerImage(url: banner, showError: false)),
                         ),
                       ),
                     Expanded(
@@ -425,7 +425,7 @@ class _CompetitionFormState extends State<_CompetitionForm> {
             if (_bannerUrl.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(aspectRatio: 16 / 9, child: CachedNetworkImage(imageUrl: _bannerUrl, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: GacomColors.elevatedCard))),
+                child: AspectRatio(aspectRatio: 16 / 9, child: FlyerImage(url: _bannerUrl)),
               ),
             const SizedBox(height: 8),
             Row(children: [

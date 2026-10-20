@@ -67,6 +67,10 @@ end $$;
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public) values ('competition-banners', 'competition-banners', true)
 on conflict (id) do nothing;
+-- If the bucket already existed as private, flyers upload but never display. Force it public.
+update storage.buckets set public = true where id = 'competition-banners';
+drop policy if exists "comp banners read" on storage.objects;
+create policy "comp banners read" on storage.objects for select using (bucket_id = 'competition-banners');
 drop policy if exists "comp banners admin insert" on storage.objects;
 create policy "comp banners admin insert" on storage.objects for insert to authenticated
   with check (bucket_id = 'competition-banners' and public.sec_is_admin());

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'flyer_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/utils/edu_prefs.dart' as edu_prefs;
@@ -121,7 +121,7 @@ class _EduCompetitionBannerState extends State<EduCompetitionBanner> {
         if (banner.isNotEmpty)
           AspectRatio(
             aspectRatio: 16 / 7,
-            child: CachedNetworkImage(imageUrl: banner, fit: BoxFit.cover, width: double.infinity, errorWidget: (_, __, ___) => Container(color: GacomColors.elevatedCard)),
+            child: FlyerImage(url: banner),
           ),
         Padding(
           padding: const EdgeInsets.all(14),
