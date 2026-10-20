@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'flyer_image.dart';
@@ -17,25 +18,69 @@ class EduCompetitionBanner extends StatefulWidget {
   State<EduCompetitionBanner> createState() => _EduCompetitionBannerState();
 }
 
-class _EduCompetitionBannerState extends State<EduCompetitionBanner> {
+class _EduCompetitionBannerState extends State<EduCompetitionBanner> with WidgetsBindingObserver {
   List<Map<String, dynamic>> _items = [];
   String? _busyId;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
+    _timer = Timer.periodic(const Duration(seconds: 90), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
   }
 
   Future<void> _load() async {
+    List<Map<String, dynamic>>? items;
     try {
       final res = await SupabaseService.client.rpc('edu_comp_banners');
-      if (!mounted) return;
-      if (res is List) {
-        setState(() => _items = res.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+      if (res is List) items = res.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {}
+    // If the server function is missing or failing, read the table directly so the banner still shows.
+    items ??= await _fallback();
+    if (mounted && items != null) setState(() => _items = items!);
+  }
+
+  Future<List<Map<String, dynamic>>?> _fallback() async {
+    try {
+      final uid = SupabaseService.currentUserId;
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final rows = await SupabaseService.client
+          .from('competitions')
+          .select('*')
+          .inFilter('status', ['upcoming', 'live'])
+          .gt('ends_at', nowIso)
+          .order('starts_at')
+          .limit(20);
+      final mine = uid == null
+          ? <dynamic>[]
+          : await SupabaseService.client.from('competition_participants').select('competition_id').eq('user_id', uid);
+      final joined = mine.map((e) => '${e['competition_id']}').toSet();
+      final out = <Map<String, dynamic>>[];
+      for (final r in rows) {
+        final m = Map<String, dynamic>.from(r);
+        if (m['is_featured'] != true && m['kind'] != 'edu') continue;
+        m['subjects'] = m['edu_subjects'];
+        m['registered'] = joined.contains('${m['id']}');
+        m['participants'] = m['current_participants'] ?? 0;
+        out.add(m);
       }
+      return out.take(5).toList();
     } catch (_) {
-      // No banner is better than an error on the home screen.
+      return null;
     }
   }
 
