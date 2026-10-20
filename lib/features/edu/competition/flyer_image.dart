@@ -7,10 +7,27 @@ class FlyerImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
   final bool showError;
-  const FlyerImage({super.key, required this.url, this.fit = BoxFit.cover, this.showError = true});
+  /// True shows the whole flyer (no cropping) at its own shape; false fills the box and crops.
+  final bool natural;
+  const FlyerImage({super.key, required this.url, this.fit = BoxFit.cover, this.showError = true, this.natural = false});
 
   @override
   Widget build(BuildContext context) {
+    if (natural) {
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 460, minHeight: 120),
+        child: Container(
+          color: GacomColors.elevatedCard,
+          width: double.infinity,
+          child: Image.network(
+            url,
+            fit: BoxFit.contain,
+            loadingBuilder: (c, child, p) => p == null ? child : const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: GacomColors.deepOrange))),
+            errorBuilder: (c, e, st) => const SizedBox(height: 120, child: Center(child: Text('Flyer could not load', style: TextStyle(color: GacomColors.textMuted, fontSize: 11)))),
+          ),
+        ),
+      );
+    }
     return Image.network(
       url,
       fit: fit,

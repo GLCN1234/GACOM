@@ -191,7 +191,7 @@ class _EduCompetitionScreenState extends State<EduCompetitionScreen> with Single
       if (banner.isNotEmpty)
         ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: AspectRatio(aspectRatio: 16 / 8, child: FlyerImage(url: banner)),
+          child: FlyerImage(url: banner, natural: true),
         ),
       const SizedBox(height: 12),
       Text('${c['title'] ?? ''}', style: const TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w800, fontSize: 24, color: GacomColors.textPrimary)),

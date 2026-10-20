@@ -425,7 +425,7 @@ class _CompetitionFormState extends State<_CompetitionForm> {
             if (_bannerUrl.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(aspectRatio: 16 / 9, child: FlyerImage(url: _bannerUrl)),
+                child: FlyerImage(url: _bannerUrl, natural: true),
               ),
             const SizedBox(height: 8),
             Row(children: [
