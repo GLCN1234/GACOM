@@ -9,6 +9,7 @@ import 'how_to_ember.dart';
 import 'how_to_realms.dart';
 import 'how_to_signal.dart';
 import 'how_to_skyroot.dart';
+import 'how_to_strike.dart';
 import 'how_to_sundial.dart';
 
 /// Every game that has a tutorial, by game key.
@@ -28,6 +29,7 @@ class HowToRegistry {
       ...howToSignal,
       ...howToSkyroot,
       ...howToSundial,
+      ...howToStrike,
     };
   }
 

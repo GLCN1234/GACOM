@@ -21,6 +21,8 @@ import '../screens/games/pool_screen.dart';
 import '../screens/games/puzzle_rush_screen.dart';
 import '../screens/games/rummy_screen.dart';
 import '../screens/games/signal_match_screen.dart';
+import '../../edu/realms/strike/strike_screen.dart';
+import '../../edu/realms/strike/strike_skins.dart';
 import '../screens/games/sky_hopper_screen.dart';
 import '../screens/games/solitaire_screen.dart';
 import '../screens/games/stack_tower_screen.dart';
@@ -34,7 +36,6 @@ import '../games/void_protocols/void_protocols_screen.dart';
 import '../games/chrono_spire/chrono_spire_screen.dart';
 import '../../edu/odyssey/odyssey_screen.dart';
 import '../../edu/realms/biome/biome_screen.dart';
-import '../../edu/realms/casefiles/casefiles_screen.dart';
 import '../../edu/realms/delve/delve_screen.dart';
 import '../../edu/realms/frontier/frontier_screen.dart';
 import '../../edu/realms/windward/windward_screen.dart';
@@ -120,7 +121,7 @@ class DuelRegistry {
     DuelGame(key: 'biome', name: 'Biome', blurb: 'Most creatures tamed, same world', build: () => const BiomeScreen()),
     DuelGame(key: 'windward', name: 'Windward', blurb: 'Richest captain, same sea', build: () => const WindwardScreen()),
     DuelGame(key: 'delve', name: 'Delve', blurb: 'Deepest descent, same caves', build: () => const DelveScreen()),
-    DuelGame(key: 'casefiles', name: 'Case Files', blurb: 'Best detective, same cases', build: () => const CaseFilesScreen()),
+    DuelGame(key: 'casefiles', name: 'Case Files', blurb: 'Highest score, same questions', build: () => const StrikeScreen(skin: StrikeSkin.casefiles)),
     DuelGame(key: 'frontier', name: 'Frontier', blurb: 'Strongest settlement, same land', build: () => const FrontierScreen()),
     DuelGame(key: 'odyssey', name: 'Odyssey', blurb: 'Most knowledge points in 150 seconds', build: () => const OdysseyScreen()),
     DuelGame(key: 'chronospire', name: 'Chrono-Spire', blurb: 'Climb the highest', build: () => const ChronoSpireScreen()),

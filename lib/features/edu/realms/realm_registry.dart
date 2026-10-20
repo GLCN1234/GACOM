@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../odyssey/odyssey_screen.dart';
 import 'biome/biome_screen.dart';
-import 'casefiles/casefiles_screen.dart';
 import 'delve/delve_screen.dart';
 import 'frontier/frontier_screen.dart';
 import 'ember/ember_screen.dart';
-import 'sundial/sundial_screen.dart';
-import 'skyroot/skyroot_screen.dart';
-import 'signal/signal_screen.dart';
+import 'strike/strike_screen.dart';
+import 'strike/strike_skins.dart';
 import 'realm_kit.dart';
 import 'windward/windward_screen.dart';
 
@@ -90,7 +88,7 @@ class RealmRegistry {
       icon: Icons.manage_search_rounded,
       color: const Color(0xFFC0392B),
       bestFor: <String>{'english', 'history', 'civics', 'logic', 'biology'},
-      build: (RealmConfig c) => CaseFilesScreen(config: c),
+      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.casefiles, config: c),
     ),
     RealmGameInfo(
       id: 'frontier',
@@ -120,7 +118,7 @@ class RealmRegistry {
       icon: Icons.history_edu_rounded,
       color: const Color(0xFFF6B93B),
       bestFor: <String>{'english'},
-      build: (RealmConfig c) => SundialScreen(config: c),
+      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.sundial, config: c),
     ),
     RealmGameInfo(
       id: 'skyroot',
@@ -130,7 +128,7 @@ class RealmRegistry {
       icon: Icons.forest_rounded,
       color: const Color(0xFF4BD37B),
       bestFor: <String>{'biology', 'bst'},
-      build: (RealmConfig c) => SkyrootScreen(config: c),
+      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.skyroot, config: c),
     ),
     RealmGameInfo(
       id: 'signal',
@@ -140,7 +138,7 @@ class RealmRegistry {
       icon: Icons.cell_tower_rounded,
       color: const Color(0xFFFF8A3D),
       bestFor: <String>{'coding', 'logic'},
-      build: (RealmConfig c) => SignalScreen(config: c),
+      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.signal, config: c),
     ),
   ];
 
