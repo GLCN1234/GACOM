@@ -803,6 +803,9 @@ class SundialLogic extends RealmLogic {
     double cy = sdWorldH / 2;
     if (hw * 2 < sdWorldW) cx = sdClamp(px, hw, sdWorldW - hw);
     if (hh * 2 < sdWorldH) cy = sdClamp(py - 20, hh, sdWorldH - hh);
+    // While a question panel is open it sits across the bottom of the screen, so
+    // the camera rides lower and keeps the player in the clear upper part.
+    if (modal) cy = sdClamp(cy + hh * 0.30, hh, sdWorldH - hh);
     return Offset(cx, cy);
   }
 

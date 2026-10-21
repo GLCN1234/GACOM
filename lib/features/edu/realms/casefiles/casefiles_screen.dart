@@ -126,6 +126,49 @@ Widget _bigButton(String label, VoidCallback? onTap, {Color color = _caseAccent,
   );
 }
 
+/// A panel that sits at the bottom of the screen so the player, the world and
+/// the action buttons stay visible above it. A question that covers the avatar
+/// makes the game unreadable, so question panels use this and never the centre.
+Widget _sheet(Widget card) => Positioned(
+      left: 10,
+      right: 10,
+      bottom: 10,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: LayoutBuilder(builder: (BuildContext c, BoxConstraints _) {
+            final double h = MediaQuery.of(c).size.height;
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: h * (h < 440 ? 0.74 : 0.62)),
+              child: SingleChildScrollView(reverse: true, child: card),
+            );
+          }),
+        ),
+      ),
+    );
+
+/// Dark at the bottom where the panel sits, clear at the top where the player
+/// is, so the world is never hidden behind a flat black wash.
+Widget _softBarrier() => Positioned.fill(
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Colors.black.withValues(alpha: 0.10),
+                Colors.black.withValues(alpha: 0.34),
+                Colors.black.withValues(alpha: 0.72),
+              ],
+              stops: const <double>[0.0, 0.42, 1.0],
+            ),
+          ),
+        ),
+      ),
+    );
+
 Widget _centered(Widget card) => Positioned.fill(
       child: Center(
         child: SingleChildScrollView(
@@ -279,8 +322,8 @@ Widget _askOverlay(CaseFilesLogic g, VoidCallback refresh) {
   if (question == null) return const SizedBox.shrink();
   return Positioned.fill(
     child: Stack(children: <Widget>[
-      _barrier(),
-      _centered(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
+      _softBarrier(),
+      _sheet(Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: <Widget>[
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: _caseInk.withValues(alpha: 0.95), borderRadius: BorderRadius.circular(14), border: Border.all(color: realmLighten(c, 0.15))),

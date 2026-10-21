@@ -637,6 +637,9 @@ class CaseFilesLogic extends RealmLogic {
     double cy = caseWorldH / 2;
     if (hw * 2 < caseWorldW) cx = caseClamp(px, hw, caseWorldW - hw);
     if (hh * 2 < caseWorldH) cy = caseClamp(py - 20, hh, caseWorldH - hh);
+    // While a question panel is open it sits across the bottom of the screen, so
+    // the camera rides lower and keeps the player in the clear upper part.
+    if (modal) cy = caseClamp(cy + hh * 0.30, hh, caseWorldH - hh);
     return Offset(cx, cy);
   }
 
