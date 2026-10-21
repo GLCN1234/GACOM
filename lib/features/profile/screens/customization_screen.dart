@@ -25,6 +25,11 @@ const Map<String, String> _chipLabels = {
   'finisher': 'Finishers',
   'badge': 'Badges',
   'name_color': 'Name colours',
+  'okada': 'Okada bikes',
+  'siege': 'Siege kits',
+  'current': 'River kits',
+  'pitch': 'Football kits',
+  'market': 'Market stalls',
   'bundles': 'Bundles',
   'boosts': 'Boosts',
 };

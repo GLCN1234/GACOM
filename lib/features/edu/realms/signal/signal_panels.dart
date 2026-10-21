@@ -186,7 +186,7 @@ Widget _clearPanel(SignalLogic g, VoidCallback refresh) {
           child: Text(detail, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12.5, height: 1.3)),
         ),
       ),
-      _btn('CONTINUE', _do(g.continueFromClear, refresh), icon: Icons.vpn_key_rounded, height: 48, glow: true),
+      _btn('NEXT RIDGE', _do(g.continueFromClear, refresh), icon: Icons.arrow_forward_rounded, height: 48, glow: true),
     ]),
   );
 }

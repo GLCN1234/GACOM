@@ -13,7 +13,11 @@ class CosmeticResult {
 }
 
 class CosmeticsService {
-  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title', 'weapon_skin', 'emote', 'spray', 'finisher'];
+  static const List<String> categories = ['name_color', 'badge', 'avatar_frame', 'hero_outfit', 'trail', 'profile_banner', 'title', 'weapon_skin', 'emote', 'spray', 'finisher', 'okada', 'siege', 'current', 'pitch', 'market'];
+
+  /// Categories that skin one GACOM Edu game. Each one is its own equip slot,
+  /// so a player can have a kit for every game at the same time.
+  static const List<String> gameKitCategories = ['okada', 'siege', 'current', 'pitch', 'market'];
 
   static const String _equippedSelect = '*, '
       'name_color:cosmetic_items!equipped_name_color(id,name,value,asset,rarity), '
@@ -26,7 +30,12 @@ class CosmeticsService {
       'weapon:cosmetic_items!equipped_weapon(id,name,value,asset,rarity), '
       'emote:cosmetic_items!equipped_emote(id,name,value,asset,rarity), '
       'spray:cosmetic_items!equipped_spray(id,name,value,asset,rarity), '
-      'finisher:cosmetic_items!equipped_finisher(id,name,value,asset,rarity)';
+      'finisher:cosmetic_items!equipped_finisher(id,name,value,asset,rarity), '
+      'okada:cosmetic_items!equipped_okada(id,name,value,asset,rarity), '
+      'siege:cosmetic_items!equipped_siege(id,name,value,asset,rarity), '
+      'current:cosmetic_items!equipped_current(id,name,value,asset,rarity), '
+      'pitch:cosmetic_items!equipped_pitch(id,name,value,asset,rarity), '
+      'market:cosmetic_items!equipped_market(id,name,value,asset,rarity)';
 
   /// Key of a category inside an equipped row (and the suffix of its
   /// `equipped_` column). Weapon skins live in the 'weapon' slot.

@@ -2,6 +2,7 @@ import 'how_to_arena_a.dart';
 import 'how_to_arena_b.dart';
 import 'how_to_arena_c.dart';
 import 'how_to_model.dart';
+import 'how_to_newgames.dart';
 import 'how_to_darkom.dart';
 import 'how_to_darkomarena.dart';
 import 'how_to_darkomhub.dart';
@@ -30,6 +31,7 @@ class HowToRegistry {
       ...howToSkyroot,
       ...howToSundial,
       ...howToStrike,
+      ...howToNewGames,
     };
   }
 

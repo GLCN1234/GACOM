@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../odyssey/odyssey_screen.dart';
 import 'biome/biome_screen.dart';
+import 'casefiles/casefiles_screen.dart';
+import 'current/current_screen.dart';
 import 'delve/delve_screen.dart';
 import 'frontier/frontier_screen.dart';
-import 'ember/ember_screen.dart';
+import 'market/market_screen.dart';
+import 'okada/okada_screen.dart';
+import 'pitch/pitch_screen.dart';
+import 'siege/siege_screen.dart';
+import 'signal/signal_screen.dart';
 import 'strike/strike_screen.dart';
 import 'strike/strike_skins.dart';
 import 'realm_kit.dart';
@@ -88,7 +94,7 @@ class RealmRegistry {
       icon: Icons.manage_search_rounded,
       color: const Color(0xFFC0392B),
       bestFor: <String>{'english', 'history', 'civics', 'logic', 'biology'},
-      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.casefiles, config: c),
+      build: (RealmConfig c) => CaseFilesScreen(config: c),
     ),
     RealmGameInfo(
       id: 'frontier',
@@ -101,14 +107,14 @@ class RealmRegistry {
       build: (RealmConfig c) => FrontierScreen(config: c),
     ),
     RealmGameInfo(
-      id: 'ember',
-      name: 'Ember Archipelago',
-      verb: 'Relight the beacons',
-      tagline: 'Relight the island beacons before the long night.',
-      icon: Icons.local_fire_department_rounded,
-      color: const Color(0xFF2ED3E6),
-      bestFor: <String>{'math'},
-      build: (RealmConfig c) => EmberScreen(config: c),
+      id: 'okada',
+      name: 'Okada Run',
+      verb: 'Ride the lanes',
+      tagline: 'An endless Lagos ride where the answers hang over the lanes. Ride through the right one and the road opens up.',
+      icon: Icons.two_wheeler_rounded,
+      color: const Color(0xFFFFC233),
+      bestFor: <String>{'math', 'english', 'physics', 'logic'},
+      build: (RealmConfig c) => OkadaScreen(config: c),
     ),
     RealmGameInfo(
       id: 'sundial',
@@ -133,12 +139,52 @@ class RealmRegistry {
     RealmGameInfo(
       id: 'signal',
       name: 'Signal Ridge',
-      verb: 'Rebuild the network',
-      tagline: 'Reconnect the mountain villages by rebuilding the signal network.',
+      verb: 'Program the bot',
+      tagline: 'Write a program from FORWARD, TURN and REPEAT blocks to walk a bot across the ridge and relight the relays.',
       icon: Icons.cell_tower_rounded,
       color: const Color(0xFFFF8A3D),
       bestFor: <String>{'coding', 'logic'},
-      build: (RealmConfig c) => StrikeScreen(skin: StrikeSkin.signal, config: c),
+      build: (RealmConfig c) => SignalScreen(config: c),
+    ),
+    RealmGameInfo(
+      id: 'siege',
+      name: 'Gate Siege',
+      verb: 'Divide and hold',
+      tagline: 'Every marcher carries a number and your weapons are divisions. Take them apart before they reach your gate.',
+      icon: Icons.shield_rounded,
+      color: const Color(0xFFFFCA28),
+      bestFor: <String>{'math', 'logic'},
+      build: (RealmConfig c) => SiegeScreen(config: c),
+    ),
+    RealmGameInfo(
+      id: 'current',
+      name: 'Word Current',
+      verb: 'Swim and read',
+      tagline: 'The sentence is on the bank and the words float down the river. Swim into the one that fits.',
+      icon: Icons.waves_rounded,
+      color: const Color(0xFF4FC3F7),
+      bestFor: <String>{'english', 'logic', 'civics'},
+      build: (RealmConfig c) => CurrentScreen(config: c),
+    ),
+    RealmGameInfo(
+      id: 'pitch',
+      name: 'Set Piece',
+      verb: 'Bend it in',
+      tagline: 'The goalmouth is painted with the answers. Curve the ball into the right zone and beat the keeper.',
+      icon: Icons.sports_soccer_rounded,
+      color: const Color(0xFF7CFFA0),
+      bestFor: <String>{'math', 'english', 'physics'},
+      build: (RealmConfig c) => PitchScreen(config: c),
+    ),
+    RealmGameInfo(
+      id: 'market',
+      name: 'Market Run',
+      verb: 'Buy, sell, count',
+      tagline: 'A trading day with no questions in it. Buy low, sell at your counter and count the change right.',
+      icon: Icons.storefront_rounded,
+      color: const Color(0xFFFFD166),
+      bestFor: <String>{'math', 'economics', 'bst'},
+      build: (RealmConfig c) => MarketScreen(config: c),
     ),
   ];
 

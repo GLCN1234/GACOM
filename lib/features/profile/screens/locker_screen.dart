@@ -20,6 +20,11 @@ const Map<String, String> _lockerTabs = {
   'finisher': 'Finishers',
   'badge': 'Badges',
   'name_color': 'Name colours',
+  'okada': 'Okada bikes',
+  'siege': 'Siege kits',
+  'current': 'River kits',
+  'pitch': 'Football kits',
+  'market': 'Market stalls',
 };
 
 /// Everything the player owns: collection progress, sets, and a grid to

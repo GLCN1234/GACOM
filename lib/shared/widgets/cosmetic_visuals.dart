@@ -51,6 +51,12 @@ class CosmeticItemVisual extends StatelessWidget {
       case 'spray':
       case 'finisher':
         return cosmeticArtThumb(cat!, asset, scale: k);
+      case 'okada':
+      case 'siege':
+      case 'current':
+      case 'pitch':
+      case 'market':
+        return GameKitSwatch(category: cat!, asset: asset, scale: k, rarity: rarity);
       case 'title':
         final String t = (item['value']?.toString() ?? item['name']?.toString() ?? '').toUpperCase();
         return Padding(
@@ -60,6 +66,103 @@ class CosmeticItemVisual extends StatelessWidget {
       default:
         return const SizedBox.shrink();
     }
+  }
+}
+
+/// A kit for one of the GACOM Edu games, shown as the colours it actually
+/// paints into that game plus the game's own icon. A kit does not change the
+/// avatar, so there is nothing to show on the character stage: this swatch is
+/// the preview.
+class GameKitSwatch extends StatelessWidget {
+  const GameKitSwatch({super.key, required this.category, required this.asset, this.scale = 1.0, this.rarity = Rarity.common});
+
+  final String category;
+  final Map<String, dynamic> asset;
+  final double scale;
+  final Rarity rarity;
+
+  /// The asset keys worth showing for each game, biggest area first.
+  static const Map<String, List<String>> _keys = <String, List<String>>{
+    'okada': <String>['road', 'bike', 'helmet', 'accent'],
+    'siege': <String>['wall', 'banner', 'marcher', 'accent'],
+    'current': <String>['water', 'tile', 'swimmer', 'accent'],
+    'pitch': <String>['grass', 'kit', 'ball', 'accent'],
+    'market': <String>['ground', 'canopy', 'canopy_alt', 'counter'],
+  };
+
+  static const Map<String, IconData> _icons = <String, IconData>{
+    'okada': Icons.two_wheeler_rounded,
+    'siege': Icons.shield_rounded,
+    'current': Icons.waves_rounded,
+    'pitch': Icons.sports_soccer_rounded,
+    'market': Icons.storefront_rounded,
+  };
+
+  /// The one style word a kit carries, if it has one.
+  static const Map<String, String> _styleKey = <String, String>{
+    'okada': 'exhaust',
+    'siege': 'style',
+    'current': 'surface',
+    'pitch': 'pattern',
+    'market': 'cloth',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> keys = _keys[category] ?? const <String>['accent'];
+    final List<Color> colors = <Color>[];
+    for (final String key in keys) {
+      final Color? c = CosmeticsService.parseColor(asset[key]?.toString());
+      if (c != null) colors.add(c);
+    }
+    while (colors.length < 2) {
+      colors.add(rarity.color);
+    }
+    final String style = asset[_styleKey[category] ?? '']?.toString() ?? '';
+    final double w = 92 * scale;
+    final double h = 64 * scale;
+    return SizedBox(
+      width: w,
+      height: h,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10 * scale),
+        child: Stack(fit: StackFit.expand, children: <Widget>[
+          Row(
+            children: <Widget>[
+              for (int i = 0; i < colors.length; i++)
+                Expanded(flex: i == 0 ? 3 : 2, child: ColoredBox(color: colors[i])),
+            ],
+          ),
+          Center(
+            child: Icon(
+              _icons[category] ?? Icons.sports_esports_rounded,
+              size: 28 * scale,
+              color: Colors.white,
+              shadows: const <Shadow>[Shadow(color: Colors.black87, blurRadius: 6)],
+            ),
+          ),
+          if (style.isNotEmpty)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: ColoredBox(
+                color: Colors.black54,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 2 * scale),
+                  child: Text(
+                    style.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.white, fontSize: 8.5 * scale, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
   }
 }
 

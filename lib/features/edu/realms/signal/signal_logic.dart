@@ -212,7 +212,7 @@ class SignalLogic extends RealmLogic {
   }
 
   @override
-  int get finalScore => totalStars * 100 + keys * 60 + effTotal;
+  int get finalScore => totalStars * 100 + effTotal;
 
   @override
   int get xp => stats.baseXp + totalStars * 4;
@@ -221,13 +221,11 @@ class SignalLogic extends RealmLogic {
   List<RealmChip> get chips => <RealmChip>[
         RealmChip('Stage ${min(stage + 1, stageCount)}/$stageCount', Icons.flag_rounded, sgAccentColor),
         RealmChip('Stars $totalStars', Icons.star_rounded, sgGold),
-        RealmChip('Keys $keys', Icons.vpn_key_rounded, const Color(0xFF69F0AE)),
       ];
 
   @override
   Map<String, String> get extraStats => <String, String>{
         'Stars': '$totalStars / 18',
-        'Signal keys': '$keys / $keysAsked',
         'Efficiency': '$effTotal pts',
       };
 
@@ -1000,11 +998,15 @@ class SignalLogic extends RealmLogic {
 
   // ---- key question ------------------------------------------------------------------------------
 
+  /// Clearing a ridge is the whole task, so there is no multiple choice
+  /// question on top of it any more. Writing the program IS the learning, and
+  /// it is already recorded as a task when the run is judged, so a quiz here
+  /// only made Signal Ridge feel like every other game.
   void continueFromClear() {
     if (!solved || phase != 1) return;
-    question = content.subjectIds.contains('coding') ? content.ask('coding') : content.ask();
+    question = null;
     keyChosen = null;
-    phase = 3;
+    _advanceStage();
   }
 
   void answerKey(int i) {
