@@ -137,7 +137,7 @@ class _MarketHud extends StatelessWidget {
     final int total = g.buyTotal;
     final int sells = g.market[s.goodIndex];
     final int perUnit = sells - s.price;
-    final bool canBuy = total <= g.cash && g.buyQty >= 1 && g.buyQty <= s.stock && g.basketCount + g.buyQty <= g.basketCap;
+    final bool canBuy = total <= g.cash && g.buyQty >= 1 && g.buyQty <= s.stock && g.basketCount + g.buyQty <= MarketLogic.basketCap;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -179,7 +179,7 @@ class _MarketHud extends StatelessWidget {
         ]),
         const SizedBox(height: 10),
         Row(children: <Widget>[
-          Expanded(child: _label('You have ₦${g.cash}  |  basket ${g.basketCount}/${g.basketCap}')),
+          Expanded(child: _label('You have ₦${g.cash}  |  basket ${g.basketCount}/${MarketLogic.basketCap}')),
         ]),
         const SizedBox(height: 10),
         _button(
