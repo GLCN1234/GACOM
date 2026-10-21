@@ -273,15 +273,22 @@ class OdysseyData {
     final String? uid = SupabaseService.currentUserId;
     if (uid == null) return SchoolContent(out, labels);
     try {
-      final dynamic link = await SupabaseService.client.from('student_institutions').select('institution_id').eq('student_id', uid).maybeSingle();
+      final dynamic link = await SupabaseService.client.from('student_institutions').select('institution_id, class_level').eq('student_id', uid).maybeSingle();
       final String? inst = link == null ? null : (link as Map)['institution_id'] as String?;
       if (inst == null) return SchoolContent(out, labels);
-      final dynamic rows = await SupabaseService.client
+      final String? classLevel = (link as Map)['class_level'] as String?;
+      // Scoped to the student's own class level, same as the subject screen's
+      // "YOUR SCHOOL'S ADVENTURES" list: a Primary 5 topic must never reach a
+      // Primary 3 student (or vice versa) just because they share a school.
+      dynamic query = SupabaseService.client
           .from('institution_curricula')
           .select('subject, topic, generated_questions')
           .eq('institution_id', inst)
-          .eq('status', 'ready')
-          .limit(300);
+          .eq('status', 'ready');
+      if (classLevel != null && classLevel.isNotEmpty) {
+        query = query.eq('class_level', classLevel);
+      }
+      final dynamic rows = await query.limit(300);
       for (final dynamic r in (rows as List)) {
         final Map<String, dynamic> m = Map<String, dynamic>.from(r as Map);
         final String label = (m['subject'] as String?) ?? '';

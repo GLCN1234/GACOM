@@ -40,16 +40,24 @@ class _EduSubjectState extends State<EduSubjectScreen> with SingleTickerProvider
       final uid = SupabaseService.currentUserId;
       if (uid == null) { if (mounted) setState(() => _loadingAdventures = false); return; }
       final link = await SupabaseService.client.from('student_institutions')
-          .select('institution_id').eq('student_id', uid).maybeSingle();
+          .select('institution_id,class_level').eq('student_id', uid).maybeSingle();
       final instId = link?['institution_id'] as String?;
       if (instId == null) { if (mounted) setState(() => _loadingAdventures = false); return; }
+      final classLevel = link?['class_level'] as String?;
       final subjectLabel = _subjectMeta[widget.subjectId]?['label'] as String? ?? '';
-      final rows = await SupabaseService.client.from('institution_curricula')
+      // Scoped to the student's own class level: a topic the school built for
+      // Primary 5 must never show up for a Primary 3 (or any other) student.
+      // A student with no class level on file (set before this field existed)
+      // still sees nothing mismatched, rather than everything.
+      var query = SupabaseService.client.from('institution_curricula')
           .select('id,topic,subject,world_theme,total_questions,status,created_at')
           .eq('institution_id', instId)
           .eq('status', 'ready')
-          .ilike('subject', subjectLabel)
-          .order('created_at', ascending: true);
+          .ilike('subject', subjectLabel);
+      if (classLevel != null && classLevel.isNotEmpty) {
+        query = query.eq('class_level', classLevel);
+      }
+      final rows = await query.order('created_at', ascending: true);
       final adventures = List<Map<String,dynamic>>.from(rows as List);
 
       final progressRows = await SupabaseService.client.from('student_curriculum_progress')

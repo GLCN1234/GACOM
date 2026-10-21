@@ -56,8 +56,8 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
     });
   }
 
-  Future<void> _createInstitution() async {
-    final nameCtrl = TextEditingController(text: _search);
+  Future<void> _createInstitution({bool prefill = true}) async {
+    final nameCtrl = TextEditingController(text: prefill ? _search : '');
     String? chosenState;
     String type = 'Secondary School';
     await showDialog(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setDlg) => AlertDialog(
@@ -197,9 +197,23 @@ class _InstitutionPickerState extends State<InstitutionPickerScreen> {
               decoration: const InputDecoration(hintText: 'Search for your school...', hintStyle: TextStyle(color: GacomColors.textMuted, fontSize: 13), border: InputBorder.none, isCollapsed: true))),
           ]))),
 
+      // Always-visible, not just when a search comes up empty — a student
+      // should never have to guess that typing a losing search is how you
+      // add your own school.
+      Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: GestureDetector(onTap: () => _createInstitution(prefill: false),
+          child: Container(padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: GacomColors.cardDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: GacomColors.border)),
+            child: Row(children: [
+              const Icon(Icons.add_circle_outline_rounded, color: GacomColors.accentCyan, size: 18),
+              const SizedBox(width: 10),
+              const Expanded(child: Text("Can't find your school? Add it yourself", style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, fontSize: 13, color: GacomColors.textPrimary))),
+              const Icon(Icons.chevron_right_rounded, color: GacomColors.textMuted, size: 18),
+            ])))),
+
       if (_search.isNotEmpty && _filtered.isEmpty)
         Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: GestureDetector(onTap: _createInstitution,
+          child: GestureDetector(onTap: () => _createInstitution(prefill: true),
             child: Container(padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(color: GacomColors.deepOrange.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: GacomColors.deepOrange.withOpacity(0.4))),
               child: Row(children: [
