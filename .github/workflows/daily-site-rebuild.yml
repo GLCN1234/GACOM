@@ -1,0 +1,18 @@
+# Rebuilds the website every day so new blog posts get their own search-engine pages.
+# Setup (once): in Netlify open Site configuration > Build & deploy > Build hooks, create a hook,
+# then in GitHub open Settings > Secrets and variables > Actions and add it as NETLIFY_BUILD_HOOK.
+name: Daily site rebuild
+on:
+  schedule:
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Netlify build
+        env:
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then echo "NETLIFY_BUILD_HOOK is not set"; exit 0; fi
+          curl -fsS -X POST -d '{}' "$HOOK"

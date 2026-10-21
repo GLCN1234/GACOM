@@ -338,6 +338,8 @@ class _MissionCard extends StatefulWidget {
 
 class _MissionCardState extends State<_MissionCard> {
   final _proof = TextEditingController();
+  final _handleCtl = TextEditingController();
+  bool _editingHandle = false;
   bool _busy = false;
   Uint8List? _clipBytes;
   String? _clipName;
@@ -345,6 +347,7 @@ class _MissionCardState extends State<_MissionCard> {
   @override
   void dispose() {
     _proof.dispose();
+    _handleCtl.dispose();
     super.dispose();
   }
 
@@ -394,6 +397,84 @@ class _MissionCardState extends State<_MissionCard> {
     }
   }
 
+  String get _platform => m['platform']?.toString() ?? 'any';
+  String get _myHandle => m['my_handle']?.toString() ?? '';
+  bool get _needsHandle => (_type == 'social_link' || _type == 'clip' || _type == 'follow') && const ['x', 'instagram', 'tiktok'].contains(_platform);
+
+  static String _platformName(String p) => p == 'x' ? 'X' : p == 'tiktok' ? 'TikTok' : p == 'instagram' ? 'Instagram' : _humanize(p);
+
+  Future<void> _saveHandle() async {
+    final h = _handleCtl.text.trim();
+    if (h.isEmpty) {
+      GacomSnackbar.show(context, 'Enter your username', isError: true);
+      return;
+    }
+    setState(() => _busy = true);
+    final res = await MissionsService.setHandle(_platform, h);
+    if (!mounted) return;
+    setState(() { _busy = false; _editingHandle = false; });
+    if (res.success) {
+      _handleCtl.clear();
+      GacomSnackbar.show(context, 'Username saved', isSuccess: true);
+      widget.onChanged();
+    } else {
+      GacomSnackbar.show(context, res.message, isError: true);
+    }
+  }
+
+  /// The GACOM account to follow or tag, and the player's own username for the platform.
+  List<Widget> _socialBlock() {
+    if (!_needsHandle) return <Widget>[];
+    final brandHandle = m['brand_handle']?.toString() ?? '';
+    final brandUrl = m['brand_url']?.toString() ?? '';
+    final tags = m['brand_hashtags']?.toString() ?? '';
+    final tagText = m['tag_text']?.toString() ?? '';
+    final mine = _myHandle;
+    final name = _platformName(_platform);
+    return [
+      if (brandHandle.isNotEmpty)
+        Row(children: [
+          Expanded(child: Text(_type == 'follow' ? 'Follow @$brandHandle on $name' : 'Tag @$brandHandle on $name', style: mBody(size: 13, color: MTac.text, weight: FontWeight.w700))),
+          if (brandUrl.isNotEmpty) GestureDetector(
+            onTap: () => _open(brandUrl),
+            child: Text('OPEN', style: mHead(size: 12, color: MTac.gold, letterSpacing: 1)),
+          ),
+        ]),
+      if (tagText.isNotEmpty && _type != 'follow') ...[
+        const SizedBox(height: 4),
+        Text('Include: $tagText', style: mBody(size: 12)),
+      ],
+      if (tags.isNotEmpty && _type != 'follow') ...[
+        const SizedBox(height: 4),
+        Text('Hashtags: $tags', style: mBody(size: 12)),
+      ],
+      const SizedBox(height: 8),
+      if (mine.isNotEmpty && !_editingHandle)
+        Row(children: [
+          Expanded(child: Text('Your $name username: @$mine', style: mBody(size: 13, color: MTac.cyan, weight: FontWeight.w700))),
+          GestureDetector(
+            onTap: () => setState(() { _editingHandle = true; _handleCtl.text = mine; }),
+            child: Text('CHANGE', style: mHead(size: 12, color: MTac.gold, letterSpacing: 1)),
+          ),
+        ])
+      else ...[
+        TextField(
+          controller: _handleCtl,
+          style: kMInput,
+          autocorrect: false,
+          decoration: mField('Your $name username', hint: 'without the @'),
+        ),
+        const SizedBox(height: 4),
+        Text(_type == 'follow'
+            ? 'We check this against the followers of the GACOM account.'
+            : 'Your post must come from this account. One username can only be linked to one GACOM account.', style: mBody(size: 12)),
+        const SizedBox(height: 6),
+        Align(alignment: Alignment.centerRight, child: MButton(label: 'SAVE USERNAME', busy: _busy, outlined: true, onTap: _saveHandle)),
+      ],
+      const SizedBox(height: 10),
+    ];
+  }
+
   Future<void> _submit() async {
     var proof = _proof.text.trim();
     final clip = _clipBytes;
@@ -409,12 +490,16 @@ class _MissionCardState extends State<_MissionCard> {
       }
       proof = path;
     }
-    if (proof.isEmpty) {
+    if (_needsHandle && _myHandle.isEmpty) {
+      GacomSnackbar.show(context, 'Save your ${_platformName(_platform)} username first', isError: true);
+      return;
+    }
+    if (proof.isEmpty && _type != 'follow') {
       GacomSnackbar.show(context, _type == 'code_word' ? 'Enter the code word first' : 'Add your proof first', isError: true);
       return;
     }
     setState(() => _busy = true);
-    final res = await MissionsService.submit(_id, proof);
+    final res = await MissionsService.submit(_id, _type == 'follow' ? '' : proof);
     if (!mounted) return;
     setState(() => _busy = false);
     if (res.success) {
@@ -542,6 +627,9 @@ class _MissionCardState extends State<_MissionCard> {
       case 'clip':
         out.addAll(_proofForm(status == 'rejected', clip: true));
         break;
+      case 'follow':
+        out.addAll(_follow(status == 'rejected'));
+        break;
       default:
         out.addAll(_proofForm(status == 'rejected', clip: false));
     }
@@ -581,6 +669,23 @@ class _MissionCardState extends State<_MissionCard> {
     ];
   }
 
+  List<Widget> _follow(bool resubmit) {
+    final instructions = m['instructions']?.toString() ?? '';
+    return [
+      if (instructions.isNotEmpty) ...[
+        Text(instructions, style: mBody(size: 13, color: MTac.text)),
+        const SizedBox(height: 8),
+      ],
+      ..._socialBlock(),
+      Align(
+        alignment: Alignment.centerRight,
+        child: MButton(label: resubmit ? 'I FOLLOWED AGAIN' : 'I FOLLOWED', busy: _busy, onTap: (_myHandle.isEmpty || _editingHandle) ? null : _submit),
+      ),
+      const SizedBox(height: 2),
+      Text('We spot check followers and can remove rewards if you did not follow.', style: mBody(size: 12, color: MTac.textMuted)),
+    ];
+  }
+
   List<Widget> _codeWord(bool resubmit) => [
         TextField(
           controller: _proof,
@@ -606,6 +711,7 @@ class _MissionCardState extends State<_MissionCard> {
         MChip(label: platform.toUpperCase(), color: MTac.cyan),
         const SizedBox(height: 8),
       ],
+      ..._socialBlock(),
       if (example.isNotEmpty) ...[
         Row(children: [
           Text('EXAMPLE', style: mHead(size: 11, color: MTac.textMuted, letterSpacing: 1)),

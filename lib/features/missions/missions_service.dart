@@ -117,6 +117,69 @@ class MissionsService {
     }
   }
 
+  // ------------------------------------------------------- social accounts
+
+  /// Saves the player's username for a platform ('x', 'instagram' or 'tiktok').
+  static Future<MissionResult> setHandle(String platform, String handle) =>
+      _rpc('set_my_social_handle', {'p_platform': platform, 'p_handle': handle.trim()});
+
+  /// The GACOM accounts players are asked to follow and tag.
+  static Future<List<Map<String, dynamic>>> brandSocials() async {
+    try {
+      final res = await SupabaseService.client.from('brand_socials').select('*').order('sort_order');
+      return _list(res);
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<MissionResult> saveBrandSocial(String platform, String handle, String url, String hashtags, int order) async {
+    try {
+      await SupabaseService.client.from('brand_socials').upsert({
+        'platform': platform,
+        'handle': handle.trim().replaceFirst('@', ''),
+        'url': url.trim(),
+        'hashtags': hashtags.trim().isEmpty ? null : hashtags.trim(),
+        'sort_order': order,
+      });
+      return const MissionResult(success: true);
+    } catch (e) {
+      return MissionResult(success: false, error: friendlyError(e));
+    }
+  }
+
+  static Future<MissionResult> deleteBrandSocial(String platform) async {
+    try {
+      await SupabaseService.client.from('brand_socials').delete().eq('platform', platform);
+      return const MissionResult(success: true);
+    } catch (e) {
+      return MissionResult(success: false, error: friendlyError(e));
+    }
+  }
+
+  /// Asks Ryan to write missions. They are saved as drafts for an admin to review.
+  static Future<MissionResult> askRyan({required String seasonId, required int days, required int perDay, required int startDay, String focus = ''}) async {
+    try {
+      final res = await SupabaseService.client.functions.invoke('ryan-mission-writer', body: {
+        'season_id': seasonId,
+        'days': days,
+        'per_day': perDay,
+        'start_day': startDay,
+        'focus': focus,
+      });
+      final data = res.data;
+      if (data is Map && data['success'] == true) {
+        return MissionResult(success: true, status: '${data['created'] ?? 0}');
+      }
+      return MissionResult(success: false, error: data is Map ? data['error']?.toString() : null);
+    } on FunctionException catch (e) {
+      final d = e.details;
+      return MissionResult(success: false, error: d is Map ? d['error']?.toString() : 'Ryan could not write right now.');
+    } catch (e) {
+      return MissionResult(success: false, error: friendlyError(e));
+    }
+  }
+
   // ----------------------------------------------------------------- admin
 
   static Future<List<Map<String, dynamic>>> adminQueue(String status, {int limit = 60}) async {

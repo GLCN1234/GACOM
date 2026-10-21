@@ -33,6 +33,7 @@ function buildPrompt(): string {
   "excerpt": "1-2 sentence summary of the real story",
   "content": "full post as clean HTML using ONLY <p> and <a> tags — NO headings, NO <h1>/<h2>/<h3> at all, just flowing narrative paragraphs like a real news article, 300-500 words: cover the real news accurately, then a natural closing paragraph tying it to GACOM's own community",
   "category": "one of: ${CATEGORIES.join(', ')}",
+  "tags": ["4 to 6 lowercase search phrases a young Nigerian gamer or student might type into Google about this story, such as 'mobile esports nigeria' or 'free fire tournament'"],
   "image_keywords": "2-4 words describing the visual subject of this story for a stock photo search, e.g. 'esports tournament arena' or 'mobile gaming controller'"
 }`
 }
@@ -175,6 +176,8 @@ secureServe('generate-weekly-blog-post', async (req, ctx) => {
       excerpt: draft.excerpt?.trim() || null,
       content,
       category,
+      tags: Array.isArray(draft.tags) ? draft.tags.map((t: unknown) => String(t).trim().toLowerCase()).filter((t: string) => t.length > 2 && t.length < 50).slice(0, 6) : null,
+      read_time_minutes: Math.max(1, Math.round(content.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length / 200)),
       cover_image_url: coverImageUrl,
       author_id: null,
       is_ai_generated: true,
@@ -182,6 +185,13 @@ secureServe('generate-weekly-blog-post', async (req, ctx) => {
       published_at: new Date().toISOString(),
     }).select().single()
     if (error) throw error
+
+    // Ask Netlify to rebuild so the new post gets its own search-engine page right away.
+    // Optional: set NETLIFY_BUILD_HOOK_URL in the function secrets. A failure never blocks the post.
+    const hook = Deno.env.get('NETLIFY_BUILD_HOOK_URL')
+    if (hook && hook.startsWith('https://api.netlify.com/build_hooks/')) {
+      try { await fetchWithTimeout(hook, { method: 'POST', body: '{}' }, 8000) } catch (_) { /* ignored */ }
+    }
 
     return ctx.json({ success: true, post: data })
 

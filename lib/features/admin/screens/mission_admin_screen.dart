@@ -6,6 +6,7 @@ import '../../../shared/widgets/gacom_snackbar.dart';
 import '../../houses/house_service.dart';
 import '../../missions/missions_service.dart';
 import '../../missions/widgets/mission_style.dart';
+import 'ryan_missions_sheet.dart';
 
 int _i(dynamic v) => (v as num?)?.toInt() ?? 0;
 Map<String, dynamic>? _map(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : null;
@@ -499,11 +500,12 @@ class _ReviewTabState extends State<_ReviewTab> with AutomaticKeepAliveClientMix
 
 // -------------------------------------------------------------- missions
 
-const List<String> _types = ['in_app', 'social_link', 'clip', 'code_word'];
+const List<String> _types = ['in_app', 'social_link', 'clip', 'follow', 'code_word'];
 const Map<String, String> _typeNames = {
   'in_app': 'In-app (automatic)',
   'social_link': 'Social post (link)',
   'clip': 'Clip / screen recording',
+  'follow': 'Follow a GACOM account',
   'code_word': 'Code word',
 };
 const List<String> _metrics = ['duels_played', 'duels_won', 'games_played', 'game_wins', 'streak_days', 'house_joined'];
@@ -572,6 +574,28 @@ class _MissionsTabState extends State<_MissionsTab> with AutomaticKeepAliveClien
     }
   }
 
+  Future<void> _askRyan() async {
+    final season = _season;
+    if (season == null) return;
+    final done = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MTac.panel,
+      builder: (_) => RyanMissionsSheet(seasonId: season['id'].toString()),
+    );
+    if (done == true && mounted) _load(silent: true);
+  }
+
+  Future<void> _brand() async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: MTac.panel,
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.94),
+      builder: (_) => const BrandAccountsSheet(),
+    );
+  }
+
   Future<void> _toggle(Map<String, dynamic> m, bool v) async {
     final res = await MissionsService.saveMission({'is_active': v}, id: m['id'].toString());
     if (!mounted) return;
@@ -626,7 +650,11 @@ class _MissionsTabState extends State<_MissionsTab> with AutomaticKeepAliveClien
             if (season['is_active'] != true) const MChip(label: 'NOT ACTIVE', color: MTac.warn),
           ]),
           const SizedBox(height: 10),
-          Align(alignment: Alignment.centerLeft, child: MButton(label: 'ADD MISSION', icon: Icons.add_rounded, onTap: () => _edit())),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            MButton(label: 'ADD MISSION', icon: Icons.add_rounded, onTap: () => _edit()),
+            MButton(label: 'RYAN: WRITE MISSIONS', icon: Icons.auto_awesome_rounded, outlined: true, onTap: _askRyan),
+            MButton(label: 'GACOM ACCOUNTS', icon: Icons.link_rounded, outlined: true, onTap: _brand),
+          ]),
           const SizedBox(height: 14),
           if (days.isEmpty) Text('No missions in this season yet.', style: mBody(size: 14)),
           ...days.expand((d) => <Widget>[
@@ -695,6 +723,7 @@ class _MissionSheetState extends State<_MissionSheet> {
   late final TextEditingController _desc;
   late final TextEditingController _instr;
   late final TextEditingController _example;
+  late final TextEditingController _tag;
   late final TextEditingController _day;
   late final TextEditingController _target;
   late final TextEditingController _points;
@@ -722,6 +751,7 @@ class _MissionSheetState extends State<_MissionSheet> {
     _desc = TextEditingController(text: s('description'));
     _instr = TextEditingController(text: s('instructions'));
     _example = TextEditingController(text: s('example_url'));
+    _tag = TextEditingController(text: s('tag_text'));
     _day = TextEditingController(text: e == null ? '1' : '${_i(e['day_number'])}');
     _target = TextEditingController(text: e == null ? '1' : '${_i(e['target'])}');
     _points = TextEditingController(text: e == null ? '0' : '${_i(e['reward_house_points'])}');
@@ -750,7 +780,7 @@ class _MissionSheetState extends State<_MissionSheet> {
 
   @override
   void dispose() {
-    for (final c in [_title, _desc, _instr, _example, _day, _target, _points, _winners, _sort, _answer]) {
+    for (final c in [_title, _desc, _instr, _example, _tag, _day, _target, _points, _winners, _sort, _answer]) {
       c.dispose();
     }
     super.dispose();
@@ -793,10 +823,11 @@ class _MissionSheetState extends State<_MissionSheet> {
       'description': nn(_desc.text),
       'instructions': nn(_instr.text),
       'example_url': nn(_example.text),
+      'tag_text': nn(_tag.text),
       'type': _type,
       'metric': _type == 'in_app' ? _metric : null,
       'target': target,
-      'platform': (_type == 'social_link' || _type == 'clip') ? _platform : 'any',
+      'platform': (_type == 'social_link' || _type == 'clip' || _type == 'follow') ? _platform : 'any',
       'verify': _verify,
       'reward_item_id': _itemId,
       'reward_house_points': points,
@@ -858,7 +889,10 @@ class _MissionSheetState extends State<_MissionSheet> {
             Expanded(child: TextField(controller: _sort, style: kMInput, keyboardType: TextInputType.number, decoration: mField('Sort order'))),
           ]),
           _gap(),
-          _dropdown(label: 'Type', value: _type, values: _types, names: _typeNames, onChanged: (v) => setState(() => _type = v ?? _type)),
+          _dropdown(label: 'Type', value: _type, values: _types, names: _typeNames, onChanged: (v) => setState(() {
+            _type = v ?? _type;
+            if (_type == 'follow' && !const ['x', 'instagram', 'tiktok'].contains(_platform)) _platform = 'x';
+          })),
           _gap(),
           if (_type == 'in_app') ...[
             _dropdown(label: 'Metric', value: _metric, values: _metrics, names: {for (final m in _metrics) m: m.replaceAll('_', ' ')}, onChanged: (v) => setState(() => _metric = v ?? _metric)),
@@ -866,9 +900,13 @@ class _MissionSheetState extends State<_MissionSheet> {
           ],
           TextField(controller: _target, style: kMInput, keyboardType: TextInputType.number, decoration: mField(_type == 'in_app' ? 'Target (count to reach)' : 'Target (keep at 1)')),
           _gap(),
-          if (_type == 'social_link' || _type == 'clip') ...[
-            _dropdown(label: 'Platform', value: _platform, values: _platforms, onChanged: (v) => setState(() => _platform = v ?? _platform)),
+          if (_type == 'social_link' || _type == 'clip' || _type == 'follow') ...[
+            _dropdown(label: 'Platform', value: _platform, values: _type == 'follow' ? const ['x', 'instagram', 'tiktok'] : _platforms, onChanged: (v) => setState(() => _platform = v ?? _platform)),
             _gap(),
+            if (_type != 'follow') ...[
+              TextField(controller: _tag, style: kMInput, decoration: mField('What to tag or include (e.g. @gacom)')),
+              _gap(),
+            ],
             TextField(controller: _instr, style: kMInput, maxLines: 3, decoration: mField('Instructions for the player')),
             _gap(),
             TextField(controller: _example, style: kMInput, keyboardType: TextInputType.url, decoration: mField('Example link')),
