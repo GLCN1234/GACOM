@@ -32,7 +32,6 @@ ios/Pods/
 ios/*.xcworkspace
 
 # Web
-lib/generated_plugin_registrant.dart
 
 # macOS
 macos/Flutter/GeneratedPluginRegistrant.swift

@@ -73,6 +73,17 @@ class GameLogos {
     'FRONTIER': GameLogoData(Icons.holiday_village_rounded, Color(0xFFBF360C), Color(0xFFFFCA28)),
     'ODYSSEY': GameLogoData(Icons.explore_rounded, Color(0xFF0D47A1), Color(0xFF00E676)),
     'ARENA GAUNTLET': GameLogoData(Icons.whatshot_rounded, Color(0xFFB71C1C), Color(0xFFFF6A00)),
+    // Darkom City had no tile at all, so the store showed an empty square.
+    'DARKOM CITY': GameLogoData(Icons.location_city_rounded, Color(0xFF12001F), Color(0xFFFF6A00)),
+    // The GACOM Edu realms.
+    'SUNDIAL CITY': GameLogoData(Icons.history_edu_rounded, Color(0xFF4E342E), Color(0xFFF6B93B)),
+    'SKYROOT FRONTIER': GameLogoData(Icons.forest_rounded, Color(0xFF0F3D21), Color(0xFF4BD37B)),
+    'SIGNAL RIDGE': GameLogoData(Icons.cell_tower_rounded, Color(0xFF4A2511), Color(0xFFFF8A3D)),
+    'OKADA RUN': GameLogoData(Icons.two_wheeler_rounded, Color(0xFF1F1A10), Color(0xFFFFC233)),
+    'GATE SIEGE': GameLogoData(Icons.shield_rounded, Color(0xFF3B2A12), Color(0xFFFFCA28)),
+    'WORD CURRENT': GameLogoData(Icons.waves_rounded, Color(0xFF06212B), Color(0xFF4FC3F7)),
+    'SET PIECE': GameLogoData(Icons.sports_soccer_rounded, Color(0xFF12441B), Color(0xFF7CFFA0)),
+    'MARKET RUN': GameLogoData(Icons.storefront_rounded, Color(0xFF2A2119), Color(0xFFFFD166)),
   };
 
   static GameLogoData? lookup(String? name) {
@@ -92,6 +103,17 @@ class GameLogos {
   static String _flat(String s) => s.replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
   static const Map<String, String> _aliases = {
+    'DARKOM': 'DARKOM CITY',
+    'DARKOMCITYFREEROAM': 'DARKOM CITY',
+    'DARKOMCITYCITYPATROL': 'DARKOM CITY',
+    'SUNDIAL': 'SUNDIAL CITY',
+    'SKYROOT': 'SKYROOT FRONTIER',
+    'SIGNAL': 'SIGNAL RIDGE',
+    'OKADA': 'OKADA RUN',
+    'SIEGE': 'GATE SIEGE',
+    'WORDCURRENT': 'WORD CURRENT',
+    'SETPIECE': 'SET PIECE',
+    'MARKET': 'MARKET RUN',
     'CHRONOSPY': 'CHRONO-SPIRE',
     'CHRONOSPIRES': 'CHRONO-SPIRE',
     'CHRONO': 'CHRONO-SPIRE',
